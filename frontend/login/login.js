@@ -1,79 +1,242 @@
+let tempSignupData = null;
+let resetEmail = null;
+
 function showLogin() {
-  document.getElementById("signup-form").classList.add("hidden");
-  document.getElementById("forgot-form").classList.add("hidden");
-  document.getElementById("login-form").classList.remove("hidden");
+    document.getElementById("signup-form").classList.add("hidden");
+    document.getElementById("forgot-form").classList.add("hidden");
+    document.getElementById("login-form").classList.remove("hidden");
+    document.getElementById("verification-modal").classList.add("hidden");
 }
 
 function showSignup() {
-  document.getElementById("login-form").classList.add("hidden");
-  document.getElementById("forgot-form").classList.add("hidden");
-  document.getElementById("signup-form").classList.remove("hidden");
+    document.getElementById("login-form").classList.add("hidden");
+    document.getElementById("forgot-form").classList.add("hidden");
+    document.getElementById("signup-form").classList.remove("hidden");
+    document.getElementById("verification-modal").classList.add("hidden");
 }
 
 function showForgotPassword() {
-  document.getElementById("login-form").classList.add("hidden");
-  document.getElementById("signup-form").classList.add("hidden");
-  document.getElementById("forgot-form").classList.remove("hidden");
+    document.getElementById("login-form").classList.add("hidden");
+    document.getElementById("signup-form").classList.add("hidden");
+    document.getElementById("forgot-form").classList.remove("hidden");
+    document.getElementById("verification-modal").classList.add("hidden");
 }
 
 async function handleSignup() {
-  const first_name = document.getElementById("signup-firstname").value.trim();
-  const last_name = document.getElementById("signup-lastname").value.trim();
-  const username = document.getElementById("signup-username").value.trim();
-  const email = document.getElementById("signup-email").value.trim();
-  const password = document.getElementById("signup-password").value.trim();
-  const role = document.querySelector('input[name="role"]:checked')?.value;
+    const first_name = document.getElementById("signup-firstname").value.trim();
+    const last_name = document.getElementById("signup-lastname").value.trim();
+    const username = document.getElementById("signup-username").value.trim();
+    const email = document.getElementById("signup-email").value.trim();
+    const password = document.getElementById("signup-password").value.trim();
+    const role = document.querySelector('input[name="role"]:checked')?.value;
 
-  if (!first_name || !last_name || !username || !email || !password || !role) {
-    return Swal.fire("Error", "All fields are required.", "error");
-  }
-
-  try {
-    const res = await fetch("/api/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ first_name, last_name, username, email, password, role })
-    });
-
-    const result = await res.json();
-
-    if (!res.ok) {
-      return Swal.fire("Error", result.message, "error");
+    if (!first_name || !last_name || !username || !email || !password || !role) {
+        return Swal.fire("Error", "All fields are required.", "error");
     }
 
-    Swal.fire("Success", "Account created! Please log in.", "success").then(() => {
-      showLogin();
+    try {
+        const res = await fetch("/api/send-signup-code", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ first_name, last_name, username, email, password, role })
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+            return Swal.fire("Error", result.message, "error");
+        }
+
+        tempSignupData = result.tempData;
+        showVerificationModal('signup', email);
+        Swal.fire("Verification Code Sent", `A 6-digit code has been sent to ${email}. Valid for 5 minutes.`, "info");
+    } catch (err) {
+        Swal.fire("Error", "Server error.", "error");
+    }
+}
+
+async function handleForgotPassword() {
+    const email = document.getElementById("forgot-email").value.trim();
+
+    if (!email) {
+        return Swal.fire("Error", "Please enter your email.", "error");
+    }
+
+    try {
+        const res = await fetch("/api/send-reset-code", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+            return Swal.fire("Error", result.message, "error");
+        }
+
+        resetEmail = email;
+        showVerificationModal('reset', email);
+        Swal.fire("Reset Code Sent", `A 6-digit code has been sent to ${email}. Valid for 5 minutes.`, "info");
+    } catch (err) {
+        Swal.fire("Error", "Server error.", "error");
+    }
+}
+
+function showVerificationModal(type, email) {
+    const modal = document.getElementById("verification-modal");
+    const title = document.getElementById("modal-title");
+    const subtitle = document.getElementById("modal-subtitle");
+    
+    if (type === 'signup') {
+        title.textContent = "Verify Your Email";
+        subtitle.textContent = `Enter the 6-digit code sent to ${email}`;
+    } else {
+        title.textContent = "Password Reset Verification";
+        subtitle.textContent = `Enter the 6-digit code sent to ${email}`;
+    }
+    
+    document.getElementById("verification-type").value = type;
+    modal.classList.remove("hidden");
+}
+
+async function verifyCode() {
+    const code = document.getElementById("verification-code").value.trim();
+    const type = document.getElementById("verification-type").value;
+    
+    if (!code || code.length !== 6) {
+        return Swal.fire("Error", "Please enter the 6-digit verification code.", "error");
+    }
+    
+    if (type === 'signup') {
+        if (!tempSignupData) {
+            Swal.fire("Error", "Session expired. Please sign up again.", "error");
+            closeVerificationModal();
+            showSignup();
+            return;
+        }
+        
+        try {
+            const res = await fetch("/api/verify-signup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    email: tempSignupData.email, 
+                    code: code,
+                    tempData: tempSignupData
+                })
+            });
+            
+            const result = await res.json();
+            
+            if (!res.ok) {
+                return Swal.fire("Error", result.message, "error");
+            }
+            
+            Swal.fire("Success", "Account verified and created successfully! Please login.", "success").then(() => {
+                closeVerificationModal();
+                showLogin();
+                tempSignupData = null;
+                document.getElementById("signup-form").reset();
+            });
+        } catch (err) {
+            Swal.fire("Error", "Server error.", "error");
+        }
+    } else if (type === 'reset') {
+        closeVerificationModal();
+        showResetPasswordForm(resetEmail, code);
+    }
+}
+
+function showResetPasswordForm(email, code) {
+    Swal.fire({
+        title: 'Reset Password',
+        html: `
+            <input type="password" id="new-password" class="swal2-input" placeholder="New password">
+            <input type="password" id="confirm-password" class="swal2-input" placeholder="Confirm password">
+        `,
+        focusConfirm: false,
+        preConfirm: () => {
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            
+            if (!newPassword || !confirmPassword) {
+                Swal.showValidationMessage('Please fill in both fields');
+                return false;
+            }
+            
+            if (newPassword !== confirmPassword) {
+                Swal.showValidationMessage('Passwords do not match');
+                return false;
+            }
+            
+            if (newPassword.length < 6) {
+                Swal.showValidationMessage('Password must be at least 6 characters');
+                return false;
+            }
+            
+            return { newPassword };
+        }
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch("/api/reset-password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        email: email,
+                        code: code,
+                        newPassword: result.value.newPassword
+                    })
+                });
+                
+                const data = await res.json();
+                
+                if (!res.ok) {
+                    Swal.fire("Error", data.message, "error");
+                } else {
+                    Swal.fire("Success", "Password reset successful! Please login with your new password.", "success").then(() => {
+                        showLogin();
+                        resetEmail = null;
+                    });
+                }
+            } catch (err) {
+                Swal.fire("Error", "Server error.", "error");
+            }
+        }
     });
-  } catch (err) {
-    Swal.fire("Error", "Server error.", "error");
-  }
+}
+
+function closeVerificationModal() {
+    document.getElementById("verification-modal").classList.add("hidden");
+    document.getElementById("verification-code").value = "";
 }
 
 async function handleLogin() {
-  const login = document.getElementById("login-username").value.trim();
-  const password = document.getElementById("login-password").value.trim();
+    const login = document.getElementById("login-username").value.trim();
+    const password = document.getElementById("login-password").value.trim();
 
-  if (!login || !password) {
-    return Swal.fire("Error", "Username and password required.", "error");
-  }
-
-  try {
-    const res = await fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ login, password })
-    });
-
-    const result = await res.json();
-
-    if (!res.ok) {
-      return Swal.fire("Error", result.message, "error");
+    if (!login || !password) {
+        return Swal.fire("Error", "Username and password required.", "error");
     }
 
-    Swal.fire("Welcome!", "Login successful.", "success").then(() => {
-      window.location.href = "/dashboard";
-    });
-  } catch (err) {
-    Swal.fire("Error", "Server error.", "error");
-  }
+    try {
+        const res = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ login, password })
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+            return Swal.fire("Error", result.message, "error");
+        }
+
+        Swal.fire("Welcome!", "Login successful.", "success").then(() => {
+            window.location.href = "/dashboard";
+        });
+    } catch (err) {
+        Swal.fire("Error", "Server error.", "error");
+    }
 }
