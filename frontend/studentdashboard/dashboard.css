@@ -1,0 +1,237 @@
+/* ===== GLOBAL RESET ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #ffffff;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== APP WRAPPER ===== */
+.app-wrapper {
+  display: flex;
+  height: 100vh;
+}
+
+/* ===================================================
+   SIDEBAR
+=================================================== */
+.sidebar {
+  width: 230px;
+  background-color: #11265c;
+  display: flex;
+  flex-direction: column;
+  padding: 30px 0;
+  flex-shrink: 0;
+}
+
+/* Logo */
+.sidebar-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 40px;
+  padding: 0 20px;
+}
+
+.logo-icon {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.logo-text {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* Nav Items */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 12px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-item.active {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.nav-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+/* ===================================================
+   MAIN CONTENT
+=================================================== */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  overflow-y: auto;
+}
+
+/* ===== TOP BAR ===== */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 40px;
+  background-color: #ffffff;
+}
+
+/* Search Bar */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: #f6f6f6;
+  border-radius: 8px;
+  padding: 10px 18px;
+  width: 380px;
+}
+
+.search-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.search-bar input {
+  border: none;
+  background: transparent;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  color: #000000;
+  outline: none;
+  width: 100%;
+}
+
+.search-bar input::placeholder {
+  color: #000000;
+}
+
+/* User Avatar */
+.user-avatar {
+  width: 42px;
+  height: 42px;
+  background-color: #f6f6f6;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.avatar-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+/* ===== PAGE BODY ===== */
+.page-body {
+  padding: 30px 40px;
+}
+
+/* Welcome Heading */
+.welcome-heading {
+  font-size: 26px;
+  font-weight: 700;
+  color: #000000;
+  margin-bottom: 30px;
+}
+
+/* Two Column Layout */
+.content-columns {
+  display: flex;
+  gap: 60px;
+}
+
+/* ===== SECTION TITLES ===== */
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #000000;
+  margin-bottom: 16px;
+}
+
+/* ===================================================
+   ANNOUNCEMENTS
+=================================================== */
+.announcements-section {
+  flex: 1;
+}
+
+.announcement-card {
+  border: 1.5px solid #cccccc;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 14px;
+  background-color: #ffffff;
+}
+
+.announcement-main {
+  font-size: 14px;
+  font-weight: 700;
+  color: #000000;
+  margin-bottom: 4px;
+}
+
+.announcement-sub {
+  font-size: 12px;
+  color: #555555;
+}
+
+/* ===================================================
+   TO DO LIST
+=================================================== */
+.todo-section {
+  flex: 1;
+}
+
+.todo-card {
+  background-color: #fff8cf;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+}
+
+.todo-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #000000;
+  margin-bottom: 4px;
+}
+
+.todo-due {
+  font-size: 12px;
+  color: #555555;
+}

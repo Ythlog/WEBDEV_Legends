@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eduhub - Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <div class="app-wrapper">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+
+      <!-- Logo -->
+      <div class="sidebar-logo">
+        <!-- Replace src with your graduation cap icon image -->
+        <img src="logo.png" alt="Eduhub Logo" class="logo-icon" />
+        <span class="logo-text">Eduhub</span>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="sidebar-nav">
+
+        <a href="#" class="nav-item active" onclick="setActive(this)">
+          <!-- Replace src with your Home icon image -->
+          <img src="home.png" alt="Home" class="nav-icon" />
+          <span>Home</span>
+        </a>
+
+        <a href="#" class="nav-item" onclick="setActive(this)">
+          <!-- Replace src with your Classes icon image -->
+          <img src="course.png" alt="Classes" class="nav-icon" />
+          <span>Classes</span>
+        </a>
+
+        <a href="#" class="nav-item" onclick="setActive(this)">
+          <!-- Replace src with your Progress icon image -->
+          <img src="progress.png" alt="Progress" class="nav-icon" />
+          <span>Progress</span>
+        </a>
+
+          <a href="#" class="nav-item" onclick="setActive(this)">
+          <img src="list.png" alt="To Do List" class="nav-icon" />
+          <span>To Do List</span>
+          </a>
+
+        <a href="#" class="nav-item" onclick="setActive(this)">
+          <!-- Replace src with your Profile icon image -->
+          <img src="profile.png" alt="Profile" class="nav-icon" />
+          <span>Profile</span>
+        </a>
+
+      </nav>
+    </aside>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="main-content">
+
+      <!-- TOP BAR -->
+      <header class="top-bar">
+        <div class="search-bar">
+          <!-- Replace src with your search icon image -->
+          <img src="blacksearch.png" alt="Search" class="search-icon" />
+          <input type="text" placeholder="Search" id="search-input" />
+        </div>
+
+        <div class="user-avatar">
+          <!-- Replace src with your user/avatar icon image -->
+          <img src="blackprofile.png" alt="User" class="avatar-icon" />
+        </div>
+      </header>
+
+      <!-- PAGE BODY -->
+      <div class="page-body">
+
+        <!-- Welcome Heading -->
+        <h1 class="welcome-heading">Welcome, Biena!</h1>
+
+        <!-- Two Column Section -->
+        <div class="content-columns">
+
+          <!-- LEFT: Announcements -->
+          <section class="announcements-section">
+            <h2 class="section-title">Announcements</h2>
+
+            <div class="announcement-card">
+              <p class="announcement-main">Prof. Catherine Sorbito posted a new lesson</p>
+              <p class="announcement-sub">Check it out</p>
+            </div>
+
+            <div class="announcement-card">
+              <p class="announcement-main">A new quiz was posted in your Web Dev Class</p>
+              <p class="announcement-sub">Due dates are important, complete your assignments today</p>
+            </div>
+          </section>
+
+          <!-- RIGHT: To Do List -->
+          <section class="todo-section">
+            <h2 class="section-title">To Do List</h2>
+
+            <div class="todo-card">
+              <p class="todo-title">Open learning material 1 in Web Development</p>
+              <p class="todo-due">Due Date: June 12, 2026</p>
+            </div>
+
+            <div class="todo-card">
+              <p class="todo-title">Read Programming Module</p>
+              <p class="todo-due">Due Date: June 12, 2026</p>
+            </div>
+
+            <div class="todo-card">
+              <p class="todo-title">Complete Java Progress</p>
+              <p class="todo-due">Due Date: March 2, 2026</p>
+            </div>
+
+            <div class="todo-card">
+              <p class="todo-title">Answer Quiz 1</p>
+              <p class="todo-due">Due Date: March 2, 2026</p>
+            </div>
+
+          </section>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>
