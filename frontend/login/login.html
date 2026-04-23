@@ -4,30 +4,24 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Eduhub - Login</title>
-  <link rel="stylesheet" href="login.css" />
+  <link rel="stylesheet" href="/login/login.css">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
-
   <div class="page-wrapper">
-
-    <!-- LEFT PANEL -->
     <div class="left-panel">
       <div class="left-brand">
-        <img src="2.png" alt="Eduhub Logo" class="brand-logo" />
+        <img src="/login/2.png" alt="Eduhub Logo" class="brand-logo" />
         <span class="brand-name">Eduhub</span>
       </div>
 
       <div class="left-content">
         <h2 class="welcome-text">Hello, Welcome!</h2>
-        <img src="1.png" alt="Welcome Illustration" class="welcome-illustration" />
+        <img src="/login/1.png" alt="Welcome Illustration" class="welcome-illustration" />
       </div>
     </div>
 
-    <!-- RIGHT PANEL -->
     <div class="right-panel">
-
-      <!-- LOGIN FORM -->
       <div class="form-container" id="login-form">
         <h1 class="form-title">Login to your account</h1>
         <p class="form-subtitle">
@@ -52,7 +46,6 @@
         <button class="submit-btn" onclick="handleLogin()">Login account</button>
       </div>
 
-      <!-- FORGOT PASSWORD FORM (hidden by default) -->
       <div class="form-container hidden" id="forgot-form">
         <h1 class="form-title">Reset your password</h1>
         <p class="form-subtitle">
@@ -68,7 +61,6 @@
         <button class="submit-btn" onclick="handleForgotPassword()">Send reset link</button>
       </div>
 
-      <!-- SIGNUP FORM (hidden by default) -->
       <div class="form-container hidden" id="signup-form">
         <h1 class="form-title">Create your account</h1>
         <p class="form-subtitle">
@@ -117,10 +109,10 @@
 
         <button class="submit-btn" onclick="handleSignup()">Create account</button>
       </div>
-
     </div>
   </div>
 
-  <script src="login.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="/login/login.js"></script>
 </body>
 </html>
