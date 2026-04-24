@@ -1,4 +1,3 @@
-/* ===== GLOBAL RESET ===== */
 * {
   margin: 0;
   padding: 0;
@@ -12,15 +11,11 @@ body {
   overflow: hidden;
 }
 
-/* ===== APP WRAPPER ===== */
 .app-wrapper {
   display: flex;
   height: 100vh;
 }
 
-/* ===================================================
-   SIDEBAR
-=================================================== */
 .sidebar {
   width: 230px;
   background-color: #11265c;
@@ -30,7 +25,6 @@ body {
   flex-shrink: 0;
 }
 
-/* Logo */
 .sidebar-logo {
   display: flex;
   flex-direction: column;
@@ -52,7 +46,6 @@ body {
   font-weight: 700;
 }
 
-/* Nav Items */
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -87,9 +80,6 @@ body {
   object-fit: contain;
 }
 
-/* ===================================================
-   MAIN CONTENT
-=================================================== */
 .main-content {
   flex: 1;
   display: flex;
@@ -98,7 +88,6 @@ body {
   overflow-y: auto;
 }
 
-/* ===== TOP BAR ===== */
 .top-bar {
   display: flex;
   align-items: center;
@@ -107,7 +96,6 @@ body {
   background-color: #ffffff;
 }
 
-/* Search Bar */
 .search-bar {
   display: flex;
   align-items: center;
@@ -138,7 +126,6 @@ body {
   color: #000000;
 }
 
-/* User Avatar */
 .user-avatar {
   width: 42px;
   height: 42px;
@@ -156,12 +143,10 @@ body {
   object-fit: contain;
 }
 
-/* ===== PAGE BODY ===== */
 .page-body {
   padding: 30px 40px;
 }
 
-/* Welcome Heading */
 .welcome-heading {
   font-size: 26px;
   font-weight: 700;
@@ -169,13 +154,11 @@ body {
   margin-bottom: 30px;
 }
 
-/* Two Column Layout */
 .content-columns {
   display: flex;
   gap: 60px;
 }
 
-/* ===== SECTION TITLES ===== */
 .section-title {
   font-size: 15px;
   font-weight: 600;
@@ -183,9 +166,6 @@ body {
   margin-bottom: 16px;
 }
 
-/* ===================================================
-   ANNOUNCEMENTS
-=================================================== */
 .announcements-section {
   flex: 1;
 }
@@ -210,9 +190,6 @@ body {
   color: #555555;
 }
 
-/* ===================================================
-   TO DO LIST
-=================================================== */
 .todo-section {
   flex: 1;
 }
