@@ -35,8 +35,11 @@
         </div>
 
         <div class="input-group">
-          <label for="login-password">Password</label>
-          <input type="password" id="login-password" placeholder="Enter your password" />
+            <label for="login-password">Password</label>
+            <div class="password-wrapper">
+                <input type="password" id="login-password" placeholder="Enter your password" autocomplete="off" />
+                <span class="eye-icon" onclick="togglePassword('login-password', this)">👁️</span>
+            </div>
         </div>
 
         <div class="forgot-password">
@@ -103,11 +106,42 @@
         </div>
 
         <div class="input-group">
-          <label for="signup-password">Create password</label>
-          <input type="password" id="signup-password" placeholder="Enter your password" />
+            <label for="signup-password">Create password</label>
+            <div class="password-wrapper">
+                <input type="password" id="signup-password" placeholder="Enter your password" />
+                <span class="eye-icon" onclick="togglePassword('signup-password', this)">👁️</span>
+            </div>
         </div>
 
         <button class="submit-btn" onclick="handleSignup()">Create account</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="reset-password-modal" class="modal hidden">
+    <div class="modal-content">
+      <h2>Create New Password</h2>
+      <p>Enter your new password below</p>
+      
+      <div class="input-group">
+        <label for="reset-new-password">New Password</label>
+        <div class="password-wrapper">
+          <input type="password" id="reset-new-password" placeholder="Enter new password" />
+          <span class="eye-icon" onclick="togglePassword('reset-new-password', this)">👁️</span>
+        </div>
+      </div>
+      
+      <div class="input-group">
+        <label for="reset-confirm-password">Confirm Password</label>
+        <div class="password-wrapper">
+          <input type="password" id="reset-confirm-password" placeholder="Confirm your password" />
+          <span class="eye-icon" onclick="togglePassword('reset-confirm-password', this)">👁️</span>
+        </div>
+      </div>
+      
+      <div class="modal-buttons">
+        <button class="submit-btn" onclick="submitNewPassword()">Reset Password</button>
+        <button class="submit-btn cancel-btn" onclick="closeResetPasswordModal()">Cancel</button>
       </div>
     </div>
   </div>

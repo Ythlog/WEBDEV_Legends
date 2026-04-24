@@ -6,6 +6,7 @@ function showLogin() {
     document.getElementById("forgot-form").classList.add("hidden");
     document.getElementById("login-form").classList.remove("hidden");
     document.getElementById("verification-modal").classList.add("hidden");
+    document.getElementById("reset-password-modal").classList.add("hidden");
 }
 
 function showSignup() {
@@ -13,6 +14,7 @@ function showSignup() {
     document.getElementById("forgot-form").classList.add("hidden");
     document.getElementById("signup-form").classList.remove("hidden");
     document.getElementById("verification-modal").classList.add("hidden");
+    document.getElementById("reset-password-modal").classList.add("hidden");
 }
 
 function showForgotPassword() {
@@ -20,6 +22,7 @@ function showForgotPassword() {
     document.getElementById("signup-form").classList.add("hidden");
     document.getElementById("forgot-form").classList.remove("hidden");
     document.getElementById("verification-modal").classList.add("hidden");
+    document.getElementById("reset-password-modal").classList.add("hidden");
 }
 
 async function handleSignup() {
@@ -144,67 +147,64 @@ async function verifyCode() {
         }
     } else if (type === 'reset') {
         closeVerificationModal();
-        showResetPasswordForm(resetEmail, code);
+        showResetPasswordModal(resetEmail, code);
     }
 }
 
-function showResetPasswordForm(email, code) {
-    Swal.fire({
-        title: 'Reset Password',
-        html: `
-            <input type="password" id="new-password" class="swal2-input" placeholder="New password">
-            <input type="password" id="confirm-password" class="swal2-input" placeholder="Confirm password">
-        `,
-        focusConfirm: false,
-        preConfirm: () => {
-            const newPassword = document.getElementById('new-password').value;
-            const confirmPassword = document.getElementById('confirm-password').value;
-            
-            if (!newPassword || !confirmPassword) {
-                Swal.showValidationMessage('Please fill in both fields');
-                return false;
-            }
-            
-            if (newPassword !== confirmPassword) {
-                Swal.showValidationMessage('Passwords do not match');
-                return false;
-            }
-            
-            if (newPassword.length < 6) {
-                Swal.showValidationMessage('Password must be at least 6 characters');
-                return false;
-            }
-            
-            return { newPassword };
+function showResetPasswordModal(email, code) {
+    document.getElementById("reset-password-modal").classList.remove("hidden");
+    window.resetEmail = email;
+    window.resetCode = code;
+}
+
+function closeResetPasswordModal() {
+    document.getElementById("reset-password-modal").classList.add("hidden");
+    document.getElementById("reset-new-password").value = "";
+    document.getElementById("reset-confirm-password").value = "";
+}
+
+async function submitNewPassword() {
+    const newPassword = document.getElementById("reset-new-password").value.trim();
+    const confirmPassword = document.getElementById("reset-confirm-password").value.trim();
+    
+    if (!newPassword || !confirmPassword) {
+        return Swal.fire("Error", "Please fill in both fields.", "error");
+    }
+    
+    if (newPassword !== confirmPassword) {
+        return Swal.fire("Error", "Passwords do not match.", "error");
+    }
+    
+    if (newPassword.length < 6) {
+        return Swal.fire("Error", "Password must be at least 6 characters.", "error");
+    }
+    
+    try {
+        const res = await fetch("/api/reset-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                email: window.resetEmail, 
+                code: window.resetCode, 
+                newPassword: newPassword 
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+            return Swal.fire("Error", data.message, "error");
         }
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            try {
-                const res = await fetch("/api/reset-password", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ 
-                        email: email,
-                        code: code,
-                        newPassword: result.value.newPassword
-                    })
-                });
-                
-                const data = await res.json();
-                
-                if (!res.ok) {
-                    Swal.fire("Error", data.message, "error");
-                } else {
-                    Swal.fire("Success", "Password reset successful! Please login with your new password.", "success").then(() => {
-                        showLogin();
-                        resetEmail = null;
-                    });
-                }
-            } catch (err) {
-                Swal.fire("Error", "Server error.", "error");
-            }
-        }
-    });
+        
+        Swal.fire("Success", "Password reset successful! Please login.", "success").then(() => {
+            closeResetPasswordModal();
+            showLogin();
+            window.resetEmail = null;
+            window.resetCode = null;
+        });
+    } catch (err) {
+        Swal.fire("Error", "Server error.", "error");
+    }
 }
 
 function closeVerificationModal() {
@@ -238,5 +238,17 @@ async function handleLogin() {
         });
     } catch (err) {
         Swal.fire("Error", "Server error.", "error");
+    }
+}
+
+function togglePassword(inputId, eyeElement) {
+    const passwordInput = document.getElementById(inputId);
+    
+    if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+        eyeElement.textContent = "⚫";
+    } else {
+        passwordInput.type = "password";
+        eyeElement.textContent = "👁️";
     }
 }
