@@ -1,24 +1,454 @@
-function setActive(clickedItem) {
-  const allNavItems = document.querySelectorAll('.nav-item');
-  allNavItems.forEach(item => item.classList.remove('active'));
+/* =============================================================
+  app.js – Single entry point for all dashboard views.
+  Uses one DATA object, one state, and view-switching.
+============================================================= */
 
-  clickedItem.classList.add('active');
+/** ---------- DATA (replace with API calls later) ---------- */
+const DATA = {
+  student: 'Biena',
+  announcements: [
+    { main: 'Prof. Catherine Sorbito posted a new lesson', sub: 'Check it out' },
+    { main: 'A new quiz was posted in your Web Dev Class', sub: 'Due dates are important, complete your assignments today' }
+  ],
+  todos: [
+    { title: 'Open learning material 1 in Web Development', due: 'June 12, 2026', dueDate: new Date('2026-06-12') },
+    { title: 'Read Programming Module', due: 'June 12, 2026', dueDate: new Date('2026-06-12') },
+    { title: 'Complete Java Progress', due: 'March 2, 2026', dueDate: new Date('2026-03-02') },
+    { title: 'Answer Quiz 1', due: 'March 2, 2026', dueDate: new Date('2026-03-02') },
+    { title: 'Submit Web Dev Activity 2', due: 'May 5, 2026', dueDate: new Date('2026-05-05') },
+    { title: 'Watch Software Engineering Lecture', due: 'May 10, 2026', dueDate: new Date('2026-05-10') },
+    { title: 'Review Data Structures Notes', due: 'May 15, 2026', dueDate: new Date('2026-05-15') },
+    { title: 'Complete Quiz 2 in Web Dev', due: 'May 7, 2026', dueDate: new Date('2026-05-07') },
+    { title: 'Read Software Engineering Module 2', due: 'May 8, 2026', dueDate: new Date('2026-05-08') },
+    { title: 'Practice Data Structures Problems', due: 'May 12, 2026', dueDate: new Date('2026-05-12') }
+  ],
+  classes: [
+    {
+      id: 'webdev',
+      title: 'Web Development',
+      professor: 'Prof. Catherine Sorbito',
+      materials: [
+        { id: 'wd-m1', title: 'Learning Material 1', pdfUrl: '/materials/webdev-lm1.pdf', description: 'This course provides an introduction to the basic concepts and skills needed in the subject. Students will learn through a combination of lessons, activities, and practical exercises designed to build understanding step by step.' },
+        { id: 'wd-m2', title: 'Learning Material 2', pdfUrl: '/materials/webdev-lm2.pdf', description: 'An in-depth look at advanced HTML5 and CSS3 techniques. Covers responsive design principles, CSS Grid, Flexbox, and modern layout strategies used in production environments.' },
+        { id: 'wd-m3', title: 'Learning Material 3', pdfUrl: '/materials/webdev-lm3.pdf', description: 'Introduction to JavaScript fundamentals including variables, functions, DOM manipulation, and event handling. Exercises include building interactive web components.' }
+      ],
+      quizzes: [
+        { id: 'wd-q1', title: 'Quiz 1', dueDate: 'April 30, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'This quiz is designed to assess your understanding of the basic concepts discussed in the lesson.', instructions: ['Choose the best answer for each question', 'Do not refresh the page while taking the quiz', 'Submit only once', 'Time limit: 15 minutes'] },
+        { id: 'wd-q2', title: 'Quiz 2', dueDate: 'May 7, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'Quiz covering HTML structure, semantic tags, and introductory CSS selectors.', instructions: ['Answer all items completely', 'Do not use external references', 'Submit only once', 'Time limit: 20 minutes'] },
+        { id: 'wd-q3', title: 'Quiz 3', dueDate: 'May 14, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'JavaScript fundamentals quiz. Topics include variables, data types, loops, and basic DOM manipulation.', instructions: ['Answer all items', 'No open-book', 'Submit only once', 'Time limit: 25 minutes'] }
+      ]
+    },
+    {
+      id: 'softeng',
+      title: 'Software Engineering',
+      professor: 'Prof. Viktor Magtanggol',
+      materials: [
+        { id: 'se-m1', title: 'Learning Material 1', pdfUrl: '/materials/softeng-lm1.pdf', description: 'Overview of software engineering principles. Topics include the software development life cycle (SDLC), agile methodologies, and project management fundamentals.' },
+        { id: 'se-m2', title: 'Learning Material 2', pdfUrl: '/materials/softeng-lm2.pdf', description: 'Requirements engineering and UML modeling. Students will practice writing use cases, drawing class diagrams, and creating sequence diagrams.' },
+        { id: 'se-m3', title: 'Learning Material 3', pdfUrl: '/materials/softeng-lm3.pdf', description: 'Software testing strategies: unit testing, integration testing, and system testing. Introduction to test-driven development (TDD).' },
+        { id: 'se-m4', title: 'Learning Material 4', pdfUrl: '/materials/softeng-lm4.pdf', description: 'Software architecture patterns: MVC, microservices, and event-driven design. Case studies from real-world applications.' }
+      ],
+      quizzes: [
+        { id: 'se-q1', title: 'Quiz 1', dueDate: 'April 29, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'Covers SDLC phases and agile concepts. Multiple-choice and short answer format.', instructions: ['Answer all questions', 'Do not refresh the page', 'Submit only once', 'Time limit: 15 minutes'] },
+        { id: 'se-q2', title: 'Quiz 2', dueDate: 'May 6, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'UML diagrams and requirements engineering. You may be asked to interpret or describe diagram elements.', instructions: ['Read questions carefully', 'No external references', 'Submit only once', 'Time limit: 20 minutes'] }
+      ]
+    },
+    {
+      id: 'datastructs',
+      title: 'Data Structures',
+      professor: 'Prof. Laufey',
+      materials: [
+        { id: 'ds-m1', title: 'Learning Material 1', pdfUrl: '/materials/ds-lm1.pdf', description: 'Introduction to data structures: arrays, linked lists, stacks, and queues. Covers time and space complexity basics.' },
+        { id: 'ds-m2', title: 'Learning Material 2', pdfUrl: '/materials/ds-lm2.pdf', description: 'Trees and graphs: binary trees, binary search trees, graph representations (adjacency list and matrix), and traversal algorithms (BFS, DFS).' },
+        { id: 'ds-m3', title: 'Learning Material 3', pdfUrl: '/materials/ds-lm3.pdf', description: 'Sorting algorithms: bubble sort, selection sort, insertion sort, merge sort, and quick sort. Comparison of performance characteristics.' }
+      ],
+      quizzes: [
+        { id: 'ds-q1', title: 'Quiz 1', dueDate: 'May 2, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'Covers arrays, linked lists, stacks, and queues. Includes identification and short problem-solving questions.', instructions: ['Show your reasoning where applicable', 'Do not refresh the page', 'Submit only once', 'Time limit: 20 minutes'] },
+        { id: 'ds-q2', title: 'Quiz 2', dueDate: 'May 9, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'Trees and graphs quiz. Includes diagram interpretation and traversal questions.', instructions: ['Answer all items', 'No open-book', 'Submit only once', 'Time limit: 25 minutes'] },
+        { id: 'ds-q3', title: 'Quiz 3', dueDate: 'May 16, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'Sorting algorithms quiz. You will be asked to trace through algorithm steps and compare Big-O complexities.', instructions: ['Show all steps', 'No external references', 'Submit only once', 'Time limit: 25 minutes'] }
+      ]
+    }
+  ],
+  progress: [
+    { classTitle: 'Web Development', completed: 4, total: 10 },
+    { classTitle: 'Software Engineering', completed: 9, total: 10 },
+    { classTitle: 'Data Structures', completed: 4, total: 7 }
+  ],
+  /* BACKEND HOOK – replace with API call to get user profile */
+  profile: {
+    firstName: 'Biena',
+    lastName: 'Bahay',
+    username: 'bienrose',
+    email: 'bienarose@gmail.com'
+  }
+};
+
+/** ---------- STATE ---------- */
+const state = {
+  currentView: 'home',
+  currentClass: null,
+  currentItem: null,
+  currentType: null,
+  done: new Set()
+};
+
+/** ---------- VIEW SWITCHING ---------- */
+const allViews = document.querySelectorAll('.page-body');
+
+function showView(viewId) {
+  allViews.forEach(v => v.classList.add('hidden'));
+  document.getElementById('view-' + viewId).classList.remove('hidden');
+  state.currentView = viewId;
 }
 
-const searchInput = document.getElementById('search-input');
+/** ---------- SIDEBAR NAVIGATION ---------- */
+function setActiveNav(el) {
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+}
 
-searchInput.addEventListener('input', function () {
-  const searchValue = searchInput.value.toLowerCase();
+document.querySelectorAll('.nav-item').forEach(link => {
+  link.addEventListener('click', function (e) {
+    e.preventDefault();
+    setActiveNav(this);
+    const view = this.getAttribute('data-view');
+    if (!view) return;
 
-  const announcementCards = document.querySelectorAll('.announcement-card');
-  announcementCards.forEach(card => {
-    const cardText = card.innerText.toLowerCase();
-    card.style.display = cardText.includes(searchValue) ? 'block' : 'none';
-  });
-
-  const todoCards = document.querySelectorAll('.todo-card');
-  todoCards.forEach(card => {
-    const cardText = card.innerText.toLowerCase();
-    card.style.display = cardText.includes(searchValue) ? 'block' : 'none';
+    switch (view) {
+      case 'home':     renderHome();     showView('home');     break;
+      case 'classes':  renderClasses();  showView('classes');  break;
+      case 'progress': renderProgress(); showView('progress'); break;
+      case 'todo':     renderTodo();     showView('todo');     break;
+      case 'profile':  renderProfile();  showView('profile');  break;
+    }
   });
 });
+
+/** ---------- RENDER: HOME ---------- */
+function renderHome() {
+  const annSection = document.getElementById('announcements-section');
+  annSection.innerHTML = '<h2 class="section-title">Announcements</h2>';
+  DATA.announcements.forEach(a => {
+    const card = document.createElement('div');
+    card.className = 'announcement-card';
+    card.innerHTML = `<p class="announcement-main">${a.main}</p><p class="announcement-sub">${a.sub}</p>`;
+    annSection.appendChild(card);
+  });
+
+  const todoSection = document.getElementById('todo-section');
+  todoSection.innerHTML = '<h2 class="section-title">To Do List</h2>';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  DATA.todos.filter(t => t.dueDate >= today).slice(0, 4).forEach(t => {
+    const card = document.createElement('div');
+    card.className = 'todo-card';
+    card.innerHTML = `<p class="todo-title">${t.title}</p><p class="todo-due">Due Date: ${t.due}</p>`;
+    todoSection.appendChild(card);
+  });
+}
+
+/** ---------- RENDER: TO DO LIST PAGE ---------- */
+function renderTodo() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const assigned = DATA.todos.filter(t => t.dueDate >= today);
+  const missing  = DATA.todos.filter(t => t.dueDate < today);
+
+  // Assigned tasks
+  const assignedList = document.getElementById('todo-assigned-list');
+  assignedList.innerHTML = '';
+  if (assigned.length === 0) {
+    assignedList.innerHTML = '<div class="todo-empty">No assigned tasks</div>';
+  } else {
+    assigned.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'todo-page-card';
+      card.innerHTML = `<p class="todo-title">${t.title}</p><p class="todo-due">Due Date: ${t.due}</p>`;
+      assignedList.appendChild(card);
+    });
+  }
+
+  // Missing tasks
+  const missingList = document.getElementById('todo-missing-list');
+  missingList.innerHTML = '';
+  if (missing.length === 0) {
+    missingList.innerHTML = '<div class="todo-empty">No assigned tasks was missed</div>';
+  } else {
+    missing.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'todo-missing-card';
+      card.innerHTML = `<p class="todo-title">${t.title}</p><p class="todo-due">Due Date: ${t.due}</p>`;
+      missingList.appendChild(card);
+    });
+  }
+}
+
+/** ---------- RENDER: CLASSES GRID ---------- */
+function renderClasses() {
+  const grid = document.getElementById('classes-grid');
+  grid.innerHTML = '';
+  DATA.classes.forEach(cls => {
+    const card = document.createElement('div');
+    card.className = 'class-card';
+    card.innerHTML = `<p class="class-card-title">${cls.title}</p><p class="class-card-prof">${cls.professor}</p>`;
+    card.addEventListener('click', () => openClassDetail(cls));
+    grid.appendChild(card);
+  });
+}
+
+/** ---------- RENDER: CLASS DETAIL ---------- */
+function openClassDetail(cls) {
+  state.currentClass = cls;
+  document.getElementById('detail-class-name').textContent = cls.title;
+
+  const matList = document.getElementById('materials-list');
+  matList.innerHTML = '';
+  cls.materials.forEach(mat => {
+    const el = document.createElement('div');
+    el.className = 'material-item' + (state.done.has(mat.id) ? ' done' : '');
+    el.textContent = mat.title;
+    el.addEventListener('click', () => openMaterialDetail(mat, cls.title));
+    matList.appendChild(el);
+  });
+
+  document.getElementById('quizzes-label').textContent = cls.title + ' Quizzes';
+  const quizList = document.getElementById('quizzes-list');
+  quizList.innerHTML = '';
+  cls.quizzes.forEach(quiz => {
+    const el = document.createElement('div');
+    el.className = 'quiz-item' + (state.done.has(quiz.id) ? ' done' : '');
+    el.textContent = quiz.title;
+    el.addEventListener('click', () => openQuizDetail(quiz, cls.title));
+    quizList.appendChild(el);
+  });
+
+  showView('class-detail');
+}
+
+/** ---------- RENDER: MATERIAL DETAIL ---------- */
+function openMaterialDetail(mat, className) {
+  state.currentItem = mat;
+  state.currentType = 'material';
+
+  document.getElementById('mat-class-name').textContent = className;
+  document.getElementById('mat-banner').textContent = mat.title;
+  document.getElementById('mat-pdf-link').href = mat.pdfUrl;
+  document.getElementById('mat-description').textContent = mat.description;
+
+  const btn = document.getElementById('mat-mark-btn');
+  if (state.done.has(mat.id)) {
+    btn.textContent = 'Marked as done ✓';
+    btn.className = 'mark-done-btn done-state';
+  } else {
+    btn.textContent = 'Mark as done';
+    btn.className = 'mark-done-btn dark';
+  }
+
+  showView('material-detail');
+}
+
+/** ---------- RENDER: QUIZ DETAIL ---------- */
+function openQuizDetail(quiz, className) {
+  state.currentItem = quiz;
+  state.currentType = 'quiz';
+
+  document.getElementById('quiz-class-name').textContent = className;
+  document.getElementById('quiz-due-date').textContent = 'Due ' + quiz.dueDate;
+  document.getElementById('quiz-banner').textContent = quiz.title;
+  document.getElementById('quiz-link').href = quiz.link;
+  document.getElementById('quiz-link').textContent = quiz.linkLabel;
+  document.getElementById('quiz-description').textContent = quiz.description;
+
+  const instrList = document.getElementById('quiz-instructions');
+  instrList.innerHTML = '';
+  quiz.instructions.forEach(instr => {
+    const li = document.createElement('li');
+    li.textContent = instr;
+    instrList.appendChild(li);
+  });
+
+  const btn = document.getElementById('quiz-mark-btn');
+  if (state.done.has(quiz.id)) {
+    btn.textContent = 'Marked as done ✓';
+    btn.className = 'mark-done-btn done-state';
+  } else {
+    btn.textContent = 'Mark as done';
+    btn.className = 'mark-done-btn yellow';
+  }
+
+  showView('quiz-detail');
+}
+
+/** ---------- MARK AS DONE ---------- */
+function markDone(type) {
+  if (!state.currentItem) return;
+  const id = state.currentItem.id;
+  state.done.add(id);
+  updateProgressForClass(state.currentClass);
+
+  const btn = document.getElementById(type === 'material' ? 'mat-mark-btn' : 'quiz-mark-btn');
+  btn.textContent = 'Marked as done ✓';
+  btn.className = 'mark-done-btn done-state';
+
+  /* BACKEND HOOK – replace with API call to save done status */
+}
+
+function updateProgressForClass(cls) {
+  if (!cls) return;
+  const allIds = [...cls.materials.map(m => m.id), ...cls.quizzes.map(q => q.id)];
+  const doneCount = allIds.filter(id => state.done.has(id)).length;
+  const entry = DATA.progress.find(p => p.classTitle === cls.title);
+  if (entry) {
+    entry.completed = Math.min(doneCount, entry.total);
+    if (state.currentView === 'progress') renderProgress();
+  }
+}
+
+/** ---------- RENDER: PROGRESS ---------- */
+function renderProgress() {
+  const list = document.getElementById('progress-list');
+  list.innerHTML = '';
+  DATA.progress.forEach(entry => {
+    const pct = Math.round((entry.completed / entry.total) * 100);
+    const card = document.createElement('div');
+    card.className = 'progress-card';
+    card.innerHTML = `
+      <div class="progress-card-header">
+        <span class="progress-card-name">${entry.classTitle}</span>
+        <span class="progress-card-count">${entry.completed}/${entry.total}</span>
+      </div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" style="width: ${pct}%"></div>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+/** ---------- RENDER: PROFILE ---------- */
+function renderProfile() {
+  refreshProfileDisplay();
+  showProfilePanel('main');
+}
+
+function refreshProfileDisplay() {
+  const p = DATA.profile;
+  document.getElementById('display-firstname').textContent = p.firstName;
+  document.getElementById('display-lastname').textContent = p.lastName;
+  document.getElementById('display-username').textContent = p.username;
+  document.getElementById('display-email').textContent = p.email;
+  document.getElementById('profile-username-display').textContent = p.username;
+  document.getElementById('edit-username-display').textContent = p.username;
+  document.getElementById('pw-username-display').textContent = p.username;
+}
+
+// Shows only one panel at a time: 'main', 'edit-info', or 'change-password'
+function showProfilePanel(panel) {
+  document.getElementById('profile-main').style.display             = (panel === 'main')             ? 'block' : 'none';
+  document.getElementById('profile-edit-info').style.display        = (panel === 'edit-info')        ? 'block' : 'none';
+  document.getElementById('profile-change-password').style.display  = (panel === 'change-password')  ? 'block' : 'none';
+}
+
+/** ---------- PROFILE: EDIT INFORMATION ---------- */
+document.getElementById('btn-edit-info').addEventListener('click', () => {
+  const p = DATA.profile;
+  document.getElementById('edit-firstname').value = p.firstName;
+  document.getElementById('edit-lastname').value = p.lastName;
+  document.getElementById('edit-username').value = p.username;
+  document.getElementById('edit-email').value = p.email;
+  showProfilePanel('edit-info');
+});
+
+document.getElementById('btn-save-info').addEventListener('click', () => {
+  /* BACKEND HOOK – replace with API call to save profile info */
+  DATA.profile.firstName = document.getElementById('edit-firstname').value.trim() || DATA.profile.firstName;
+  DATA.profile.lastName  = document.getElementById('edit-lastname').value.trim()  || DATA.profile.lastName;
+  DATA.profile.username  = document.getElementById('edit-username').value.trim()  || DATA.profile.username;
+  DATA.profile.email     = document.getElementById('edit-email').value.trim()     || DATA.profile.email;
+
+  refreshProfileDisplay();
+  showProfilePanel('main');
+});
+
+document.getElementById('btn-back-from-edit').addEventListener('click', () => {
+  showProfilePanel('main');
+});
+
+/** ---------- PROFILE: CHANGE PROFILE PICTURE ---------- */
+document.getElementById('btn-change-picture').addEventListener('click', () => {
+  document.getElementById('picture-file-input').click();
+});
+
+document.getElementById('picture-file-input').addEventListener('change', function () {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    /* BACKEND HOOK – upload image to server, then update src from returned URL */
+    const allAvatars = document.querySelectorAll('.profile-avatar-img');
+    allAvatars.forEach(img => {
+      img.src = e.target.result;
+      img.classList.add('custom');
+    });
+  };
+  reader.readAsDataURL(file);
+});
+
+/** ---------- PROFILE: CHANGE PASSWORD ---------- */
+document.getElementById('btn-change-password').addEventListener('click', () => {
+  document.getElementById('input-current-pw').value = '';
+  document.getElementById('input-new-pw').value = '';
+  showProfilePanel('change-password');
+});
+
+document.getElementById('btn-submit-password').addEventListener('click', () => {
+  const currentPw = document.getElementById('input-current-pw').value;
+  const newPw     = document.getElementById('input-new-pw').value;
+
+  if (!currentPw || !newPw) {
+    alert('Please fill in both password fields.');
+    return;
+  }
+
+  /* BACKEND HOOK – send currentPw and newPw to API for validation and update */
+  alert('Password changed successfully!');
+  showProfilePanel('main');
+});
+
+document.getElementById('btn-back-from-password').addEventListener('click', () => {
+  showProfilePanel('main');
+});
+
+/** ---------- SEARCH ---------- */
+document.getElementById('search-input').addEventListener('input', function () {
+  const val = this.value.toLowerCase().trim();
+
+  document.querySelectorAll('.announcement-card').forEach(card => {
+    card.style.display = card.innerText.toLowerCase().includes(val) ? '' : 'none';
+  });
+  document.querySelectorAll('.todo-card, .todo-page-card, .todo-missing-card').forEach(card => {
+    card.style.display = card.innerText.toLowerCase().includes(val) ? '' : 'none';
+  });
+  document.querySelectorAll('.class-card').forEach(card => {
+    card.style.display = card.innerText.toLowerCase().includes(val) ? '' : 'none';
+  });
+  document.querySelectorAll('.material-item, .quiz-item').forEach(item => {
+    item.style.display = item.innerText.toLowerCase().includes(val) ? '' : 'none';
+  });
+  document.querySelectorAll('.progress-card').forEach(card => {
+    card.style.display = card.innerText.toLowerCase().includes(val) ? '' : 'none';
+  });
+});
+
+/** ---------- MARK DONE BUTTONS ---------- */
+document.getElementById('mat-mark-btn').addEventListener('click', () => markDone('material'));
+document.getElementById('quiz-mark-btn').addEventListener('click', () => markDone('quiz'));
+
+/** ---------- INIT ---------- */
+(function init() {
+  const homeNav = document.querySelector('.nav-item[data-view="home"]');
+  if (homeNav) setActiveNav(homeNav);
+  renderHome();
+  showView('home');
+})();

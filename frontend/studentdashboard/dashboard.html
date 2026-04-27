@@ -3,104 +3,270 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Eduhub - Dashboard</title>
-  <link rel="stylesheet" href="/studentdashboard/dashboard.css">
+  <title>Eduhub – Student Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
-  <div class="app-wrapper">
-    <aside class="sidebar">
-      <div class="sidebar-logo">
-        <img src="/studentdashboard/logo.png" alt="Eduhub Logo" class="logo-icon" />
-        <span class="logo-text">Eduhub</span>
+<div class="app-wrapper">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <img src="logo.png" alt="Eduhub Logo" class="logo-icon" />
+      <span class="logo-text">Eduhub</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" data-view="home">
+        <img src="home.png" alt="Home" class="nav-icon" />
+        <span>Home</span>
+      </a>
+      <a href="#" class="nav-item" data-view="classes">
+        <img src="course.png" alt="Classes" class="nav-icon" />
+        <span>Classes</span>
+      </a>
+      <a href="#" class="nav-item" data-view="progress">
+        <img src="progress.png" alt="Progress" class="nav-icon" />
+        <span>Progress</span>
+      </a>
+      <a href="#" class="nav-item" data-view="todo">
+        <img src="list.png" alt="To Do List" class="nav-icon" />
+        <span>To do List</span>
+      </a>
+      <a href="#" class="nav-item" data-view="profile">
+        <img src="profile.png" alt="Profile" class="nav-icon" />
+        <span>Profile</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="main-content">
+    <header class="top-bar">
+      <div class="search-bar">
+        <img src="blacksearch.png" alt="Search" class="search-icon" />
+        <input type="text" placeholder="Search" id="search-input" />
+      </div>
+      <div class="user-avatar">
+        <img src="blackprofile.png" alt="User" class="avatar-icon" />
+      </div>
+    </header>
+
+    <!-- ===== VIEW: HOME ===== -->
+    <div class="page-body" id="view-home">
+      <h1 class="welcome-heading">Welcome, Biena!</h1>
+      <div class="content-columns">
+        <section class="announcements-section" id="announcements-section">
+          <h2 class="section-title">Announcements</h2>
+        </section>
+        <section class="todo-section" id="todo-section">
+          <h2 class="section-title">To Do List</h2>
+        </section>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: CLASSES LIST ===== -->
+    <div class="page-body hidden" id="view-classes">
+      <h1 class="page-heading">Continue learning with your courses, Biena!</h1>
+      <p class="section-label">Classes</p>
+      <div class="classes-grid" id="classes-grid"></div>
+    </div>
+
+    <!-- ===== VIEW: CLASS DETAIL ===== -->
+    <div class="page-body hidden" id="view-class-detail">
+      <h1 class="page-heading">Continue learning with your courses, Biena!</h1>
+      <p class="section-label" id="detail-class-name"></p>
+      <div class="detail-scroll-area">
+        <div id="materials-list"></div>
+        <p class="section-label quizzes-label" id="quizzes-label"></p>
+        <div id="quizzes-list"></div>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: MATERIAL DETAIL ===== -->
+    <div class="page-body hidden" id="view-material-detail">
+      <h1 class="page-heading">Continue learning with your courses, Biena!</h1>
+      <p class="section-label" id="mat-class-name"></p>
+      <div class="item-banner yellow" id="mat-banner"></div>
+      <div class="item-scroll-area">
+        <a href="#" class="pdf-link" id="mat-pdf-link" target="_blank">learningmaterials.pdf</a>
+        <p class="item-section-title">Description</p>
+        <p class="item-description" id="mat-description"></p>
+      </div>
+      <div class="mark-done-row">
+        <button class="mark-done-btn dark" id="mat-mark-btn">Mark as done</button>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: QUIZ DETAIL ===== -->
+    <div class="page-body hidden" id="view-quiz-detail">
+      <h1 class="page-heading">Continue learning with your courses, Biena!</h1>
+      <p class="section-label" id="quiz-class-name"></p>
+      <p class="quiz-due-date" id="quiz-due-date"></p>
+      <div class="item-banner grey" id="quiz-banner"></div>
+      <div class="item-scroll-area">
+        <a href="https://googleforms.com" class="quiz-link" target="_blank" id="quiz-link">googleforms.com</a>
+        <p class="item-section-title">Description</p>
+        <p class="item-description" id="quiz-description"></p>
+        <p class="item-section-title">Instructions:</p>
+        <ul class="quiz-instructions" id="quiz-instructions"></ul>
+      </div>
+      <div class="mark-done-row">
+        <button class="mark-done-btn yellow" id="quiz-mark-btn">Mark as done</button>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: PROGRESS ===== -->
+    <div class="page-body hidden" id="view-progress">
+      <h1 class="page-heading">Keep track of your progress</h1>
+      <div class="progress-list" id="progress-list"></div>
+    </div>
+
+    <!-- ===== VIEW: TO DO LIST ===== -->
+    <div class="page-body hidden" id="view-todo">
+      <h1 class="page-heading">See your tasks!</h1>
+      <p class="section-label">To Do List</p>
+
+      <div class="todo-page-scroll">
+        <p class="todo-group-label">Assigned tasks</p>
+        <div id="todo-assigned-list"></div>
+
+        <p class="todo-group-label">Missing tasks</p>
+        <div id="todo-missing-list"></div>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: PROFILE ===== -->
+    <div class="page-body hidden" id="view-profile">
+
+      <!-- Profile Main -->
+      <div id="profile-main" style="display:none;">
+        <div class="profile-header">
+          <div class="profile-avatar-circle">
+            <img src="blackprofile.png" alt="Avatar" class="profile-avatar-img" id="profile-avatar-preview" />
+          </div>
+          <span class="profile-username" id="profile-username-display">bienrose</span>
+        </div>
+
+        <!-- Basic Information -->
+        <div class="profile-section">
+          <div class="profile-section-header">
+            <div class="profile-section-title">
+              <span class="profile-section-icon">&#9432;</span>
+              <strong>Basic Information</strong>
+            </div>
+            <button class="btn-dark" id="btn-edit-info">Edit Information</button>
+          </div>
+          <div class="profile-info-text">
+            <p>First Name: <span id="display-firstname">Biena</span></p>
+            <p>Last name: <span id="display-lastname">Bahay</span></p>
+            <p>Username: <span id="display-username">bienrose</span></p>
+            <p>Email: <span id="display-email">bienarose@gmail.com</span></p>
+          </div>
+        </div>
+
+        <!-- Profile Picture -->
+        <div class="profile-section">
+          <div class="profile-section-header">
+            <div class="profile-section-title">
+              <span class="profile-section-icon">&#128100;</span>
+              <strong>Profile Picture</strong>
+            </div>
+            <button class="btn-dark" id="btn-change-picture">Change Profile</button>
+            <input type="file" id="picture-file-input" accept="image/*" style="display:none;" />
+          </div>
+        </div>
+
+        <!-- Account Settings -->
+        <div class="profile-section">
+          <div class="profile-section-title">
+            <span class="profile-section-icon">&#9881;</span>
+            <strong>Account Settings</strong>
+          </div>
+          <p class="profile-link" id="btn-change-password">Change Password</p>
+        </div>
       </div>
 
-      <nav class="sidebar-nav">
-        <a href="#" class="nav-item active" onclick="setActive(this)">
-          <img src="/studentdashboard/home.png" alt="Home" class="nav-icon" />
-          <span>Home</span>
-        </a>
-
-        <a href="#" class="nav-item" onclick="setActive(this)">
-          <img src="/studentdashboard/course.png" alt="Classes" class="nav-icon" />
-          <span>Classes</span>
-        </a>
-
-        <a href="#" class="nav-item" onclick="setActive(this)">
-          <img src="/studentdashboard/progress.png" alt="Progress" class="nav-icon" />
-          <span>Progress</span>
-        </a>
-
-        <a href="#" class="nav-item" onclick="setActive(this)">
-          <img src="/studentdashboard/list.png" alt="To Do List" class="nav-icon" />
-          <span>To Do List</span>
-        </a>
-
-        <a href="#" class="nav-item" onclick="setActive(this)">
-          <img src="/studentdashboard/profile.png" alt="Profile" class="nav-icon" />
-          <span>Profile</span>
-        </a>
-      </nav>
-    </aside>
-
-    <main class="main-content">
-      <header class="top-bar">
-        <div class="search-bar">
-          <img src="/studentdashboard/blacksearch.png" alt="Search" class="search-icon" />
-          <input type="text" placeholder="Search" id="search-input" />
+      <!-- Edit Information Panel -->
+      <div id="profile-edit-info" style="display:none;">
+        <div class="profile-header">
+          <div class="profile-avatar-circle">
+            <img src="blackprofile.png" alt="Avatar" class="profile-avatar-img" />
+          </div>
+          <span class="profile-username" id="edit-username-display">bienrose</span>
         </div>
 
-        <div class="user-avatar">
-          <img src="/studentdashboard/blackprofile.png" alt="User" class="avatar-icon" />
+        <div class="profile-section">
+          <div class="profile-section-header">
+            <div class="profile-section-title">
+              <span class="profile-section-icon">&#9432;</span>
+              <strong>Basic Information</strong>
+            </div>
+            <button class="btn-dark" id="btn-save-info">Save Information</button>
+          </div>
+          <div class="edit-fields-grid">
+            <div class="edit-field-group">
+              <label>First name</label>
+              <input type="text" id="edit-firstname" class="edit-input" />
+            </div>
+            <div class="edit-field-group">
+              <label>Last name</label>
+              <input type="text" id="edit-lastname" class="edit-input" />
+            </div>
+            <div class="edit-field-group">
+              <label>Username</label>
+              <input type="text" id="edit-username" class="edit-input" />
+            </div>
+            <div class="edit-field-group">
+              <label>Email</label>
+              <input type="email" id="edit-email" class="edit-input" />
+            </div>
+          </div>
         </div>
-      </header>
 
-      <div class="page-body">
-        <h1 class="welcome-heading">Welcome, Biena!</h1>
-
-        <div class="content-columns">
-          <section class="announcements-section">
-            <h2 class="section-title">Announcements</h2>
-
-            <div class="announcement-card">
-              <p class="announcement-main">Prof. Catherine Sorbito posted a new lesson</p>
-              <p class="announcement-sub">Check it out</p>
-            </div>
-
-            <div class="announcement-card">
-              <p class="announcement-main">A new quiz was posted in your Web Dev Class</p>
-              <p class="announcement-sub">Due dates are important, complete your assignments today</p>
-            </div>
-          </section>
-
-          <section class="todo-section">
-            <h2 class="section-title">To Do List</h2>
-
-            <div class="todo-card">
-              <p class="todo-title">Open learning material 1 in Web Development</p>
-              <p class="todo-due">Due Date: June 12, 2026</p>
-            </div>
-
-            <div class="todo-card">
-              <p class="todo-title">Read Programming Module</p>
-              <p class="todo-due">Due Date: June 12, 2026</p>
-            </div>
-
-            <div class="todo-card">
-              <p class="todo-title">Complete Java Progress</p>
-              <p class="todo-due">Due Date: March 2, 2026</p>
-            </div>
-
-            <div class="todo-card">
-              <p class="todo-title">Answer Quiz 1</p>
-              <p class="todo-due">Due Date: March 2, 2026</p>
-            </div>
-          </section>
+        <div class="back-row">
+          <button class="btn-yellow" id="btn-back-from-edit">Back to Profile</button>
         </div>
       </div>
-    </main>
-  </div>
 
-  <script src="/studentdashboard/dashboard.js"></script>
+      <!-- Change Password Panel -->
+      <div id="profile-change-password" style="display:none;">
+        <div class="profile-header">
+          <div class="profile-avatar-circle">
+            <img src="blackprofile.png" alt="Avatar" class="profile-avatar-img" />
+          </div>
+          <span class="profile-username" id="pw-username-display">bienrose</span>
+        </div>
+
+        <div class="profile-section">
+          <div class="profile-section-title">
+            <span class="profile-section-icon">&#9881;</span>
+            <strong>Account Settings</strong>
+          </div>
+          <p class="change-pw-label">Change password</p>
+
+          <div class="edit-field-group">
+            <label>Current password</label>
+            <input type="password" id="input-current-pw" class="edit-input pw-input" placeholder="Enter current password" />
+          </div>
+          <div class="edit-field-group" style="margin-top: 16px;">
+            <label>New password</label>
+            <input type="password" id="input-new-pw" class="edit-input pw-input" placeholder="Enter new password" />
+          </div>
+          <button class="btn-dark" id="btn-submit-password" style="margin-top: 20px;">Change password</button>
+        </div>
+
+        <div class="back-row">
+          <button class="btn-yellow" id="btn-back-from-password">Back to Profile</button>
+        </div>
+      </div>
+
+    </div>
+    <!-- end view-profile -->
+
+  </main>
+</div>
+
+<script src="dashboard.js"></script>
 </body>
 </html>
