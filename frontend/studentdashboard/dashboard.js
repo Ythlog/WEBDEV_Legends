@@ -133,7 +133,7 @@ document.querySelectorAll('.nav-item').forEach(link => {
 // #################################################################
 // SECTION: HOME SCREEN FUNCTIONALITY
 // ASSIGNED TO: Sales Animal
-// Handles: Announcements display + Short To-Do List on home view
+// Handles: Announcements display + Scrollable To-Do List from classes
 // #################################################################
 
 /** ---------- RENDER: HOME ---------- */
@@ -148,17 +148,69 @@ function renderHome() {
     annSection.appendChild(card);
   });
 
-  // ===== Short To-Do List Section =====
+  // ===== Scrollable To-Do List from Classes =====
   const todoSection = document.getElementById('todo-section');
   todoSection.innerHTML = '<h2 class="section-title">To Do List</h2>';
+
+  // Get current week range (Monday 00:00 to Sunday 23:59)
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  DATA.todos.filter(t => t.dueDate >= today).slice(0, 4).forEach(t => {
-    const card = document.createElement('div');
-    card.className = 'todo-card';
-    card.innerHTML = `<p class="todo-title">${t.title}</p><p class="todo-due">Due Date: ${t.due}</p>`;
-    todoSection.appendChild(card);
+  const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7)); // Go back to Monday
+  monday.setHours(0, 0, 0, 0);
+  
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  // Collect all pending quizzes from all classes
+  const pendingItems = [];
+  DATA.classes.forEach(cls => {
+    if (cls.quizzes && cls.quizzes.length > 0) {
+      cls.quizzes.forEach(quiz => {
+        // Skip if already marked as done
+        if (state.done.has(quiz.id)) return;
+        
+        // Parse due date
+        const dueDate = new Date(quiz.dueDate);
+        if (isNaN(dueDate.getTime())) return; // Skip invalid dates
+        
+        // Check if due within current week
+        if (dueDate >= monday && dueDate <= sunday) {
+          pendingItems.push({
+            id: quiz.id,
+            title: quiz.title,
+            dueDate: quiz.dueDate,
+            className: cls.title
+          });
+        }
+      });
+    }
   });
+
+  // Sort by due date (closest first)
+  pendingItems.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+  // Create scrollable container
+  const scrollContainer = document.createElement('div');
+  scrollContainer.className = 'todo-scroll-container';
+
+  if (pendingItems.length === 0) {
+    scrollContainer.innerHTML = '<div class="todo-empty">No pending tasks this week</div>';
+  } else {
+    pendingItems.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'todo-card';
+      card.innerHTML = `
+        <p class="todo-title">${item.title}</p>
+        <p class="todo-class">${item.className}</p>
+        <p class="todo-due">Due: ${item.dueDate}</p>
+      `;
+      scrollContainer.appendChild(card);
+    });
+  }
+
+  todoSection.appendChild(scrollContainer);
 }
 
 // #################################################################
@@ -457,7 +509,7 @@ document.getElementById('btn-change-picture').addEventListener('click', () => {
   document.getElementById('picture-file-input').click();
 });
 
-document.getElementById('picture-file-input').addEventListener('click', function () {
+document.getElementById('picture-file-input').addEventListener('change', function () {
   const file = this.files[0];
   if (!file) return;
   const reader = new FileReader();
