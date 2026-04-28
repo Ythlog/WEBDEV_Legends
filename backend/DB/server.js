@@ -7,6 +7,11 @@ require("dotenv").config();
 
 const app = express();
 
+// Verify environment variables are loaded
+console.log("EMAIL_USER:", process.env.EMAIL_USER ? "✓ Loaded" : "✗ Missing");
+console.log("EMAIL_APP_PASSWORD:", process.env.EMAIL_APP_PASSWORD ? "✓ Loaded" : "✗ Missing");
+console.log("DB_HOST:", process.env.DB_HOST ? "✓ Loaded" : "✗ Missing");
+
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -22,7 +27,7 @@ app.use(express.static(path.join(__dirname, "..", "..", "frontend")));
 function generateCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
-//send ng code sa email, ito lalabas sa email
+
 function sendVerificationEmail(email, code, type) {
     const subject = type === 'signup' ? 'Verify your EduHub account' : 'Password Reset Code';
     const text = `Your verification code is: ${code}. Valid for 5 minutes.`;
@@ -34,14 +39,15 @@ function sendVerificationEmail(email, code, type) {
     });
 }
 
-// mga codes na ginegenerate madedelete every hour
+// Cleanup expired codes every hour
 setInterval(async () => {
     let conn;
     try {
         conn = await pool.getConnection();
-        await conn.query("DELETE FROM verification_codes WHERE expires_at < NOW() OR used = 1");
+        const result = await conn.query("DELETE FROM verification_codes WHERE expires_at < NOW() OR used = 1");
+        console.log("Cleanup: Deleted", result.affectedRows, "expired codes");
     } catch (err) {
-        console.error("Cleanup error:", err);
+        console.error("Cleanup error:", err.message);
     } finally {
         if (conn) conn.release();
     }
@@ -55,7 +61,65 @@ app.get("/dashboard", (req, res) => {
     res.sendFile(path.join(__dirname, "..", "..", "frontend", "studentdashboard", "dashboard.html"));
 });
 
-//Send verification code sa signup naman
+// Get all classes with materials and quizzes
+app.get("/api/classes", async (req, res) => {
+    let conn;
+    try {
+        conn = await pool.getConnection();
+
+        // Get all classes
+        const classes = await conn.query("SELECT * FROM classes ORDER BY id");
+
+        // For each class, get materials and quizzes
+        const classesWithData = await Promise.all(
+            classes.map(async (cls) => {
+                const materials = await conn.query(
+                    "SELECT id, class_id, title, description, pdf_url, sort_order, created_at FROM materials WHERE class_id = ? ORDER BY sort_order",
+                    [cls.id]
+                );
+
+                const quizzes = await conn.query(
+                    "SELECT id, class_id, title, description, link, link_label, due_date, time_limit_minutes, created_at FROM quizzes WHERE class_id = ? ORDER BY id",
+                    [cls.id]
+                );
+
+                return {
+                    id: cls.id,
+                    title: cls.title,
+                    subject_code: cls.subject_code,
+                    professor: cls.professor,
+                    created_at: cls.created_at,
+                    materials: materials.map(m => ({
+                        id: m.id,
+                        title: m.title,
+                        description: m.description,
+                        pdfUrl: m.pdf_url,
+                        sort_order: m.sort_order
+                    })),
+                    quizzes: quizzes.map(q => ({
+                        id: q.id,
+                        title: q.title,
+                        description: q.description,
+                        dueDate: q.due_date,
+                        link: q.link,
+                        linkLabel: q.link_label,
+                        timeLimit: q.time_limit_minutes,
+                        instructions: [] // You can add this to the DB later if needed
+                    }))
+                };
+            })
+        );
+
+        res.json(classesWithData);
+    } catch (err) {
+        console.error("Get classes error:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Send verification code for signup
 app.post("/api/send-signup-code", async (req, res) => {
     const { first_name, last_name, username, email, password, role } = req.body;
 
@@ -67,6 +131,7 @@ app.post("/api/send-signup-code", async (req, res) => {
     try {
         conn = await pool.getConnection();
 
+        // Check if email or username already exists
         const existing = await conn.query(
             "SELECT id FROM users WHERE email = ? OR username = ?",
             [email, username]
@@ -76,15 +141,18 @@ app.post("/api/send-signup-code", async (req, res) => {
             return res.status(409).json({ message: "Email or username already exists." });
         }
 
+        // Hash password and generate code
         const hashedPassword = await bcrypt.hash(password, 10);
         const code = generateCode();
         const expiresAt = new Date(Date.now() + 5 * 60000);
 
+        // Insert verification code
         await conn.query(
             "INSERT INTO verification_codes (email, code, type, expires_at) VALUES (?, ?, 'signup', ?)",
             [email, code, expiresAt]
         );
 
+        // Send email
         await sendVerificationEmail(email, code, 'signup');
 
         res.json({
@@ -92,7 +160,8 @@ app.post("/api/send-signup-code", async (req, res) => {
             tempData: { first_name, last_name, username, email, hashedPassword, role }
         });
     } catch (err) {
-        res.status(500).json({ message: "Server error." });
+        console.error("Send signup code error:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
     } finally {
         if (conn) conn.release();
     }
@@ -102,10 +171,15 @@ app.post("/api/send-signup-code", async (req, res) => {
 app.post("/api/verify-signup", async (req, res) => {
     const { email, code, tempData } = req.body;
 
+    if (!email || !code || !tempData) {
+        return res.status(400).json({ message: "Missing required fields." });
+    }
+
     let conn;
     try {
         conn = await pool.getConnection();
 
+        // Check verification code
         const codes = await conn.query(
             "SELECT * FROM verification_codes WHERE email = ? AND code = ? AND type = 'signup' AND used = 0 AND expires_at > NOW()",
             [email, code]
@@ -115,8 +189,10 @@ app.post("/api/verify-signup", async (req, res) => {
             return res.status(400).json({ message: "Invalid or expired code." });
         }
 
+        // Mark code as used
         await conn.query("UPDATE verification_codes SET used = 1 WHERE id = ?", [codes[0].id]);
 
+        // Create user account
         await conn.query(
             "INSERT INTO users (first_name, last_name, username, email, password, role, is_verified, verified_at) VALUES (?, ?, ?, ?, ?, ?, TRUE, NOW())",
             [tempData.first_name, tempData.last_name, tempData.username, email, tempData.hashedPassword, tempData.role]
@@ -124,13 +200,14 @@ app.post("/api/verify-signup", async (req, res) => {
 
         res.json({ message: "Account verified and created successfully!" });
     } catch (err) {
-        res.status(500).json({ message: "Server error." });
+        console.error("Verify signup error:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
     } finally {
         if (conn) conn.release();
     }
 });
 
-// Send reset code for forgot password
+// Send password reset code
 app.post("/api/send-reset-code", async (req, res) => {
     const { email } = req.body;
 
@@ -142,17 +219,20 @@ app.post("/api/send-reset-code", async (req, res) => {
     try {
         conn = await pool.getConnection();
 
+        // Check if user exists
         const users = await conn.query("SELECT id FROM users WHERE email = ?", [email]);
 
         if (users.length === 0) {
             return res.status(404).json({ message: "No account found with this email." });
         }
 
+        // Invalidate old reset codes
         await conn.query(
             "UPDATE verification_codes SET used = 1 WHERE email = ? AND type = 'reset' AND used = 0",
             [email]
         );
 
+        // Generate and insert new code
         const code = generateCode();
         const expiresAt = new Date(Date.now() + 5 * 60000);
 
@@ -161,17 +241,19 @@ app.post("/api/send-reset-code", async (req, res) => {
             [email, code, expiresAt]
         );
 
+        // Send email
         await sendVerificationEmail(email, code, 'reset');
 
         res.json({ message: "Password reset code sent!" });
     } catch (err) {
-        res.status(500).json({ message: "Server error." });
+        console.error("Send reset code error:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
     } finally {
         if (conn) conn.release();
     }
 });
 
-// Verify reset code and change password
+// Reset password with code
 app.post("/api/reset-password", async (req, res) => {
     const { email, code, newPassword } = req.body;
 
@@ -183,6 +265,7 @@ app.post("/api/reset-password", async (req, res) => {
     try {
         conn = await pool.getConnection();
 
+        // Verify reset code
         const codes = await conn.query(
             "SELECT * FROM verification_codes WHERE email = ? AND code = ? AND type = 'reset' AND used = 0 AND expires_at > NOW()",
             [email, code]
@@ -192,14 +275,15 @@ app.post("/api/reset-password", async (req, res) => {
             return res.status(400).json({ message: "Invalid or expired code." });
         }
 
+        // Hash new password and update
         const hashedPassword = await bcrypt.hash(newPassword, 10);
-
         await conn.query("UPDATE users SET password = ? WHERE email = ?", [hashedPassword, email]);
         await conn.query("UPDATE verification_codes SET used = 1 WHERE id = ?", [codes[0].id]);
 
         res.json({ message: "Password reset successful!" });
     } catch (err) {
-        res.status(500).json({ message: "Server error." });
+        console.error("Reset password error:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
     } finally {
         if (conn) conn.release();
     }
@@ -217,6 +301,7 @@ app.post("/api/login", async (req, res) => {
     try {
         conn = await pool.getConnection();
 
+        // Find user by email or username
         const rows = await conn.query(
             "SELECT * FROM users WHERE email = ? OR username = ?",
             [login, login]
@@ -227,15 +312,31 @@ app.post("/api/login", async (req, res) => {
         }
 
         const user = rows[0];
+        
+        // Check if user is verified
+        if (!user.is_verified) {
+            return res.status(401).json({ message: "Please verify your email first." });
+        }
+
+        // Verify password
         const validPassword = await bcrypt.compare(password, user.password);
 
         if (!validPassword) {
             return res.status(401).json({ message: "Invalid credentials." });
         }
 
-        res.json({ message: "Login successful." });
+        res.json({ 
+            message: "Login successful.",
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                role: user.role
+            }
+        });
     } catch (err) {
-        res.status(500).json({ message: "Server error." });
+        console.error("Login error:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
     } finally {
         if (conn) conn.release();
     }

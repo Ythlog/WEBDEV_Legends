@@ -34,53 +34,7 @@ const DATA = {
   ],
   
   // ========== Classes Data ==========
-  classes: [
-    {
-      id: 'webdev',
-      title: 'Web Development',
-      professor: 'Prof. Catherine Sorbito',
-      materials: [
-        { id: 'wd-m1', title: 'Learning Material 1', pdfUrl: '/materials/webdev-lm1.pdf', description: 'This course provides an introduction to the basic concepts and skills needed in the subject. Students will learn through a combination of lessons, activities, and practical exercises designed to build understanding step by step.' },
-        { id: 'wd-m2', title: 'Learning Material 2', pdfUrl: '/materials/webdev-lm2.pdf', description: 'An in-depth look at advanced HTML5 and CSS3 techniques. Covers responsive design principles, CSS Grid, Flexbox, and modern layout strategies used in production environments.' },
-        { id: 'wd-m3', title: 'Learning Material 3', pdfUrl: '/materials/webdev-lm3.pdf', description: 'Introduction to JavaScript fundamentals including variables, functions, DOM manipulation, and event handling. Exercises include building interactive web components.' }
-      ],
-      quizzes: [
-        { id: 'wd-q1', title: 'Quiz 1', dueDate: 'April 30, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'This quiz is designed to assess your understanding of the basic concepts discussed in the lesson.', instructions: ['Choose the best answer for each question', 'Do not refresh the page while taking the quiz', 'Submit only once', 'Time limit: 15 minutes'] },
-        { id: 'wd-q2', title: 'Quiz 2', dueDate: 'May 7, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'Quiz covering HTML structure, semantic tags, and introductory CSS selectors.', instructions: ['Answer all items completely', 'Do not use external references', 'Submit only once', 'Time limit: 20 minutes'] },
-        { id: 'wd-q3', title: 'Quiz 3', dueDate: 'May 14, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'JavaScript fundamentals quiz. Topics include variables, data types, loops, and basic DOM manipulation.', instructions: ['Answer all items', 'No open-book', 'Submit only once', 'Time limit: 25 minutes'] }
-      ]
-    },
-    {
-      id: 'softeng',
-      title: 'Software Engineering',
-      professor: 'Prof. Viktor Magtanggol',
-      materials: [
-        { id: 'se-m1', title: 'Learning Material 1', pdfUrl: '/materials/softeng-lm1.pdf', description: 'Overview of software engineering principles. Topics include the software development life cycle (SDLC), agile methodologies, and project management fundamentals.' },
-        { id: 'se-m2', title: 'Learning Material 2', pdfUrl: '/materials/softeng-lm2.pdf', description: 'Requirements engineering and UML modeling. Students will practice writing use cases, drawing class diagrams, and creating sequence diagrams.' },
-        { id: 'se-m3', title: 'Learning Material 3', pdfUrl: '/materials/softeng-lm3.pdf', description: 'Software testing strategies: unit testing, integration testing, and system testing. Introduction to test-driven development (TDD).' },
-        { id: 'se-m4', title: 'Learning Material 4', pdfUrl: '/materials/softeng-lm4.pdf', description: 'Software architecture patterns: MVC, microservices, and event-driven design. Case studies from real-world applications.' }
-      ],
-      quizzes: [
-        { id: 'se-q1', title: 'Quiz 1', dueDate: 'April 29, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'Covers SDLC phases and agile concepts. Multiple-choice and short answer format.', instructions: ['Answer all questions', 'Do not refresh the page', 'Submit only once', 'Time limit: 15 minutes'] },
-        { id: 'se-q2', title: 'Quiz 2', dueDate: 'May 6, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'UML diagrams and requirements engineering. You may be asked to interpret or describe diagram elements.', instructions: ['Read questions carefully', 'No external references', 'Submit only once', 'Time limit: 20 minutes'] }
-      ]
-    },
-    {
-      id: 'datastructs',
-      title: 'Data Structures',
-      professor: 'Prof. Laufey',
-      materials: [
-        { id: 'ds-m1', title: 'Learning Material 1', pdfUrl: '/materials/ds-lm1.pdf', description: 'Introduction to data structures: arrays, linked lists, stacks, and queues. Covers time and space complexity basics.' },
-        { id: 'ds-m2', title: 'Learning Material 2', pdfUrl: '/materials/ds-lm2.pdf', description: 'Trees and graphs: binary trees, binary search trees, graph representations (adjacency list and matrix), and traversal algorithms (BFS, DFS).' },
-        { id: 'ds-m3', title: 'Learning Material 3', pdfUrl: '/materials/ds-lm3.pdf', description: 'Sorting algorithms: bubble sort, selection sort, insertion sort, merge sort, and quick sort. Comparison of performance characteristics.' }
-      ],
-      quizzes: [
-        { id: 'ds-q1', title: 'Quiz 1', dueDate: 'May 2, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'Covers arrays, linked lists, stacks, and queues. Includes identification and short problem-solving questions.', instructions: ['Show your reasoning where applicable', 'Do not refresh the page', 'Submit only once', 'Time limit: 20 minutes'] },
-        { id: 'ds-q2', title: 'Quiz 2', dueDate: 'May 9, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'Trees and graphs quiz. Includes diagram interpretation and traversal questions.', instructions: ['Answer all items', 'No open-book', 'Submit only once', 'Time limit: 25 minutes'] },
-        { id: 'ds-q3', title: 'Quiz 3', dueDate: 'May 16, 2026, 23:59', link: 'https://forms.google.com', linkLabel: 'googleforms.com', description: 'Sorting algorithms quiz. You will be asked to trace through algorithm steps and compare Big-O complexities.', instructions: ['Show all steps', 'No external references', 'Submit only once', 'Time limit: 25 minutes'] }
-      ]
-    }
-  ],
+  classes: [],
   
   // ========== Progress Data ==========
   progress: [
@@ -306,11 +260,13 @@ function openQuizDetail(quiz, className) {
   // Instructions list
   const instrList = document.getElementById('quiz-instructions');
   instrList.innerHTML = '';
-  quiz.instructions.forEach(instr => {
-    const li = document.createElement('li');
-    li.textContent = instr;
-    instrList.appendChild(li);
-  });
+  if (quiz.instructions && quiz.instructions.length > 0) {
+    quiz.instructions.forEach(instr => {
+      const li = document.createElement('li');
+      li.textContent = instr;
+      instrList.appendChild(li);
+    });
+  }
 
   const btn = document.getElementById('quiz-mark-btn');
   if (state.done.has(quiz.id)) {
@@ -600,7 +556,17 @@ document.getElementById('quiz-mark-btn').addEventListener('click', () => markDon
 // #################################################################
 
 /** ---------- INIT ---------- */
-(function init() {
+(async function init() {
+  // Fetch classes from API
+  try {
+    const response = await fetch('/api/classes');
+    if (!response.ok) throw new Error('Failed to fetch classes');
+    DATA.classes = await response.json();
+    console.log('Classes loaded:', DATA.classes);
+  } catch (error) {
+    console.error('Error fetching classes:', error);
+  }
+
   const homeNav = document.querySelector('.nav-item[data-view="home"]');
   if (homeNav) setActiveNav(homeNav);
   renderHome();
