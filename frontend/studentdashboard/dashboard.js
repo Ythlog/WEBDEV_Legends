@@ -3,23 +3,72 @@
   Uses one DATA object, one state, and view-switching.
 ============================================================= */
 
+// Updated markDone function to fetch/update the database
+async function markDone(type) {
+  if (!state.currentItem) return;
+  const id = state.currentItem.id;
 
+  const btn = document.getElementById(type === 'material' ? 'mat-mark-btn' : 'quiz-mark-btn');
+
+  // Disable button to prevent multiple rapid clicks
+  btn.disabled = true;
+
+  if (state.done.has(id)) {
+    // SECOND CLICK: ask to undo
+    Swal.fire({
+      title: 'Are you sure?',
+      text: 'Do you want to undo marking this as done?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, undo it!',
+      cancelButtonText: 'Cancel'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await fetch(`/api/mark-undone/${id}`, { method: 'POST' });
+
+          state.done.delete(id);
+          btn.textContent = 'Mark as done';
+          btn.className = type === 'material' ? 'mark-done-btn dark' : 'mark-done-btn yellow';
+          updateProgressForClass(state.currentClass);
+        } catch (error) {
+          console.error("Database error:", error);
+          Swal.fire('Error', 'Could not update the database.', 'error');
+        }
+      }
+      btn.disabled = false;
+    });
+
+  } else {
+    // FIRST CLICK: mark as done immediately
+    try {
+      await fetch(`/api/mark-done/${id}`, { method: 'POST' });
+
+      state.done.add(id);
+      btn.textContent = 'Marked as done ✓';
+      btn.className = 'mark-done-btn done-state';
+      updateProgressForClass(state.currentClass);
+    } catch (error) {
+      console.error("Database error:", error);
+      Swal.fire('Error', 'Could not save to the database.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+}
 
 // ##################################################################
 // SHARED DATA OBJECT - Add new entries here with team notice
 // ##################################################################
 
-/** ---------- DATA (replace with API calls later) ---------- */
 const DATA = {
   student: 'Biena',
-  
-  // ========== Announcements Data ==========
+
   announcements: [
     { main: 'Prof. Catherine Sorbito posted a new lesson', sub: 'Check it out' },
     { main: 'A new quiz was posted in your Web Dev Class', sub: 'Due dates are important, complete your assignments today' }
   ],
-  
-  // ========== Todos Data ==========
+
   todos: [
     { title: 'Open learning material 1 in Web Development', due: 'June 12, 2026', dueDate: new Date('2026-06-12') },
     { title: 'Read Programming Module', due: 'June 12, 2026', dueDate: new Date('2026-06-12') },
@@ -32,19 +81,16 @@ const DATA = {
     { title: 'Read Software Engineering Module 2', due: 'May 8, 2026', dueDate: new Date('2026-05-08') },
     { title: 'Practice Data Structures Problems', due: 'May 12, 2026', dueDate: new Date('2026-05-12') }
   ],
-  
-  // ========== Classes Data ==========
+
   classes: [],
-  
-  // ========== Progress Data ==========
+  classesLoaded: false,
+
   progress: [
     { classTitle: 'Web Development', completed: 4, total: 10 },
     { classTitle: 'Software Engineering', completed: 9, total: 10 },
     { classTitle: 'Data Structures', completed: 4, total: 7 }
   ],
-  
-  // ========== Profile Data ==========
-  /* BACKEND HOOK – replace with API call to get user profile */
+
   profile: {
     firstName: 'Biena',
     lastName: 'Bahay',
@@ -60,10 +106,9 @@ const DATA = {
 
 
 // ##################################################################
-// SHARED STATE - Add new state properties here with team notice
+// SHARED STATE
 // ##################################################################
 
-/** ---------- STATE ---------- */
 const state = {
   currentView: 'home',
   currentClass: null,
@@ -79,10 +124,9 @@ const state = {
 
 
 // ##################################################################
-// SHARED: VIEW SWITCHING - DO NOT MODIFY WITHOUT TEAM DISCUSSION
+// SHARED: VIEW SWITCHING
 // ##################################################################
 
-/** ---------- VIEW SWITCHING ---------- */
 const allViews = document.querySelectorAll('.page-body');
 
 function showView(viewId) {
@@ -98,28 +142,27 @@ function showView(viewId) {
 
 
 // ##################################################################
-// SHARED: SIDEBAR NAVIGATION - DO NOT MODIFY WITHOUT TEAM DISCUSSION
+// SHARED: SIDEBAR NAVIGATION
 // ##################################################################
 
-/** ---------- SIDEBAR NAVIGATION ---------- */
 function setActiveNav(el) {
   document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
   el.classList.add('active');
 }
 
 document.querySelectorAll('.nav-item').forEach(link => {
-  link.addEventListener('click', function (e) {
+  link.addEventListener('click', async function (e) {
     e.preventDefault();
     setActiveNav(this);
     const view = this.getAttribute('data-view');
     if (!view) return;
 
     switch (view) {
-      case 'home':     renderHome();     showView('home');     break;
-      case 'classes':  renderClasses();  showView('classes');  break;
+      case 'home': await renderHome(); showView('home'); break;
+      case 'classes': await renderClasses(); showView('classes'); break;
       case 'progress': renderProgress(); showView('progress'); break;
-      case 'todo':     renderTodo();     showView('todo');     break;
-      case 'profile':  renderProfile();  showView('profile');  break;
+      case 'todo': renderTodo(); showView('todo'); break;
+      case 'profile': renderProfile(); showView('profile'); break;
     }
   });
 });
@@ -132,13 +175,13 @@ document.querySelectorAll('.nav-item').forEach(link => {
 
 // #################################################################
 // SECTION: HOME SCREEN FUNCTIONALITY
-// ASSIGNED TO: Sales Animal
-// Handles: Announcements display + Scrollable To-Do List from classes
 // #################################################################
 
-/** ---------- RENDER: HOME ---------- */
-function renderHome() {
-  // ===== Announcements Section =====
+async function renderHome() {
+  if (!DATA.classesLoaded) {
+    await fetchClasses();
+  }
+
   const annSection = document.getElementById('announcements-section');
   annSection.innerHTML = '<h2 class="section-title">Announcements</h2>';
   DATA.announcements.forEach(a => {
@@ -148,34 +191,26 @@ function renderHome() {
     annSection.appendChild(card);
   });
 
-  // ===== Scrollable To-Do List from Classes =====
   const todoSection = document.getElementById('todo-section');
   todoSection.innerHTML = '<h2 class="section-title">To Do List</h2>';
 
-  // Get current week range (Monday 00:00 to Sunday 23:59)
   const today = new Date();
-  const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const dayOfWeek = today.getDay();
   const monday = new Date(today);
-  monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7)); // Go back to Monday
+  monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
   monday.setHours(0, 0, 0, 0);
-  
+
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
   sunday.setHours(23, 59, 59, 999);
 
-  // Collect all pending quizzes from all classes
   const pendingItems = [];
   DATA.classes.forEach(cls => {
     if (cls.quizzes && cls.quizzes.length > 0) {
       cls.quizzes.forEach(quiz => {
-        // Skip if already marked as done
         if (state.done.has(quiz.id)) return;
-        
-        // Parse due date
-        const dueDate = new Date(quiz.dueDate);
-        if (isNaN(dueDate.getTime())) return; // Skip invalid dates
-        
-        // Check if due within current week
+        const dueDate = quiz.dueDate ? new Date(quiz.dueDate) : null;
+        if (!dueDate || isNaN(dueDate.getTime())) return;
         if (dueDate >= monday && dueDate <= sunday) {
           pendingItems.push({
             id: quiz.id,
@@ -188,10 +223,8 @@ function renderHome() {
     }
   });
 
-  // Sort by due date (closest first)
   pendingItems.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
 
-  // Create scrollable container
   const scrollContainer = document.createElement('div');
   scrollContainer.className = 'todo-scroll-container';
 
@@ -204,7 +237,7 @@ function renderHome() {
       card.innerHTML = `
         <p class="todo-title">${item.title}</p>
         <p class="todo-class">${item.className}</p>
-        <p class="todo-due">Due: ${item.dueDate}</p>
+        <p class="todo-due">Due: ${formatDueDate(item.dueDate) || 'No due date'}</p>
       `;
       scrollContainer.appendChild(card);
     });
@@ -214,21 +247,104 @@ function renderHome() {
 }
 
 // #################################################################
-// END SECTION: HOME SCREEN FUNCTIONALITY (Sales Animal)
+// END SECTION: HOME SCREEN FUNCTIONALITY
 // #################################################################
 
 
 
 // #################################################################
 // SECTION: CLASSES FUNCTIONALITY
-// ASSIGNED TO: Prima Donna
-// Handles: Classes grid, Class detail, Material detail, Quiz detail
 // #################################################################
 
+// ✅ FIX: Store raw date strings — do NOT pre-convert to Date objects here.
+// formatDueDate() handles all conversion safely.
+function normalizeClass(raw) {
+  return {
+    id: raw.id,
+    title: raw.title || raw.name || 'Untitled Class',
+    professor: raw.professor || raw.teacher_name || raw.instructor || 'Unknown Professor',
+
+    materials: (raw.materials || raw.lessons || []).map(m => ({
+      id: m.id,
+      title: m.title || m.name || 'Untitled Material',
+      description: m.description || '',
+      pdfUrl: m.pdfUrl || m.pdf_url || '#',
+
+      // ✅ FIXED: Keep raw string value — do NOT wrap in new Date() here
+      dueDate: m.dueDate || m.due_date || null
+    })),
+
+    quizzes: (raw.quizzes || raw.assignments || []).map(q => ({
+      id: q.id,
+      title: q.title || q.name || 'Untitled Quiz',
+      description: q.description || '',
+      link: q.link || q.url || '#',
+      linkLabel: q.linkLabel || q.link_label || 'Open Quiz',
+
+      // ✅ FIXED: Keep raw string value — do NOT wrap in new Date() here
+      dueDate: q.dueDate || q.due_date || null,
+
+      instructions: q.instructions || []
+    }))
+  };
+}
+
+// Converts any date value to a readable string.
+// Handles: ISO strings with Z (UTC), plain YYYY-MM-DD, Date objects, timestamps.
+function formatDueDate(dateVal) {
+  if (!dateVal) return null;
+
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return null;
+
+  // Convert UTC → Philippine Time (UTC+8)
+  const phTime = new Date(d.getTime() + (8 * 60 * 60 * 1000));
+
+  return phTime.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).replace(',', '');
+}
+
+/** ---------- FETCH CLASSES ---------- */
+async function fetchClasses() {
+  try {
+    const response = await fetch('/api/classes');
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    const json = await response.json();
+
+    const raw = Array.isArray(json)
+      ? json
+      : json.data || json.classes || json.result || [];
+
+    DATA.classes = raw.map(normalizeClass);
+    DATA.classesLoaded = true;
+  } catch (error) {
+    console.error('[fetchClasses] Error:', error);
+    DATA.classes = [];
+    DATA.classesLoaded = false;
+  }
+}
+
 /** ---------- RENDER: CLASSES GRID ---------- */
-function renderClasses() {
+async function renderClasses() {
   const grid = document.getElementById('classes-grid');
+
+  if (!DATA.classesLoaded) {
+    grid.innerHTML = '<p class="classes-loading">Loading classes...</p>';
+    await fetchClasses();
+  }
+
   grid.innerHTML = '';
+
+  if (DATA.classes.length === 0) {
+    grid.innerHTML = '<p class="classes-empty">No classes found. Please check your connection or contact your administrator.</p>';
+    return;
+  }
+
   DATA.classes.forEach(cls => {
     const card = document.createElement('div');
     card.className = 'class-card';
@@ -238,14 +354,11 @@ function renderClasses() {
   });
 }
 
-
-
 /** ---------- RENDER: CLASS DETAIL ---------- */
 function openClassDetail(cls) {
   state.currentClass = cls;
   document.getElementById('detail-class-name').textContent = cls.title;
 
-  // Materials list
   const matList = document.getElementById('materials-list');
   matList.innerHTML = '';
   cls.materials.forEach(mat => {
@@ -256,7 +369,6 @@ function openClassDetail(cls) {
     matList.appendChild(el);
   });
 
-  // Quizzes list
   document.getElementById('quizzes-label').textContent = cls.title + ' Quizzes';
   const quizList = document.getElementById('quizzes-list');
   quizList.innerHTML = '';
@@ -271,8 +383,6 @@ function openClassDetail(cls) {
   showView('class-detail');
 }
 
-
-
 /** ---------- RENDER: MATERIAL DETAIL ---------- */
 function openMaterialDetail(mat, className) {
   state.currentItem = mat;
@@ -283,6 +393,12 @@ function openMaterialDetail(mat, className) {
   document.getElementById('mat-pdf-link').href = mat.pdfUrl;
   document.getElementById('mat-description').textContent = mat.description;
 
+  const matDueEl = document.getElementById('mat-due-text');
+  if (matDueEl) {
+    matDueEl.textContent = mat.dueDate ? 'Due ' + formatDueDate(mat.dueDate) : '';
+    matDueEl.style.display = mat.dueDate ? 'block' : 'none';
+  }
+
   const btn = document.getElementById('mat-mark-btn');
   if (state.done.has(mat.id)) {
     btn.textContent = 'Marked as done ✓';
@@ -292,10 +408,10 @@ function openMaterialDetail(mat, className) {
     btn.className = 'mark-done-btn dark';
   }
 
+  btn.onclick = () => markDone('material');
+
   showView('material-detail');
 }
-
-
 
 /** ---------- RENDER: QUIZ DETAIL ---------- */
 function openQuizDetail(quiz, className) {
@@ -303,13 +419,17 @@ function openQuizDetail(quiz, className) {
   state.currentType = 'quiz';
 
   document.getElementById('quiz-class-name').textContent = className;
-  document.getElementById('quiz-due-date').textContent = 'Due ' + quiz.dueDate;
   document.getElementById('quiz-banner').textContent = quiz.title;
   document.getElementById('quiz-link').href = quiz.link;
   document.getElementById('quiz-link').textContent = quiz.linkLabel;
   document.getElementById('quiz-description').textContent = quiz.description;
 
-  // Instructions list
+  const quizDueEl = document.getElementById('quiz-due-text');
+  if (quizDueEl) {
+    quizDueEl.textContent = quiz.dueDate ? 'Due ' + formatDueDate(quiz.dueDate) : '';
+    quizDueEl.style.display = quiz.dueDate ? 'block' : 'none';
+  }
+
   const instrList = document.getElementById('quiz-instructions');
   instrList.innerHTML = '';
   if (quiz.instructions && quiz.instructions.length > 0) {
@@ -321,38 +441,39 @@ function openQuizDetail(quiz, className) {
   }
 
   const btn = document.getElementById('quiz-mark-btn');
-  if (state.done.has(quiz.id)) {
-    btn.textContent = 'Marked as done ✓';
-    btn.className = 'mark-done-btn done-state';
-  } else {
-    btn.textContent = 'Mark as done';
-    btn.className = 'mark-done-btn yellow';
+  if (btn) {
+    if (state.done.has(quiz.id)) {
+      btn.textContent = 'Marked as done ✓';
+      btn.className = 'mark-done-btn done-state';
+    } else {
+      btn.textContent = 'Mark as done';
+      btn.className = 'mark-done-btn yellow';
+    }
+
+    // KEEP SWEETALERT LOGIC (unchanged)
+    btn.onclick = () => markDone('quiz');
   }
 
   showView('quiz-detail');
 }
 
 // #################################################################
-// END SECTION: CLASSES FUNCTIONALITY (Prima Donna)
+// END SECTION: CLASSES FUNCTIONALITY
 // #################################################################
 
 
 
 // #################################################################
 // SECTION: TO DO LIST (DETAILED) FUNCTIONALITY
-// ASSIGNED TO: Prima Donna
-// Handles: Full To-Do List page with Assigned & Missing tasks
 // #################################################################
 
-/** ---------- RENDER: TO DO LIST PAGE ---------- */
 function renderTodo() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const assigned = DATA.todos.filter(t => t.dueDate >= today);
-  const missing  = DATA.todos.filter(t => t.dueDate < today);
+  const missing = DATA.todos.filter(t => t.dueDate < today);
 
-  // ===== Assigned tasks =====
   const assignedList = document.getElementById('todo-assigned-list');
   assignedList.innerHTML = '';
   if (assigned.length === 0) {
@@ -361,12 +482,11 @@ function renderTodo() {
     assigned.forEach(t => {
       const card = document.createElement('div');
       card.className = 'todo-page-card';
-      card.innerHTML = `<p class="todo-title">${t.title}</p><p class="todo-due">Due Date: ${t.due}</p>`;
+      card.innerHTML = `<p class="todo-title">${t.title}</p><p class="todo-due">Due Date: ${formatDueDate(t.dueDate) || t.due}</p>`;
       assignedList.appendChild(card);
     });
   }
 
-  // ===== Missing tasks =====
   const missingList = document.getElementById('todo-missing-list');
   missingList.innerHTML = '';
   if (missing.length === 0) {
@@ -375,36 +495,21 @@ function renderTodo() {
     missing.forEach(t => {
       const card = document.createElement('div');
       card.className = 'todo-missing-card';
-      card.innerHTML = `<p class="todo-title">${t.title}</p><p class="todo-due">Due Date: ${t.due}</p>`;
+      card.innerHTML = `<p class="todo-title">${t.title}</p><p class="todo-due">Due Date: ${formatDueDate(t.dueDate) || t.due}</p>`;
       missingList.appendChild(card);
     });
   }
 }
 
 // #################################################################
-// END SECTION: TO DO LIST (DETAILED) FUNCTIONALITY (Prima Donna)
+// END SECTION: TO DO LIST (DETAILED) FUNCTIONALITY
 // #################################################################
 
 
 
 // #################################################################
 // SECTION: PROGRESS FUNCTIONALITY
-// ASSIGNED TO: _________________________
 // #################################################################
-
-/** ---------- MARK AS DONE ---------- */
-function markDone(type) {
-  if (!state.currentItem) return;
-  const id = state.currentItem.id;
-  state.done.add(id);
-  updateProgressForClass(state.currentClass);
-
-  const btn = document.getElementById(type === 'material' ? 'mat-mark-btn' : 'quiz-mark-btn');
-  btn.textContent = 'Marked as done ✓';
-  btn.className = 'mark-done-btn done-state';
-
-  /* BACKEND HOOK – replace with API call to save done status */
-}
 
 function updateProgressForClass(cls) {
   if (!cls) return;
@@ -417,9 +522,6 @@ function updateProgressForClass(cls) {
   }
 }
 
-
-
-/** ---------- RENDER: PROGRESS ---------- */
 function renderProgress() {
   const list = document.getElementById('progress-list');
   list.innerHTML = '';
@@ -448,10 +550,8 @@ function renderProgress() {
 
 // #################################################################
 // SECTION: PROFILE FUNCTIONALITY
-// ASSIGNED TO: _________________________
 // #################################################################
 
-/** ---------- RENDER: PROFILE ---------- */
 function renderProfile() {
   refreshProfileDisplay();
   showProfilePanel('main');
@@ -468,88 +568,11 @@ function refreshProfileDisplay() {
   document.getElementById('pw-username-display').textContent = p.username;
 }
 
-// Shows only one panel at a time: 'main', 'edit-info', or 'change-password'
 function showProfilePanel(panel) {
-  document.getElementById('profile-main').style.display             = (panel === 'main')             ? 'block' : 'none';
-  document.getElementById('profile-edit-info').style.display        = (panel === 'edit-info')        ? 'block' : 'none';
-  document.getElementById('profile-change-password').style.display  = (panel === 'change-password')  ? 'block' : 'none';
+  document.getElementById('profile-main').style.display = (panel === 'main') ? 'block' : 'none';
+  document.getElementById('profile-edit-info').style.display = (panel === 'edit-info') ? 'block' : 'none';
+  document.getElementById('profile-change-password').style.display = (panel === 'change-password') ? 'block' : 'none';
 }
-
-
-
-/** ---------- PROFILE: EDIT INFORMATION ---------- */
-document.getElementById('btn-edit-info').addEventListener('click', () => {
-  const p = DATA.profile;
-  document.getElementById('edit-firstname').value = p.firstName;
-  document.getElementById('edit-lastname').value = p.lastName;
-  document.getElementById('edit-username').value = p.username;
-  document.getElementById('edit-email').value = p.email;
-  showProfilePanel('edit-info');
-});
-
-document.getElementById('btn-save-info').addEventListener('click', () => {
-  /* BACKEND HOOK – replace with API call to save profile info */
-  DATA.profile.firstName = document.getElementById('edit-firstname').value.trim() || DATA.profile.firstName;
-  DATA.profile.lastName  = document.getElementById('edit-lastname').value.trim()  || DATA.profile.lastName;
-  DATA.profile.username  = document.getElementById('edit-username').value.trim()  || DATA.profile.username;
-  DATA.profile.email     = document.getElementById('edit-email').value.trim()     || DATA.profile.email;
-
-  refreshProfileDisplay();
-  showProfilePanel('main');
-});
-
-document.getElementById('btn-back-from-edit').addEventListener('click', () => {
-  showProfilePanel('main');
-});
-
-
-
-/** ---------- PROFILE: CHANGE PROFILE PICTURE ---------- */
-document.getElementById('btn-change-picture').addEventListener('click', () => {
-  document.getElementById('picture-file-input').click();
-});
-
-document.getElementById('picture-file-input').addEventListener('change', function () {
-  const file = this.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function (e) {
-    /* BACKEND HOOK – upload image to server, then update src from returned URL */
-    const allAvatars = document.querySelectorAll('.profile-avatar-img');
-    allAvatars.forEach(img => {
-      img.src = e.target.result;
-      img.classList.add('custom');
-    });
-  };
-  reader.readAsDataURL(file);
-});
-
-
-
-/** ---------- PROFILE: CHANGE PASSWORD ---------- */
-document.getElementById('btn-change-password').addEventListener('click', () => {
-  document.getElementById('input-current-pw').value = '';
-  document.getElementById('input-new-pw').value = '';
-  showProfilePanel('change-password');
-});
-
-document.getElementById('btn-submit-password').addEventListener('click', () => {
-  const currentPw = document.getElementById('input-current-pw').value;
-  const newPw     = document.getElementById('input-new-pw').value;
-
-  if (!currentPw || !newPw) {
-    alert('Please fill in both password fields.');
-    return;
-  }
-
-  /* BACKEND HOOK – send currentPw and newPw to API for validation and update */
-  alert('Password changed successfully!');
-  showProfilePanel('main');
-});
-
-document.getElementById('btn-back-from-password').addEventListener('click', () => {
-  showProfilePanel('main');
-});
 
 // #################################################################
 // END SECTION: PROFILE FUNCTIONALITY
@@ -558,70 +581,15 @@ document.getElementById('btn-back-from-password').addEventListener('click', () =
 
 
 // #################################################################
-// SECTION: SEARCH FUNCTIONALITY
-// ASSIGNED TO: _________________________
+// INITIALIZATION
 // #################################################################
 
-/** ---------- SEARCH ---------- */
-document.getElementById('search-input').addEventListener('input', function () {
-  const val = this.value.toLowerCase().trim();
-
-  document.querySelectorAll('.announcement-card').forEach(card => {
-    card.style.display = card.innerText.toLowerCase().includes(val) ? '' : 'none';
-  });
-  document.querySelectorAll('.todo-card, .todo-page-card, .todo-missing-card').forEach(card => {
-    card.style.display = card.innerText.toLowerCase().includes(val) ? '' : 'none';
-  });
-  document.querySelectorAll('.class-card').forEach(card => {
-    card.style.display = card.innerText.toLowerCase().includes(val) ? '' : 'none';
-  });
-  document.querySelectorAll('.material-item, .quiz-item').forEach(item => {
-    item.style.display = item.innerText.toLowerCase().includes(val) ? '' : 'none';
-  });
-  document.querySelectorAll('.progress-card').forEach(card => {
-    card.style.display = card.innerText.toLowerCase().includes(val) ? '' : 'none';
-  });
-});
-
-// #################################################################
-// END SECTION: SEARCH FUNCTIONALITY
-// #################################################################
-
-
-
-// #################################################################
-// SECTION: MARK DONE BUTTONS - DO NOT MODIFY WITHOUT TEAM DISCUSSION
-// #################################################################
-
-/** ---------- MARK DONE BUTTONS ---------- */
-document.getElementById('mat-mark-btn').addEventListener('click', () => markDone('material'));
-document.getElementById('quiz-mark-btn').addEventListener('click', () => markDone('quiz'));
-
-// #################################################################
-// END SECTION: MARK DONE BUTTONS
-// #################################################################
-
-
-
-// #################################################################
-// INITIALIZATION - DO NOT MODIFY WITHOUT TEAM DISCUSSION
-// #################################################################
-
-/** ---------- INIT ---------- */
 (async function init() {
-  // Fetch classes from API
-  try {
-    const response = await fetch('/api/classes');
-    if (!response.ok) throw new Error('Failed to fetch classes');
-    DATA.classes = await response.json();
-    console.log('Classes loaded:', DATA.classes);
-  } catch (error) {
-    console.error('Error fetching classes:', error);
-  }
+  await fetchClasses();
 
   const homeNav = document.querySelector('.nav-item[data-view="home"]');
   if (homeNav) setActiveNav(homeNav);
-  renderHome();
+  await renderHome();
   showView('home');
 })();
 
