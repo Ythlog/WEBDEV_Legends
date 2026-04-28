@@ -4,55 +4,76 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Eduhub – Student Dashboard</title>
-  <link rel="stylesheet" href="dashboard.css" />
+  <link rel="stylesheet" href="/studentdashboard/dashboard.css" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
 </head>
 <body>
 <div class="app-wrapper">
 
-  <!-- ===== SIDEBAR ===== -->
+  <!-- ============================================================ -->
+  <!-- SIDEBAR - DO NOT MODIFY WITHOUT TEAM DISCUSSION              -->
+  <!-- ============================================================ -->
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <img src="logo.png" alt="Eduhub Logo" class="logo-icon" />
+      <img src="/studentdashboard/logo.png" alt="Eduhub Logo" class="logo-icon" />
       <span class="logo-text">Eduhub</span>
     </div>
     <nav class="sidebar-nav">
       <a href="#" class="nav-item active" data-view="home">
-        <img src="home.png" alt="Home" class="nav-icon" />
+        <img src="/studentdashboard/home.png" alt="Home" class="nav-icon" />
         <span>Home</span>
       </a>
       <a href="#" class="nav-item" data-view="classes">
-        <img src="course.png" alt="Classes" class="nav-icon" />
+        <img src="/studentdashboard/course.png" alt="Classes" class="nav-icon" />
         <span>Classes</span>
       </a>
       <a href="#" class="nav-item" data-view="progress">
-        <img src="progress.png" alt="Progress" class="nav-icon" />
+        <img src="/studentdashboard/progress.png" alt="Progress" class="nav-icon" />
         <span>Progress</span>
       </a>
       <a href="#" class="nav-item" data-view="todo">
-        <img src="list.png" alt="To Do List" class="nav-icon" />
+        <img src="/studentdashboard/list.png" alt="To Do List" class="nav-icon" />
         <span>To do List</span>
       </a>
       <a href="#" class="nav-item" data-view="profile">
-        <img src="profile.png" alt="Profile" class="nav-icon" />
+        <img src="/studentdashboard/profile.png" alt="Profile" class="nav-icon" />
         <span>Profile</span>
       </a>
     </nav>
   </aside>
+  <!-- ============================================================ -->
+  <!-- END SIDEBAR                                                  -->
+  <!-- ============================================================ -->
 
-  <!-- ===== MAIN CONTENT ===== -->
+
+
+  <!-- ============================================================ -->
+  <!-- MAIN CONTENT AREA                                            -->
+  <!-- ============================================================ -->
   <main class="main-content">
+
+    <!-- ============================================================ -->
+    <!-- TOP BAR - SHARED HEADER                                      -->
+    <!-- ============================================================ -->
     <header class="top-bar">
       <div class="search-bar">
-        <img src="blacksearch.png" alt="Search" class="search-icon" />
+        <img src="/studentdashboard/blacksearch.png" alt="Search" class="search-icon" />
         <input type="text" placeholder="Search" id="search-input" />
       </div>
       <div class="user-avatar">
-        <img src="blackprofile.png" alt="User" class="avatar-icon" />
+        <img src="/studentdashboard/blackprofile.png" alt="User" class="avatar-icon" />
       </div>
     </header>
+    <!-- ============================================================ -->
+    <!-- END TOP BAR                                                  -->
+    <!-- ============================================================ -->
 
-    <!-- ===== VIEW: HOME ===== -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 1: HOME VIEW                                         -->
+    <!-- ASSIGNED TO: Sales Animal                                    -->
+    <!-- ############################################################ -->
     <div class="page-body" id="view-home">
       <h1 class="welcome-heading">Welcome, Biena!</h1>
       <div class="content-columns">
@@ -64,15 +85,31 @@
         </section>
       </div>
     </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 1: HOME VIEW                                     -->
+    <!-- ############################################################ -->
 
-    <!-- ===== VIEW: CLASSES LIST ===== -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 2: CLASSES LIST VIEW                                 -->
+    <!-- ASSIGNED TO: Prima Donna                                     -->
+    <!-- ############################################################ -->
     <div class="page-body hidden" id="view-classes">
       <h1 class="page-heading">Continue learning with your courses, Biena!</h1>
       <p class="section-label">Classes</p>
       <div class="classes-grid" id="classes-grid"></div>
     </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 2: CLASSES LIST VIEW                             -->
+    <!-- ############################################################ -->
 
-    <!-- ===== VIEW: CLASS DETAIL ===== -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 3: CLASS DETAIL VIEW                                 -->
+    <!-- ASSIGNED TO: Prima Donna                                     -->
+    <!-- ############################################################ -->
     <div class="page-body hidden" id="view-class-detail">
       <h1 class="page-heading">Continue learning with your courses, Biena!</h1>
       <p class="section-label" id="detail-class-name"></p>
@@ -82,8 +119,16 @@
         <div id="quizzes-list"></div>
       </div>
     </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 3: CLASS DETAIL VIEW                             -->
+    <!-- ############################################################ -->
 
-    <!-- ===== VIEW: MATERIAL DETAIL ===== -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 4: MATERIAL DETAIL VIEW                              -->
+    <!-- ASSIGNED TO: Prima Donna                                     -->
+    <!-- ############################################################ -->
     <div class="page-body hidden" id="view-material-detail">
       <h1 class="page-heading">Continue learning with your courses, Biena!</h1>
       <p class="section-label" id="mat-class-name"></p>
@@ -97,8 +142,16 @@
         <button class="mark-done-btn dark" id="mat-mark-btn">Mark as done</button>
       </div>
     </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 4: MATERIAL DETAIL VIEW                          -->
+    <!-- ############################################################ -->
 
-    <!-- ===== VIEW: QUIZ DETAIL ===== -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 5: QUIZ DETAIL VIEW                                  -->
+    <!-- ASSIGNED TO: Prima Donna                                     -->
+    <!-- ############################################################ -->
     <div class="page-body hidden" id="view-quiz-detail">
       <h1 class="page-heading">Continue learning with your courses, Biena!</h1>
       <p class="section-label" id="quiz-class-name"></p>
@@ -115,14 +168,30 @@
         <button class="mark-done-btn yellow" id="quiz-mark-btn">Mark as done</button>
       </div>
     </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 5: QUIZ DETAIL VIEW                              -->
+    <!-- ############################################################ -->
 
-    <!-- ===== VIEW: PROGRESS ===== -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 6: PROGRESS VIEW                                     -->
+    <!-- ASSIGNED TO: _________________________                       -->
+    <!-- ############################################################ -->
     <div class="page-body hidden" id="view-progress">
       <h1 class="page-heading">Keep track of your progress</h1>
       <div class="progress-list" id="progress-list"></div>
     </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 6: PROGRESS VIEW                                 -->
+    <!-- ############################################################ -->
 
-    <!-- ===== VIEW: TO DO LIST ===== -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 7: TO DO LIST VIEW                                   -->
+    <!-- ASSIGNED TO: Prima Donna                                     -->
+    <!-- ############################################################ -->
     <div class="page-body hidden" id="view-todo">
       <h1 class="page-heading">See your tasks!</h1>
       <p class="section-label">To Do List</p>
@@ -135,15 +204,23 @@
         <div id="todo-missing-list"></div>
       </div>
     </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 7: TO DO LIST VIEW                               -->
+    <!-- ############################################################ -->
 
-    <!-- ===== VIEW: PROFILE ===== -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 8: PROFILE VIEW                                      -->
+    <!-- ASSIGNED TO: _________________________                       -->
+    <!-- ############################################################ -->
     <div class="page-body hidden" id="view-profile">
 
-      <!-- Profile Main -->
+      <!-- ========== Profile Main Panel ========== -->
       <div id="profile-main" style="display:none;">
         <div class="profile-header">
           <div class="profile-avatar-circle">
-            <img src="blackprofile.png" alt="Avatar" class="profile-avatar-img" id="profile-avatar-preview" />
+            <img src="/studentdashboard/blackprofile.png" alt="Avatar" class="profile-avatar-img" id="profile-avatar-preview" />
           </div>
           <span class="profile-username" id="profile-username-display">bienrose</span>
         </div>
@@ -187,11 +264,11 @@
         </div>
       </div>
 
-      <!-- Edit Information Panel -->
+      <!-- ========== Edit Information Panel ========== -->
       <div id="profile-edit-info" style="display:none;">
         <div class="profile-header">
           <div class="profile-avatar-circle">
-            <img src="blackprofile.png" alt="Avatar" class="profile-avatar-img" />
+            <img src="/studentdashboard/blackprofile.png" alt="Avatar" class="profile-avatar-img" />
           </div>
           <span class="profile-username" id="edit-username-display">bienrose</span>
         </div>
@@ -229,11 +306,11 @@
         </div>
       </div>
 
-      <!-- Change Password Panel -->
+      <!-- ========== Change Password Panel ========== -->
       <div id="profile-change-password" style="display:none;">
         <div class="profile-header">
           <div class="profile-avatar-circle">
-            <img src="blackprofile.png" alt="Avatar" class="profile-avatar-img" />
+            <img src="/studentdashboard/blackprofile.png" alt="Avatar" class="profile-avatar-img" />
           </div>
           <span class="profile-username" id="pw-username-display">bienrose</span>
         </div>
@@ -262,11 +339,24 @@
       </div>
 
     </div>
-    <!-- end view-profile -->
+    <!-- ############################################################ -->
+    <!-- END SECTION 8: PROFILE VIEW                                  -->
+    <!-- ############################################################ -->
 
   </main>
+  <!-- ============================================================ -->
+  <!-- END MAIN CONTENT                                              -->
+  <!-- ============================================================ -->
+
 </div>
 
-<script src="dashboard.js"></script>
+<!-- ============================================================ -->
+<!-- JAVASCRIPT - DO NOT MODIFY WITHOUT TEAM DISCUSSION            -->
+<!-- ============================================================ -->
+<script src="/studentdashboard/dashboard.js"></script>
+<!-- ============================================================ -->
+<!-- END JAVASCRIPT                                                -->
+<!-- ============================================================ -->
+
 </body>
 </html>
