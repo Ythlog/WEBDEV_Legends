@@ -3,13 +3,23 @@
   Uses one DATA object, one state, and view-switching.
 ============================================================= */
 
+
+
+// ##################################################################
+// SHARED DATA OBJECT - Add new entries here with team notice
+// ##################################################################
+
 /** ---------- DATA (replace with API calls later) ---------- */
 const DATA = {
   student: 'Biena',
+  
+  // ========== Announcements Data ==========
   announcements: [
     { main: 'Prof. Catherine Sorbito posted a new lesson', sub: 'Check it out' },
     { main: 'A new quiz was posted in your Web Dev Class', sub: 'Due dates are important, complete your assignments today' }
   ],
+  
+  // ========== Todos Data ==========
   todos: [
     { title: 'Open learning material 1 in Web Development', due: 'June 12, 2026', dueDate: new Date('2026-06-12') },
     { title: 'Read Programming Module', due: 'June 12, 2026', dueDate: new Date('2026-06-12') },
@@ -22,6 +32,8 @@ const DATA = {
     { title: 'Read Software Engineering Module 2', due: 'May 8, 2026', dueDate: new Date('2026-05-08') },
     { title: 'Practice Data Structures Problems', due: 'May 12, 2026', dueDate: new Date('2026-05-12') }
   ],
+  
+  // ========== Classes Data ==========
   classes: [
     {
       id: 'webdev',
@@ -69,11 +81,15 @@ const DATA = {
       ]
     }
   ],
+  
+  // ========== Progress Data ==========
   progress: [
     { classTitle: 'Web Development', completed: 4, total: 10 },
     { classTitle: 'Software Engineering', completed: 9, total: 10 },
     { classTitle: 'Data Structures', completed: 4, total: 7 }
   ],
+  
+  // ========== Profile Data ==========
   /* BACKEND HOOK – replace with API call to get user profile */
   profile: {
     firstName: 'Biena',
@@ -82,6 +98,16 @@ const DATA = {
     email: 'bienarose@gmail.com'
   }
 };
+
+// ##################################################################
+// END SHARED DATA OBJECT
+// ##################################################################
+
+
+
+// ##################################################################
+// SHARED STATE - Add new state properties here with team notice
+// ##################################################################
 
 /** ---------- STATE ---------- */
 const state = {
@@ -92,6 +118,16 @@ const state = {
   done: new Set()
 };
 
+// ##################################################################
+// END SHARED STATE
+// ##################################################################
+
+
+
+// ##################################################################
+// SHARED: VIEW SWITCHING - DO NOT MODIFY WITHOUT TEAM DISCUSSION
+// ##################################################################
+
 /** ---------- VIEW SWITCHING ---------- */
 const allViews = document.querySelectorAll('.page-body');
 
@@ -100,6 +136,16 @@ function showView(viewId) {
   document.getElementById('view-' + viewId).classList.remove('hidden');
   state.currentView = viewId;
 }
+
+// ##################################################################
+// END SHARED: VIEW SWITCHING
+// ##################################################################
+
+
+
+// ##################################################################
+// SHARED: SIDEBAR NAVIGATION - DO NOT MODIFY WITHOUT TEAM DISCUSSION
+// ##################################################################
 
 /** ---------- SIDEBAR NAVIGATION ---------- */
 function setActiveNav(el) {
@@ -124,8 +170,21 @@ document.querySelectorAll('.nav-item').forEach(link => {
   });
 });
 
+// ##################################################################
+// END SHARED: SIDEBAR NAVIGATION
+// ##################################################################
+
+
+
+// #################################################################
+// SECTION: HOME SCREEN FUNCTIONALITY
+// ASSIGNED TO: Sales Animal
+// Handles: Announcements display + Short To-Do List on home view
+// #################################################################
+
 /** ---------- RENDER: HOME ---------- */
 function renderHome() {
+  // ===== Announcements Section =====
   const annSection = document.getElementById('announcements-section');
   annSection.innerHTML = '<h2 class="section-title">Announcements</h2>';
   DATA.announcements.forEach(a => {
@@ -135,6 +194,7 @@ function renderHome() {
     annSection.appendChild(card);
   });
 
+  // ===== Short To-Do List Section =====
   const todoSection = document.getElementById('todo-section');
   todoSection.innerHTML = '<h2 class="section-title">To Do List</h2>';
   const today = new Date();
@@ -147,42 +207,17 @@ function renderHome() {
   });
 }
 
-/** ---------- RENDER: TO DO LIST PAGE ---------- */
-function renderTodo() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+// #################################################################
+// END SECTION: HOME SCREEN FUNCTIONALITY (Sales Animal)
+// #################################################################
 
-  const assigned = DATA.todos.filter(t => t.dueDate >= today);
-  const missing  = DATA.todos.filter(t => t.dueDate < today);
 
-  // Assigned tasks
-  const assignedList = document.getElementById('todo-assigned-list');
-  assignedList.innerHTML = '';
-  if (assigned.length === 0) {
-    assignedList.innerHTML = '<div class="todo-empty">No assigned tasks</div>';
-  } else {
-    assigned.forEach(t => {
-      const card = document.createElement('div');
-      card.className = 'todo-page-card';
-      card.innerHTML = `<p class="todo-title">${t.title}</p><p class="todo-due">Due Date: ${t.due}</p>`;
-      assignedList.appendChild(card);
-    });
-  }
 
-  // Missing tasks
-  const missingList = document.getElementById('todo-missing-list');
-  missingList.innerHTML = '';
-  if (missing.length === 0) {
-    missingList.innerHTML = '<div class="todo-empty">No assigned tasks was missed</div>';
-  } else {
-    missing.forEach(t => {
-      const card = document.createElement('div');
-      card.className = 'todo-missing-card';
-      card.innerHTML = `<p class="todo-title">${t.title}</p><p class="todo-due">Due Date: ${t.due}</p>`;
-      missingList.appendChild(card);
-    });
-  }
-}
+// #################################################################
+// SECTION: CLASSES FUNCTIONALITY
+// ASSIGNED TO: Prima Donna
+// Handles: Classes grid, Class detail, Material detail, Quiz detail
+// #################################################################
 
 /** ---------- RENDER: CLASSES GRID ---------- */
 function renderClasses() {
@@ -197,11 +232,14 @@ function renderClasses() {
   });
 }
 
+
+
 /** ---------- RENDER: CLASS DETAIL ---------- */
 function openClassDetail(cls) {
   state.currentClass = cls;
   document.getElementById('detail-class-name').textContent = cls.title;
 
+  // Materials list
   const matList = document.getElementById('materials-list');
   matList.innerHTML = '';
   cls.materials.forEach(mat => {
@@ -212,6 +250,7 @@ function openClassDetail(cls) {
     matList.appendChild(el);
   });
 
+  // Quizzes list
   document.getElementById('quizzes-label').textContent = cls.title + ' Quizzes';
   const quizList = document.getElementById('quizzes-list');
   quizList.innerHTML = '';
@@ -225,6 +264,8 @@ function openClassDetail(cls) {
 
   showView('class-detail');
 }
+
+
 
 /** ---------- RENDER: MATERIAL DETAIL ---------- */
 function openMaterialDetail(mat, className) {
@@ -248,6 +289,8 @@ function openMaterialDetail(mat, className) {
   showView('material-detail');
 }
 
+
+
 /** ---------- RENDER: QUIZ DETAIL ---------- */
 function openQuizDetail(quiz, className) {
   state.currentItem = quiz;
@@ -260,6 +303,7 @@ function openQuizDetail(quiz, className) {
   document.getElementById('quiz-link').textContent = quiz.linkLabel;
   document.getElementById('quiz-description').textContent = quiz.description;
 
+  // Instructions list
   const instrList = document.getElementById('quiz-instructions');
   instrList.innerHTML = '';
   quiz.instructions.forEach(instr => {
@@ -279,6 +323,66 @@ function openQuizDetail(quiz, className) {
 
   showView('quiz-detail');
 }
+
+// #################################################################
+// END SECTION: CLASSES FUNCTIONALITY (Prima Donna)
+// #################################################################
+
+
+
+// #################################################################
+// SECTION: TO DO LIST (DETAILED) FUNCTIONALITY
+// ASSIGNED TO: Prima Donna
+// Handles: Full To-Do List page with Assigned & Missing tasks
+// #################################################################
+
+/** ---------- RENDER: TO DO LIST PAGE ---------- */
+function renderTodo() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const assigned = DATA.todos.filter(t => t.dueDate >= today);
+  const missing  = DATA.todos.filter(t => t.dueDate < today);
+
+  // ===== Assigned tasks =====
+  const assignedList = document.getElementById('todo-assigned-list');
+  assignedList.innerHTML = '';
+  if (assigned.length === 0) {
+    assignedList.innerHTML = '<div class="todo-empty">No assigned tasks</div>';
+  } else {
+    assigned.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'todo-page-card';
+      card.innerHTML = `<p class="todo-title">${t.title}</p><p class="todo-due">Due Date: ${t.due}</p>`;
+      assignedList.appendChild(card);
+    });
+  }
+
+  // ===== Missing tasks =====
+  const missingList = document.getElementById('todo-missing-list');
+  missingList.innerHTML = '';
+  if (missing.length === 0) {
+    missingList.innerHTML = '<div class="todo-empty">No assigned tasks was missed</div>';
+  } else {
+    missing.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'todo-missing-card';
+      card.innerHTML = `<p class="todo-title">${t.title}</p><p class="todo-due">Due Date: ${t.due}</p>`;
+      missingList.appendChild(card);
+    });
+  }
+}
+
+// #################################################################
+// END SECTION: TO DO LIST (DETAILED) FUNCTIONALITY (Prima Donna)
+// #################################################################
+
+
+
+// #################################################################
+// SECTION: PROGRESS FUNCTIONALITY
+// ASSIGNED TO: _________________________
+// #################################################################
 
 /** ---------- MARK AS DONE ---------- */
 function markDone(type) {
@@ -305,6 +409,8 @@ function updateProgressForClass(cls) {
   }
 }
 
+
+
 /** ---------- RENDER: PROGRESS ---------- */
 function renderProgress() {
   const list = document.getElementById('progress-list');
@@ -325,6 +431,17 @@ function renderProgress() {
     list.appendChild(card);
   });
 }
+
+// #################################################################
+// END SECTION: PROGRESS FUNCTIONALITY
+// #################################################################
+
+
+
+// #################################################################
+// SECTION: PROFILE FUNCTIONALITY
+// ASSIGNED TO: _________________________
+// #################################################################
 
 /** ---------- RENDER: PROFILE ---------- */
 function renderProfile() {
@@ -349,6 +466,8 @@ function showProfilePanel(panel) {
   document.getElementById('profile-edit-info').style.display        = (panel === 'edit-info')        ? 'block' : 'none';
   document.getElementById('profile-change-password').style.display  = (panel === 'change-password')  ? 'block' : 'none';
 }
+
+
 
 /** ---------- PROFILE: EDIT INFORMATION ---------- */
 document.getElementById('btn-edit-info').addEventListener('click', () => {
@@ -375,12 +494,14 @@ document.getElementById('btn-back-from-edit').addEventListener('click', () => {
   showProfilePanel('main');
 });
 
+
+
 /** ---------- PROFILE: CHANGE PROFILE PICTURE ---------- */
 document.getElementById('btn-change-picture').addEventListener('click', () => {
   document.getElementById('picture-file-input').click();
 });
 
-document.getElementById('picture-file-input').addEventListener('change', function () {
+document.getElementById('picture-file-input').addEventListener('click', function () {
   const file = this.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -394,6 +515,8 @@ document.getElementById('picture-file-input').addEventListener('change', functio
   };
   reader.readAsDataURL(file);
 });
+
+
 
 /** ---------- PROFILE: CHANGE PASSWORD ---------- */
 document.getElementById('btn-change-password').addEventListener('click', () => {
@@ -420,6 +543,17 @@ document.getElementById('btn-back-from-password').addEventListener('click', () =
   showProfilePanel('main');
 });
 
+// #################################################################
+// END SECTION: PROFILE FUNCTIONALITY
+// #################################################################
+
+
+
+// #################################################################
+// SECTION: SEARCH FUNCTIONALITY
+// ASSIGNED TO: _________________________
+// #################################################################
+
 /** ---------- SEARCH ---------- */
 document.getElementById('search-input').addEventListener('input', function () {
   const val = this.value.toLowerCase().trim();
@@ -441,9 +575,29 @@ document.getElementById('search-input').addEventListener('input', function () {
   });
 });
 
+// #################################################################
+// END SECTION: SEARCH FUNCTIONALITY
+// #################################################################
+
+
+
+// #################################################################
+// SECTION: MARK DONE BUTTONS - DO NOT MODIFY WITHOUT TEAM DISCUSSION
+// #################################################################
+
 /** ---------- MARK DONE BUTTONS ---------- */
 document.getElementById('mat-mark-btn').addEventListener('click', () => markDone('material'));
 document.getElementById('quiz-mark-btn').addEventListener('click', () => markDone('quiz'));
+
+// #################################################################
+// END SECTION: MARK DONE BUTTONS
+// #################################################################
+
+
+
+// #################################################################
+// INITIALIZATION - DO NOT MODIFY WITHOUT TEAM DISCUSSION
+// #################################################################
 
 /** ---------- INIT ---------- */
 (function init() {
@@ -452,3 +606,7 @@ document.getElementById('quiz-mark-btn').addEventListener('click', () => markDon
   renderHome();
   showView('home');
 })();
+
+// #################################################################
+// END INITIALIZATION
+// #################################################################
