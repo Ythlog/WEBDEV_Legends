@@ -62,7 +62,7 @@ async function markDone(type) {
 // ##################################################################
 
 const DATA = {
-  student: 'Biena',
+  profileLoaded: false,
 
   announcements: [
     { main: 'Prof. Catherine Sorbito posted a new lesson', sub: 'Check it out' },
@@ -92,15 +92,67 @@ const DATA = {
   ],
 
   profile: {
-    firstName: 'Biena',
-    lastName: 'Bahay',
-    username: 'bienrose',
-    email: 'bienarose@gmail.com'
+    firstName: '',
+    lastName: '',
+    username: '',
+    email: '',
+    role: ''
   }
 };
 
 // ##################################################################
 // END SHARED DATA OBJECT
+// ##################################################################
+
+
+
+// ##################################################################
+// SHARED: FETCH PROFILE - Gets logged-in user from localStorage
+// ##################################################################
+
+async function fetchProfile() {
+  // Check localStorage for saved user data from login
+  const savedUser = localStorage.getItem('eduhub_user');
+  
+  if (savedUser) {
+    try {
+      const user = JSON.parse(savedUser);
+      DATA.profile.firstName = user.first_name || user.username || 'Student';
+      DATA.profile.lastName = user.last_name || '';
+      DATA.profile.username = user.username || 'student';
+      DATA.profile.email = user.email || '';
+      DATA.profile.role = user.role || 'student';
+      DATA.profileLoaded = true;
+      console.log('Profile loaded from localStorage:', DATA.profile);
+      return;
+    } catch (e) {
+      console.error('Error parsing saved user:', e);
+    }
+  }
+  
+  // Fallback: try API (if you add session support later)
+  try {
+    const response = await fetch('/api/profile');
+    if (response.ok) {
+      const user = await response.json();
+      DATA.profile.firstName = user.first_name || user.username || 'Student';
+      DATA.profile.lastName = user.last_name || '';
+      DATA.profile.username = user.username || 'student';
+      DATA.profile.email = user.email || '';
+      DATA.profile.role = user.role || 'student';
+      DATA.profileLoaded = true;
+      return;
+    }
+  } catch (e) {
+    console.error('Profile API not available yet');
+  }
+  
+  // Last resort: keep defaults
+  DATA.profileLoaded = true;
+}
+
+// ##################################################################
+// END SHARED: FETCH PROFILE
 // ##################################################################
 
 
@@ -116,6 +168,19 @@ const state = {
   currentType: null,
   done: new Set()
 };
+
+function updateAllHeadings() {
+  const firstName = DATA.profile.firstName || DATA.profile.username || 'Student';
+  
+  // Update all page headings to include the user's first name
+  document.querySelectorAll('.page-heading').forEach(heading => {
+    // If heading ends with "courses!" add the name after it
+    if (heading.textContent.includes('Continue learning with your courses')) {
+      heading.textContent = `Continue learning with your courses, ${firstName}!`;
+    }
+  });
+}
+
 
 // ##################################################################
 // END SHARED STATE
@@ -175,13 +240,30 @@ document.querySelectorAll('.nav-item').forEach(link => {
 
 // #################################################################
 // SECTION: HOME SCREEN FUNCTIONALITY
+// ASSIGNED TO: Sales Animal
+// Handles: Welcome message with username, Announcements, Scrollable To-Do List from classes
 // #################################################################
 
 async function renderHome() {
+  // ===== Fetch profile if not loaded yet =====
+  if (!DATA.profileLoaded) {
+    await fetchProfile();
+  }
+
+  updateAllHeadings(); 
+
   if (!DATA.classesLoaded) {
     await fetchClasses();
   }
 
+  // ===== Welcome Heading with logged-in username =====
+  const welcomeHeading = document.querySelector('#view-home .welcome-heading');
+  if (welcomeHeading) {
+    const displayName = DATA.profile.firstName || DATA.profile.username || 'Student';
+    welcomeHeading.textContent = `Welcome, ${displayName}!`;
+  }
+
+  // ===== Announcements Section =====
   const annSection = document.getElementById('announcements-section');
   annSection.innerHTML = '<h2 class="section-title">Announcements</h2>';
   DATA.announcements.forEach(a => {
@@ -191,9 +273,11 @@ async function renderHome() {
     annSection.appendChild(card);
   });
 
+  // ===== Scrollable To-Do List from Classes =====
   const todoSection = document.getElementById('todo-section');
   todoSection.innerHTML = '<h2 class="section-title">To Do List</h2>';
 
+  // Get current week range (Monday 00:00 to Sunday 23:59)
   const today = new Date();
   const dayOfWeek = today.getDay();
   const monday = new Date(today);
@@ -204,6 +288,7 @@ async function renderHome() {
   sunday.setDate(monday.getDate() + 6);
   sunday.setHours(23, 59, 59, 999);
 
+  // Collect all pending quizzes/assignments due this week
   const pendingItems = [];
   DATA.classes.forEach(cls => {
     if (cls.quizzes && cls.quizzes.length > 0) {
@@ -223,8 +308,10 @@ async function renderHome() {
     }
   });
 
+  // Sort by due date (closest first)
   pendingItems.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
 
+  // Create scrollable container
   const scrollContainer = document.createElement('div');
   scrollContainer.className = 'todo-scroll-container';
 
@@ -247,7 +334,7 @@ async function renderHome() {
 }
 
 // #################################################################
-// END SECTION: HOME SCREEN FUNCTIONALITY
+// END SECTION: HOME SCREEN FUNCTIONALITY (Sales Animal)
 // #################################################################
 
 
@@ -256,8 +343,6 @@ async function renderHome() {
 // SECTION: CLASSES FUNCTIONALITY
 // #################################################################
 
-// ✅ FIX: Store raw date strings — do NOT pre-convert to Date objects here.
-// formatDueDate() handles all conversion safely.
 function normalizeClass(raw) {
   return {
     id: raw.id,
@@ -269,8 +354,6 @@ function normalizeClass(raw) {
       title: m.title || m.name || 'Untitled Material',
       description: m.description || '',
       pdfUrl: m.pdfUrl || m.pdf_url || '#',
-
-      // ✅ FIXED: Keep raw string value — do NOT wrap in new Date() here
       dueDate: m.dueDate || m.due_date || null
     })),
 
@@ -280,24 +363,18 @@ function normalizeClass(raw) {
       description: q.description || '',
       link: q.link || q.url || '#',
       linkLabel: q.linkLabel || q.link_label || 'Open Quiz',
-
-      // ✅ FIXED: Keep raw string value — do NOT wrap in new Date() here
       dueDate: q.dueDate || q.due_date || null,
-
       instructions: q.instructions || []
     }))
   };
 }
 
-// Converts any date value to a readable string.
-// Handles: ISO strings with Z (UTC), plain YYYY-MM-DD, Date objects, timestamps.
 function formatDueDate(dateVal) {
   if (!dateVal) return null;
 
   const d = new Date(dateVal);
   if (isNaN(d.getTime())) return null;
 
-  // Convert UTC → Philippine Time (UTC+8)
   const phTime = new Date(d.getTime() + (8 * 60 * 60 * 1000));
 
   return phTime.toLocaleString('en-US', {
@@ -356,6 +433,7 @@ async function renderClasses() {
 
 /** ---------- RENDER: CLASS DETAIL ---------- */
 function openClassDetail(cls) {
+  updateAllHeadings(); 
   state.currentClass = cls;
   document.getElementById('detail-class-name').textContent = cls.title;
 
@@ -385,6 +463,7 @@ function openClassDetail(cls) {
 
 /** ---------- RENDER: MATERIAL DETAIL ---------- */
 function openMaterialDetail(mat, className) {
+  updateAllHeadings(); 
   state.currentItem = mat;
   state.currentType = 'material';
 
@@ -415,6 +494,7 @@ function openMaterialDetail(mat, className) {
 
 /** ---------- RENDER: QUIZ DETAIL ---------- */
 function openQuizDetail(quiz, className) {
+  updateAllHeadings(); 
   state.currentItem = quiz;
   state.currentType = 'quiz';
 
@@ -450,7 +530,6 @@ function openQuizDetail(quiz, className) {
       btn.className = 'mark-done-btn yellow';
     }
 
-    // KEEP SWEETALERT LOGIC (unchanged)
     btn.onclick = () => markDone('quiz');
   }
 
@@ -585,6 +664,7 @@ function showProfilePanel(panel) {
 // #################################################################
 
 (async function init() {
+  await fetchProfile();
   await fetchClasses();
 
   const homeNav = document.querySelector('.nav-item[data-view="home"]');
