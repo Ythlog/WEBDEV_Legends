@@ -78,7 +78,6 @@ app.get("/api/classes", async (req, res) => {
 
         for (const cls of classes) {
 
-            // ✅ FIX: include due_date
             const materials = await conn.query(
                 "SELECT id, class_id, title, description, pdf_url, sort_order, due_date, created_at FROM materials WHERE class_id = ? ORDER BY sort_order",
                 [cls.id]
@@ -96,28 +95,22 @@ app.get("/api/classes", async (req, res) => {
                 professor: cls.professor,
                 created_at: cls.created_at,
 
-                // ✅ FIXED MATERIALS
                 materials: materials.map(m => ({
                     id: m.id,
                     title: m.title,
                     description: m.description,
                     pdfUrl: m.pdf_url,
-
-                    // ✅ FIX: convert date properly
                     dueDate: m.due_date
                         ? new Date(m.due_date).toISOString()
                         : null
                 })),
 
-                // ✅ FIXED QUIZZES
                 quizzes: quizzes.map(q => ({
                     id: q.id,
                     title: q.title,
                     description: q.description,
                     link: q.link,
                     linkLabel: q.link_label,
-
-                    // ✅ FIX: convert date properly
                     dueDate: q.due_date
                         ? new Date(q.due_date).toISOString()
                         : null
@@ -135,34 +128,76 @@ app.get("/api/classes", async (req, res) => {
         if (conn) conn.release();
     }
 });
+
+
 // =====================================================
-// MARK AS DONE / UNDONE (FIX 404 ERROR)
+// ✅ COMPLETIONS (DB)
 // =====================================================
+app.get("/api/completions", async (req, res) => {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ message: "Missing userId" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const rows = await conn.query(
+            "SELECT item_type, item_id FROM task_completions WHERE user_id = ?",
+            [userId]
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error("completions error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
 
 // Mark as done
-app.post("/api/mark-done/:id", async (req, res) => {
-    const { id } = req.params;
+app.post("/api/mark-done", async (req, res) => {
+    const { userId, itemType, itemId } = req.body;
+    if (!userId || !itemType || !itemId) {
+        return res.status(400).json({ message: "Missing fields" });
+    }
 
+    let conn;
     try {
-        // You can connect this to DB later
-        console.log(`Item ${id} marked as done`);
+        conn = await pool.getConnection();
+        await conn.query(
+            `INSERT INTO task_completions (user_id, item_type, item_id)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE completed_at = NOW()`,
+            [userId, itemType, itemId]
+        );
         res.json({ success: true });
     } catch (err) {
         console.error("mark-done error:", err);
         res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
     }
 });
 
 // Mark as undone
-app.post("/api/mark-undone/:id", async (req, res) => {
-    const { id } = req.params;
+app.post("/api/mark-undone", async (req, res) => {
+    const { userId, itemType, itemId } = req.body;
+    if (!userId || !itemType || !itemId) {
+        return res.status(400).json({ message: "Missing fields" });
+    }
 
+    let conn;
     try {
-        console.log(`Item ${id} marked as undone`);
+        conn = await pool.getConnection();
+        await conn.query(
+            "DELETE FROM task_completions WHERE user_id = ? AND item_type = ? AND item_id = ?",
+            [userId, itemType, itemId]
+        );
         res.json({ success: true });
     } catch (err) {
         console.error("mark-undone error:", err);
         res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
     }
 });
 
@@ -357,16 +392,16 @@ app.post("/api/login", async (req, res) => {
         }
 
         res.json({
-        message: "Login successful.",
-        user: {
-            id: user.id,
-            first_name: user.first_name,
-            last_name: user.last_name,
-            username: user.username,
-            email: user.email,
-            role: user.role
-        }
-    });
+            message: "Login successful.",
+            user: {
+                id: user.id,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                username: user.username,
+                email: user.email,
+                role: user.role
+            }
+        });
     } catch (err) {
         console.error("Login error:", err);
         res.status(500).json({ message: "Server error: " + err.message });

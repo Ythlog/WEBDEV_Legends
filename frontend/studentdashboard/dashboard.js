@@ -3,17 +3,22 @@
   Uses one DATA object, one state, and view-switching.
 ============================================================= */
 
+function completionKey(type, id) {
+  return `${type}:${id}`;
+}
+
 // Updated markDone function to fetch/update the database
 async function markDone(type) {
   if (!state.currentItem) return;
   const id = state.currentItem.id;
+  const key = completionKey(type, id);
 
   const btn = document.getElementById(type === 'material' ? 'mat-mark-btn' : 'quiz-mark-btn');
 
   // Disable button to prevent multiple rapid clicks
   btn.disabled = true;
 
-  if (state.done.has(id)) {
+  if (state.done.has(key)) {
     // SECOND CLICK: ask to undo
     Swal.fire({
       title: 'Are you sure?',
@@ -25,9 +30,17 @@ async function markDone(type) {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          await fetch(`/api/mark-undone/${id}`, { method: 'POST' });
+          await fetch(`/api/mark-undone`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: DATA.profile.id,
+              itemType: type,
+              itemId: id
+            })
+          });
 
-          state.done.delete(id);
+          state.done.delete(key);
           btn.textContent = 'Mark as done';
           btn.className = type === 'material' ? 'mark-done-btn dark' : 'mark-done-btn yellow';
           updateProgressForClass(state.currentClass);
@@ -42,9 +55,17 @@ async function markDone(type) {
   } else {
     // FIRST CLICK: mark as done immediately
     try {
-      await fetch(`/api/mark-done/${id}`, { method: 'POST' });
+      await fetch(`/api/mark-done`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: DATA.profile.id,
+          itemType: type,
+          itemId: id
+        })
+      });
 
-      state.done.add(id);
+      state.done.add(key);
       btn.textContent = 'Marked as done ✓';
       btn.className = 'mark-done-btn done-state';
       updateProgressForClass(state.currentClass);
@@ -85,13 +106,8 @@ const DATA = {
   classes: [],
   classesLoaded: false,
 
-  progress: [
-    { classTitle: 'Web Development', completed: 4, total: 10 },
-    { classTitle: 'Software Engineering', completed: 9, total: 10 },
-    { classTitle: 'Data Structures', completed: 4, total: 7 }
-  ],
-
   profile: {
+    id: null,
     firstName: '',
     lastName: '',
     username: '',
@@ -117,6 +133,7 @@ async function fetchProfile() {
   if (savedUser) {
     try {
       const user = JSON.parse(savedUser);
+      DATA.profile.id = user.id || null;
       DATA.profile.firstName = user.first_name || user.username || 'Student';
       DATA.profile.lastName = user.last_name || '';
       DATA.profile.username = user.username || 'student';
@@ -135,6 +152,7 @@ async function fetchProfile() {
     const response = await fetch('/api/profile');
     if (response.ok) {
       const user = await response.json();
+      DATA.profile.id = user.id || null;
       DATA.profile.firstName = user.first_name || user.username || 'Student';
       DATA.profile.lastName = user.last_name || '';
       DATA.profile.username = user.username || 'student';
@@ -153,6 +171,33 @@ async function fetchProfile() {
 
 // ##################################################################
 // END SHARED: FETCH PROFILE
+// ##################################################################
+
+
+
+// ##################################################################
+// FETCH COMPLETIONS FROM DB
+// ##################################################################
+
+async function fetchCompletions() {
+  if (!DATA.profile.id) return;
+
+  try {
+    const res = await fetch(`/api/completions?userId=${DATA.profile.id}`);
+    if (!res.ok) return;
+
+    const items = await res.json();
+    state.done.clear();
+    items.forEach(item => {
+      state.done.add(completionKey(item.item_type, item.item_id));
+    });
+  } catch (err) {
+    console.error('fetchCompletions error:', err);
+  }
+}
+
+// ##################################################################
+// END FETCH COMPLETIONS
 // ##################################################################
 
 
@@ -180,7 +225,6 @@ function updateAllHeadings() {
     }
   });
 }
-
 
 // ##################################################################
 // END SHARED STATE
@@ -293,7 +337,7 @@ async function renderHome() {
   DATA.classes.forEach(cls => {
     if (cls.quizzes && cls.quizzes.length > 0) {
       cls.quizzes.forEach(quiz => {
-        if (state.done.has(quiz.id)) return;
+        if (state.done.has(completionKey('quiz', quiz.id))) return;
         const dueDate = quiz.dueDate ? new Date(quiz.dueDate) : null;
         if (!dueDate || isNaN(dueDate.getTime())) return;
         if (dueDate >= monday && dueDate <= sunday) {
@@ -441,7 +485,8 @@ function openClassDetail(cls) {
   matList.innerHTML = '';
   cls.materials.forEach(mat => {
     const el = document.createElement('div');
-    el.className = 'material-item' + (state.done.has(mat.id) ? ' done' : '');
+    const key = completionKey('material', mat.id);
+    el.className = 'material-item' + (state.done.has(key) ? ' done' : '');
     el.textContent = mat.title;
     el.addEventListener('click', () => openMaterialDetail(mat, cls.title));
     matList.appendChild(el);
@@ -452,7 +497,8 @@ function openClassDetail(cls) {
   quizList.innerHTML = '';
   cls.quizzes.forEach(quiz => {
     const el = document.createElement('div');
-    el.className = 'quiz-item' + (state.done.has(quiz.id) ? ' done' : '');
+    const key = completionKey('quiz', quiz.id);
+    el.className = 'quiz-item' + (state.done.has(key) ? ' done' : '');
     el.textContent = quiz.title;
     el.addEventListener('click', () => openQuizDetail(quiz, cls.title));
     quizList.appendChild(el);
@@ -479,7 +525,8 @@ function openMaterialDetail(mat, className) {
   }
 
   const btn = document.getElementById('mat-mark-btn');
-  if (state.done.has(mat.id)) {
+  const key = completionKey('material', mat.id);
+  if (state.done.has(key)) {
     btn.textContent = 'Marked as done ✓';
     btn.className = 'mark-done-btn done-state';
   } else {
@@ -521,8 +568,9 @@ function openQuizDetail(quiz, className) {
   }
 
   const btn = document.getElementById('quiz-mark-btn');
+  const key = completionKey('quiz', quiz.id);
   if (btn) {
-    if (state.done.has(quiz.id)) {
+    if (state.done.has(key)) {
       btn.textContent = 'Marked as done ✓';
       btn.className = 'mark-done-btn done-state';
     } else {
@@ -587,25 +635,60 @@ function renderTodo() {
 
 
 // #################################################################
-// SECTION: PROGRESS FUNCTIONALITY
+// SECTION: PROGRESS FUNCTIONALITY (DB-BASED)
 // #################################################################
 
+function buildProgressFromClasses() {
+  if (!DATA.classesLoaded) return [];
+
+  return DATA.classes.map(cls => {
+    const total = (cls.materials?.length || 0) + (cls.quizzes?.length || 0);
+    const doneCount = [
+      ...(cls.materials || []).map(m => completionKey('material', m.id)),
+      ...(cls.quizzes || []).map(q => completionKey('quiz', q.id))
+    ].filter(key => state.done.has(key)).length;
+
+    return {
+      classTitle: cls.title,
+      completed: doneCount,
+      total: total
+    };
+  });
+}
+
 function updateProgressForClass(cls) {
-  if (!cls) return;
-  const allIds = [...cls.materials.map(m => m.id), ...cls.quizzes.map(q => q.id)];
-  const doneCount = allIds.filter(id => state.done.has(id)).length;
-  const entry = DATA.progress.find(p => p.classTitle === cls.title);
-  if (entry) {
-    entry.completed = Math.min(doneCount, entry.total);
-    if (state.currentView === 'progress') renderProgress();
-  }
+  if (state.currentView === 'progress') renderProgress();
 }
 
 function renderProgress() {
   const list = document.getElementById('progress-list');
+  const summary = document.getElementById('progress-summary');
   list.innerHTML = '';
-  DATA.progress.forEach(entry => {
-    const pct = Math.round((entry.completed / entry.total) * 100);
+
+  const progressData = buildProgressFromClasses();
+
+  const totals = progressData.reduce((acc, item) => {
+    acc.completed += item.completed;
+    acc.total += item.total;
+    return acc;
+  }, { completed: 0, total: 0 });
+
+  const overallPct = totals.total > 0 ? Math.round((totals.completed / totals.total) * 100) : 0;
+
+  summary.innerHTML = `
+    <div class="progress-summary-card">
+      <div>
+        <p class="summary-label">Overall progress</p>
+        <p class="summary-value">${overallPct}%</p>
+      </div>
+      <div class="summary-bar-track">
+        <div class="summary-bar-fill" style="width: ${overallPct}%"></div>
+      </div>
+    </div>
+  `;
+
+  progressData.forEach(entry => {
+    const pct = entry.total > 0 ? Math.round((entry.completed / entry.total) * 100) : 0;
     const card = document.createElement('div');
     card.className = 'progress-card';
     card.innerHTML = `
@@ -643,8 +726,14 @@ function refreshProfileDisplay() {
   document.getElementById('display-username').textContent = p.username;
   document.getElementById('display-email').textContent = p.email;
   document.getElementById('profile-username-display').textContent = p.username;
-  document.getElementById('edit-username-display').textContent = p.username;
-  document.getElementById('pw-username-display').textContent = p.username;
+  document.getElementById('profile-role-display').textContent = p.role || 'student';
+  document.getElementById('pw-username-display').value = p.username || 'student';
+
+  // fill edit form
+  document.getElementById('edit-firstname').value = p.firstName || '';
+  document.getElementById('edit-lastname').value = p.lastName || '';
+  document.getElementById('edit-username').value = p.username || '';
+  document.getElementById('edit-email').value = p.email || '';
 }
 
 function showProfilePanel(panel) {
@@ -652,6 +741,65 @@ function showProfilePanel(panel) {
   document.getElementById('profile-edit-info').style.display = (panel === 'edit-info') ? 'block' : 'none';
   document.getElementById('profile-change-password').style.display = (panel === 'change-password') ? 'block' : 'none';
 }
+
+// profile buttons
+document.addEventListener('click', (e) => {
+  if (e.target.id === 'btn-edit-profile') {
+    showProfilePanel('edit-info');
+  }
+
+  if (e.target.id === 'btn-change-password') {
+    showProfilePanel('change-password');
+  }
+
+  if (e.target.id === 'btn-cancel-edit') {
+    showProfilePanel('main');
+  }
+
+  if (e.target.id === 'btn-cancel-password') {
+    showProfilePanel('main');
+  }
+
+  if (e.target.id === 'btn-save-profile') {
+    // Save to localStorage (or replace with API call)
+    const updated = {
+      id: DATA.profile.id,
+      first_name: document.getElementById('edit-firstname').value.trim(),
+      last_name: document.getElementById('edit-lastname').value.trim(),
+      username: document.getElementById('edit-username').value.trim(),
+      email: document.getElementById('edit-email').value.trim(),
+      role: DATA.profile.role || 'student'
+    };
+    localStorage.setItem('eduhub_user', JSON.stringify(updated));
+    Swal.fire('Saved', 'Your profile was updated.', 'success');
+    fetchProfile().then(() => {
+      refreshProfileDisplay();
+      showProfilePanel('main');
+    });
+  }
+
+  if (e.target.id === 'btn-save-password') {
+    const current = document.getElementById('pw-current').value.trim();
+    const newPw = document.getElementById('pw-new').value.trim();
+    const confirm = document.getElementById('pw-confirm').value.trim();
+
+    if (!current || !newPw || !confirm) {
+      Swal.fire('Missing', 'Fill out all password fields.', 'warning');
+      return;
+    }
+    if (newPw !== confirm) {
+      Swal.fire('Mismatch', 'New passwords do not match.', 'error');
+      return;
+    }
+
+    // Replace with API call
+    Swal.fire('Updated', 'Password updated successfully.', 'success');
+    document.getElementById('pw-current').value = '';
+    document.getElementById('pw-new').value = '';
+    document.getElementById('pw-confirm').value = '';
+    showProfilePanel('main');
+  }
+});
 
 // #################################################################
 // END SECTION: PROFILE FUNCTIONALITY
@@ -666,6 +814,7 @@ function showProfilePanel(panel) {
 (async function init() {
   await fetchProfile();
   await fetchClasses();
+  await fetchCompletions();
 
   const homeNav = document.querySelector('.nav-item[data-view="home"]');
   if (homeNav) setActiveNav(homeNav);

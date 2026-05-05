@@ -187,6 +187,7 @@
     <!-- ############################################################ -->
     <div class="page-body hidden" id="view-progress">
       <h1 class="page-heading">Keep track of your progress</h1>
+      <div class="progress-summary" id="progress-summary"></div>
       <div class="progress-list" id="progress-list"></div>
     </div>
     <!-- ############################################################ -->
@@ -220,7 +221,77 @@
     <!-- SECTION 8: PROFILE VIEW                                      -->
     <!-- ############################################################ -->
     <div class="page-body hidden" id="view-profile">
-      <!-- (no changes here) -->
+      <h1 class="page-heading">Your profile</h1>
+
+      <div class="profile-layout">
+        <!-- LEFT: PROFILE CARD -->
+        <div class="profile-card">
+          <div class="profile-avatar">👤</div>
+          <h2 id="profile-username-display">student</h2>
+          <p class="profile-role" id="profile-role-display">student</p>
+
+          <div class="profile-actions">
+            <button class="profile-btn" id="btn-edit-profile">Edit info</button>
+            <button class="profile-btn secondary" id="btn-change-password">Change password</button>
+          </div>
+        </div>
+
+        <!-- RIGHT: PANELS -->
+        <div class="profile-panels">
+          <!-- MAIN INFO -->
+          <section id="profile-main">
+            <h3 class="panel-title">Profile information</h3>
+            <div class="profile-info-grid">
+              <div class="info-item">
+                <span class="label">First name</span>
+                <span class="value" id="display-firstname"></span>
+              </div>
+              <div class="info-item">
+                <span class="label">Last name</span>
+                <span class="value" id="display-lastname"></span>
+              </div>
+              <div class="info-item">
+                <span class="label">Username</span>
+                <span class="value" id="display-username"></span>
+              </div>
+              <div class="info-item">
+                <span class="label">Email</span>
+                <span class="value" id="display-email"></span>
+              </div>
+            </div>
+          </section>
+
+          <!-- EDIT INFO -->
+          <section id="profile-edit-info" style="display:none;">
+            <h3 class="panel-title">Edit information</h3>
+            <div class="form-grid">
+              <label>First name<input id="edit-firstname" type="text"></label>
+              <label>Last name<input id="edit-lastname" type="text"></label>
+              <label>Username<input id="edit-username" type="text"></label>
+              <label>Email<input id="edit-email" type="email"></label>
+            </div>
+            <div class="panel-actions">
+              <button class="profile-btn" id="btn-save-profile">Save</button>
+              <button class="profile-btn secondary" id="btn-cancel-edit">Cancel</button>
+            </div>
+          </section>
+
+          <!-- CHANGE PASSWORD -->
+          <section id="profile-change-password" style="display:none;">
+            <h3 class="panel-title">Change password</h3>
+            <div class="form-grid">
+              <label>Username<input id="pw-username-display" type="text" disabled></label>
+              <label>Current password<input id="pw-current" type="password"></label>
+              <label>New password<input id="pw-new" type="password"></label>
+              <label>Confirm new password<input id="pw-confirm" type="password"></label>
+            </div>
+            <div class="panel-actions">
+              <button class="profile-btn" id="btn-save-password">Update password</button>
+              <button class="profile-btn secondary" id="btn-cancel-password">Cancel</button>
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
     <!-- ############################################################ -->
     <!-- END SECTION 8: PROFILE VIEW                                  -->
