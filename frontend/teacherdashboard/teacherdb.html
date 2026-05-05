@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eduhub – Teacher Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="teacherdb.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- ============================================================ -->
+  <!-- SIDEBAR - DO NOT MODIFY WITHOUT TEAM DISCUSSION              -->
+  <!-- ============================================================ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <img src="/teacherdashboard/logo.png" alt="Eduhub Logo" class="logo-icon" onerror="this.style.display='none'" />
+      <span class="logo-text">Eduhub</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" data-view="classes">
+        <img src="/teacherdashboard/classes.png" alt="Classes" class="nav-icon" />
+        <span>Classes</span>
+      </a>
+      <a class="nav-item" data-view="progress">
+        <img src="/teacherdashboard/progress.png" alt="Progress" class="nav-icon" />
+        <span>Progress</span>
+      </a>
+      <a class="nav-item" data-view="announcements">
+        <img src="/teacherdashboard/announcement.png" alt="Announcements" class="nav-icon" />
+        <span>Announcements</span>
+      </a>
+      <a class="nav-item" data-view="profile">
+        <img src="/teacherdashboard/profile.png" alt="Profile" class="nav-icon" />
+        <span>Profile</span>
+      </a>
+    </nav>
+  </aside>
+  <!-- ============================================================ -->
+  <!-- END SIDEBAR                                                  -->
+  <!-- ============================================================ -->
+
+  <main class="main-content">
+
+    <!-- ============================================================ -->
+    <!-- TOP BAR - SHARED HEADER                                      -->
+    <!-- ============================================================ -->
+    <header class="top-bar">
+      <div class="search-bar">
+        <img src="/teacherdashboard/search.png" alt="Search" class="search-icon" />
+        <input type="text" placeholder="Search" id="search-input" />
+      </div>
+      <div class="user-avatar">
+        <img src="/teacherdashboard/profile-dark.png" alt="User" class="avatar-icon" />
+      </div>
+    </header>
+    <!-- ============================================================ -->
+    <!-- END TOP BAR                                                  -->
+    <!-- ============================================================ -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 1: CLASSES LIST VIEW                                 -->
+    <!-- ############################################################ -->
+    <div class="page-body" id="view-classes">
+      <div class="classes-header">
+        <h1 class="page-heading" style="margin-bottom:0">Your Classes</h1>
+        <button class="btn btn-dark" id="btn-create-class">+ Create Class</button>
+      </div>
+      <p class="section-label" style="margin-top:20px">Classes</p>
+      <div class="classes-grid" id="classes-grid"></div>
+    </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 1                                                -->
+    <!-- ############################################################ -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 2: CLASS DETAIL VIEW (Sections list)                -->
+    <!-- ############################################################ -->
+    <div class="page-body hidden" id="view-class-detail">
+      <button class="back-btn" id="back-to-classes">← Back to Classes</button>
+      <div class="detail-header">
+        <div>
+          <h1 class="page-heading" style="margin-bottom:4px" id="class-detail-name"></h1>
+          <p style="font-size:13px;color:#666" id="class-detail-meta"></p>
+        </div>
+        <button class="btn btn-dark" id="btn-add-section">+ Add Section</button>
+      </div>
+      <p class="section-label">Sections</p>
+      <div class="sections-list" id="sections-list"></div>
+    </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 2                                                -->
+    <!-- ############################################################ -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 3: SECTION DETAIL VIEW (Tabs)                       -->
+    <!-- ############################################################ -->
+    <div class="page-body hidden" id="view-section-detail">
+      <button class="back-btn" id="back-to-class-detail">← Back to Class</button>
+      <div class="section-top">
+        <div>
+          <h1 class="page-heading" style="margin-bottom:4px" id="section-detail-name"></h1>
+          <p style="font-size:13px;color:#666" id="section-detail-class"></p>
+        </div>
+      </div>
+      <div class="section-tabs">
+        <button class="tab-btn active" data-tab="lessons">
+          <img src="/teacherdashboard/lesson-icon.png" alt="" />
+          Lessons
+        </button>
+        <button class="tab-btn" data-tab="assignments">
+          <img src="/teacherdashboard/assignment-icon.png" alt="" />
+          Assignments
+        </button>
+        <button class="tab-btn" data-tab="quizzes">
+          <img src="/teacherdashboard/quiz-icon.png" alt="" />
+          Quizzes
+        </button>
+        <button class="tab-btn" data-tab="students">
+          <img src="/teacherdashboard/student-icon.png" alt="" />
+          Students
+        </button>
+      </div>
+
+      <!-- LESSONS TAB -->
+      <div class="tab-content active" id="tab-lessons">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+          <button class="btn btn-dark" id="btn-add-material">+ Add Material</button>
+        </div>
+        <div class="material-list" id="materials-list"></div>
+      </div>
+
+      <!-- ASSIGNMENTS TAB -->
+      <div class="tab-content" id="tab-assignments">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+          <button class="btn btn-dark" id="btn-add-assignment">+ Add Assignment</button>
+        </div>
+        <div id="assignments-list"></div>
+      </div>
+
+      <!-- QUIZZES TAB -->
+      <div class="tab-content" id="tab-quizzes">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+          <button class="btn btn-dark" id="btn-add-quiz">+ Add Quiz</button>
+        </div>
+        <div id="quizzes-list"></div>
+      </div>
+
+      <!-- STUDENTS TAB -->
+      <div class="tab-content" id="tab-students">
+        <div class="students-header">
+          <p class="section-label" style="margin-bottom:0">Enrolled Students</p>
+        </div>
+        <div class="student-list" id="enrolled-students-list"></div>
+        <p class="section-label" style="margin-top:22px">Pending Join Requests</p>
+        <div id="join-requests-list"></div>
+      </div>
+    </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 3                                                -->
+    <!-- ############################################################ -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 4: MATERIAL DETAIL VIEW                             -->
+    <!-- ############################################################ -->
+    <div class="page-body hidden" id="view-material-detail">
+      <button class="back-btn" id="back-to-section-lessons">← Back to Section</button>
+      <p class="section-label" id="mat-section-label"></p>
+      <div class="material-detail-banner" id="mat-detail-banner"></div>
+      <div>
+        <a href="#" class="pdf-link" id="mat-detail-link" target="_blank"></a>
+        <p class="detail-section-title">Description</p>
+        <p class="detail-description" id="mat-detail-desc"></p>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;margin-bottom:24px">
+          <button class="btn btn-ghost btn-sm" id="btn-edit-material">Edit</button>
+          <button class="btn btn-danger btn-sm" id="btn-delete-material">Delete</button>
+        </div>
+        <p class="section-label">Student Completion</p>
+        <div class="done-students-list" id="mat-done-students"></div>
+      </div>
+    </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 4                                                -->
+    <!-- ############################################################ -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 5: QUIZ DETAIL VIEW                                 -->
+    <!-- ############################################################ -->
+    <div class="page-body hidden" id="view-quiz-detail">
+      <button class="back-btn" id="back-to-section-quizzes">← Back to Section</button>
+      <p class="section-label" id="quiz-section-label"></p>
+      <div class="quiz-detail-banner" id="quiz-detail-banner"></div>
+      <div>
+        <a href="#" class="pdf-link" id="quiz-detail-link" target="_blank"></a>
+        <p class="detail-section-title">Description</p>
+        <p class="detail-description" id="quiz-detail-desc"></p>
+        <p class="detail-section-title">Due Date</p>
+        <p class="detail-description" id="quiz-detail-due"></p>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;margin-bottom:24px">
+          <button class="btn btn-ghost btn-sm" id="btn-edit-quiz">Edit</button>
+          <button class="btn btn-danger btn-sm" id="btn-delete-quiz">Delete</button>
+        </div>
+        <p class="section-label">Student Completion</p>
+        <div class="done-students-list" id="quiz-done-students"></div>
+      </div>
+    </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 5                                                -->
+    <!-- ############################################################ -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 6: ASSIGNMENT DETAIL VIEW                           -->
+    <!-- ############################################################ -->
+    <div class="page-body hidden" id="view-assignment-detail">
+      <button class="back-btn" id="back-to-section-assignments">← Back to Section</button>
+      <p class="section-label" id="assign-section-label"></p>
+      <div class="quiz-detail-banner" id="assign-detail-banner"></div>
+      <div>
+        <a href="#" class="pdf-link" id="assign-detail-link" target="_blank"></a>
+        <p class="detail-section-title">Instructions</p>
+        <p class="detail-description" id="assign-detail-desc"></p>
+        <p class="detail-section-title">Due Date</p>
+        <p class="detail-description" id="assign-detail-due"></p>
+        <p class="detail-section-title">Points</p>
+        <p class="detail-description" id="assign-detail-points"></p>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;margin-bottom:24px">
+          <button class="btn btn-ghost btn-sm" id="btn-edit-assignment">Edit</button>
+          <button class="btn btn-danger btn-sm" id="btn-delete-assignment">Delete</button>
+        </div>
+        <p class="section-label">Student Completion</p>
+        <div class="done-students-list" id="assign-done-students"></div>
+      </div>
+    </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 6                                                -->
+    <!-- ############################################################ -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 7: PROGRESS VIEW                                    -->
+    <!-- ############################################################ -->
+    <div class="page-body hidden" id="view-progress">
+      <h1 class="page-heading">Student Progress Overview</h1>
+      <div class="progress-list" id="progress-list"></div>
+    </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 7                                                -->
+    <!-- ############################################################ -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 8: ANNOUNCEMENTS VIEW                               -->
+    <!-- ############################################################ -->
+    <div class="page-body hidden" id="view-announcements">
+      <div class="announcements-header">
+        <h1 class="page-heading" style="margin-bottom:0">Announcements</h1>
+        <button class="btn btn-dark" id="btn-new-announcement">+ New Announcement</button>
+      </div>
+      <div id="announcements-list"></div>
+    </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 8                                                -->
+    <!-- ############################################################ -->
+
+
+    <!-- ############################################################ -->
+    <!-- SECTION 9: PROFILE VIEW                                     -->
+    <!-- ############################################################ -->
+    <div class="page-body hidden" id="view-profile">
+      <h1 class="page-heading">Your Profile</h1>
+      <div class="profile-layout">
+        <div class="profile-card">
+          <div class="profile-avatar">👤</div>
+          <h2 id="profile-username-display">teacher</h2>
+          <p class="profile-role" id="profile-role-display">Teacher</p>
+          <div class="profile-actions">
+            <button class="profile-btn" id="btn-edit-profile">Edit Info</button>
+            <button class="profile-btn secondary" id="btn-change-password">Change Password</button>
+          </div>
+        </div>
+        <div class="profile-panels">
+          <section id="profile-main">
+            <h3 class="panel-title">Profile Information</h3>
+            <div class="profile-info-grid">
+              <div class="info-item"><span class="label">First name</span><span class="value" id="display-firstname">Maria</span></div>
+              <div class="info-item"><span class="label">Last name</span><span class="value" id="display-lastname">Santos</span></div>
+              <div class="info-item"><span class="label">Username</span><span class="value" id="display-username">teacher01</span></div>
+              <div class="info-item"><span class="label">Email</span><span class="value" id="display-email">maria@eduhub.edu</span></div>
+            </div>
+          </section>
+          <section id="profile-edit-info" style="display:none">
+            <h3 class="panel-title">Edit Information</h3>
+            <div class="form-grid">
+              <label>First name<input id="edit-firstname" type="text" value="Maria"></label>
+              <label>Last name<input id="edit-lastname" type="text" value="Santos"></label>
+              <label>Username<input id="edit-username" type="text" value="teacher01"></label>
+              <label>Email<input id="edit-email" type="email" value="maria@eduhub.edu"></label>
+            </div>
+            <div class="panel-actions">
+              <button class="profile-btn" id="btn-save-profile">Save</button>
+              <button class="profile-btn secondary" id="btn-cancel-edit">Cancel</button>
+            </div>
+          </section>
+          <section id="profile-change-password" style="display:none">
+            <h3 class="panel-title">Change Password</h3>
+            <div class="form-grid">
+              <label>Username<input id="pw-username-display" type="text" value="teacher01" disabled></label>
+              <label>Current password<input id="pw-current" type="password"></label>
+              <label>New password<input id="pw-new" type="password"></label>
+              <label>Confirm new password<input id="pw-confirm" type="password"></label>
+            </div>
+            <div class="panel-actions">
+              <button class="profile-btn" id="btn-save-password">Update Password</button>
+              <button class="profile-btn secondary" id="btn-cancel-password">Cancel</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+    <!-- ############################################################ -->
+    <!-- END SECTION 9                                                -->
+    <!-- ############################################################ -->
+
+  </main>
+</div>
+
+<!-- ============================================================ -->
+<!-- MODALS                                                        -->
+<!-- ============================================================ -->
+
+<!-- Create/Edit Class Modal -->
+<div class="modal-overlay hidden" id="modal-class">
+  <div class="modal-box">
+    <h3 class="modal-title">
+      <img src="/teacherdashboard/class-icon.png" alt="" onerror="this.style.display='none'">
+      <span id="modal-class-title-text">Create Class</span>
+    </h3>
+    <div class="modal-field"><label>Class Name</label><input type="text" id="class-name-input" placeholder="e.g. Mathematics 101"></div>
+    <div class="modal-field"><label>Description (optional)</label><textarea id="class-desc-input" placeholder="Short class description"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancel-class-modal">Cancel</button>
+      <button class="btn btn-dark" id="save-class-modal">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Section Modal -->
+<div class="modal-overlay hidden" id="modal-section">
+  <div class="modal-box">
+    <h3 class="modal-title">
+      <img src="/teacherdashboard/section-icon.png" alt="" onerror="this.style.display='none'">
+      <span id="modal-section-title-text">Add Section</span>
+    </h3>
+    <div class="modal-field"><label>Section Name</label><input type="text" id="section-name-input" placeholder="e.g. Section A"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancel-section-modal">Cancel</button>
+      <button class="btn btn-dark" id="save-section-modal">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- View Class Code Modal -->
+<div class="modal-overlay hidden" id="modal-class-code">
+  <div class="modal-box">
+    <h3 class="modal-title">
+      <img src="/teacherdashboard/key.png" alt="" onerror="this.style.display='none'">
+      Class Code
+    </h3>
+    <p style="font-size:13px;color:#666;margin-bottom:8px">Share this code with students to join the section.</p>
+    <div class="code-display" id="code-display-value">ABC123</div>
+    <div class="modal-field"><label>Edit Class Code</label><input type="text" id="edit-code-input" placeholder="Enter custom code"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancel-code-modal">Close</button>
+      <button class="btn btn-dark" id="save-code-modal">Save Code</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Material Modal -->
+<div class="modal-overlay hidden" id="modal-material">
+  <div class="modal-box">
+    <h3 class="modal-title">
+      <img src="/teacherdashboard/lesson-icon.png" alt="" onerror="this.style.display='none'">
+      <span id="modal-material-title-text">Add Learning Material</span>
+    </h3>
+    <div class="modal-field"><label>Material Name</label><input type="text" id="material-name-input" placeholder="e.g. Chapter 1 Notes"></div>
+    <div class="modal-field"><label>Description</label><textarea id="material-desc-input" placeholder="Brief description of the material"></textarea></div>
+    <div class="modal-field"><label>File / Link</label><input type="text" id="material-link-input" placeholder="Paste a link or upload a file"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancel-material-modal">Cancel</button>
+      <button class="btn btn-dark" id="save-material-modal">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Assignment Modal -->
+<div class="modal-overlay hidden" id="modal-assignment">
+  <div class="modal-box">
+    <h3 class="modal-title">
+      <img src="/teacherdashboard/assignment-icon.png" alt="" onerror="this.style.display='none'">
+      <span id="modal-assignment-title-text">Add Assignment</span>
+    </h3>
+    <div class="modal-field"><label>Title</label><input type="text" id="assignment-name-input" placeholder="Assignment title"></div>
+    <div class="modal-field"><label>Instructions</label><textarea id="assignment-desc-input" placeholder="Describe what students need to do"></textarea></div>
+    <div class="modal-field"><label>Due Date</label><input type="date" id="assignment-due-input"></div>
+    <div class="modal-field"><label>Points</label><input type="number" id="assignment-points-input" placeholder="e.g. 100"></div>
+    <div class="modal-field"><label>Link / File (optional)</label><input type="text" id="assignment-link-input" placeholder="Attach a link or file"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancel-assignment-modal">Cancel</button>
+      <button class="btn btn-dark" id="save-assignment-modal">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Quiz Modal -->
+<div class="modal-overlay hidden" id="modal-quiz">
+  <div class="modal-box">
+    <h3 class="modal-title">
+      <img src="/teacherdashboard/quiz-icon.png" alt="" onerror="this.style.display='none'">
+      <span id="modal-quiz-title-text">Add Quiz</span>
+    </h3>
+    <div class="modal-field"><label>Quiz Title</label><input type="text" id="quiz-name-input" placeholder="Quiz title"></div>
+    <div class="modal-field"><label>Description</label><textarea id="quiz-desc-input" placeholder="What is this quiz about?"></textarea></div>
+    <div class="modal-field"><label>Google Form Link</label><input type="text" id="quiz-link-input" placeholder="https://forms.google.com/..."></div>
+    <div class="modal-field"><label>Due Date</label><input type="date" id="quiz-due-input"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancel-quiz-modal">Cancel</button>
+      <button class="btn btn-dark" id="save-quiz-modal">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Announcement Modal -->
+<div class="modal-overlay hidden" id="modal-announcement">
+  <div class="modal-box">
+    <h3 class="modal-title">
+      <img src="/teacherdashboard/announcement-icon.png" alt="" onerror="this.style.display='none'">
+      <span id="modal-announcement-title-text">New Announcement</span>
+    </h3>
+    <div class="modal-field"><label>Title</label><input type="text" id="announcement-title-input" placeholder="Announcement title"></div>
+    <div class="modal-field"><label>Message</label><textarea id="announcement-body-input" placeholder="Write your announcement here..." style="min-height:100px"></textarea></div>
+    <div class="modal-field">
+      <label>Audience</label>
+      <select id="announcement-audience-input">
+        <option value="All Classes">All Classes</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancel-announcement-modal">Cancel</button>
+      <button class="btn btn-dark" id="save-announcement-modal">Post</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- JAVASCRIPT                                                    -->
+<!-- ============================================================ -->
+<script src="teacherdb.js"></script>
+<!-- ============================================================ -->
+<!-- END JAVASCRIPT                                                -->
+<!-- ============================================================ -->
+
+</body>
+</html>
