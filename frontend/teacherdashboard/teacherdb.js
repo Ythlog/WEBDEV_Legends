@@ -15,7 +15,7 @@ let state = {
   editingAssignmentId: null,
   editingAnnouncementId: null,
   activeSectionTab: 'lessons',
-  codeModalSectionId: null,
+  activeCompletionTab: { mat: 'pending', quiz: 'pending', assign: 'pending' },
 
   classes: [
     { id: 1, name: 'Mathematics 101', desc: 'Basic algebra and geometry' },
@@ -44,10 +44,11 @@ let state = {
     { id: 1, sectionId: 1, name: 'Problem Set 1', desc: 'Solve the following equations', link: '', due: '2025-06-15', points: 50 },
   ],
   completions: [
-    { studentId: 1, itemType: 'material', itemId: 1 },
-    { studentId: 2, itemType: 'material', itemId: 1 },
-    { studentId: 1, itemType: 'quiz', itemId: 1 },
-    { studentId: 1, itemType: 'assignment', itemId: 1 },
+    { studentId: 1, itemType: 'material', itemId: 1, status: 'passed' },
+    { studentId: 2, itemType: 'material', itemId: 1, status: 'passed' },
+    { studentId: 1, itemType: 'quiz', itemId: 1, status: 'passed' },
+    { studentId: 2, itemType: 'quiz', itemId: 1, status: 'missed' },
+    { studentId: 1, itemType: 'assignment', itemId: 1, status: 'passed' },
   ],
   announcements: [
     { id: 1, title: 'Welcome to the new semester!', body: 'Hello students! Classes begin this Monday. Please check your assigned sections.', audience: 'All Classes', date: '2025-06-01' },
@@ -82,13 +83,15 @@ document.querySelectorAll('.nav-item').forEach(item => {
 });
 
 // =============================================
-// DROPDOWN HELPERS
+// DOTS SVG HELPER
 // =============================================
-function closeAllDropdowns() {
-  document.querySelectorAll('.card-dropdown, .section-dropdown').forEach(d => d.classList.add('hidden'));
+function dotsIconSVG() {
+  return `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="10" cy="4" r="1.5" fill="#555"/>
+    <circle cx="10" cy="10" r="1.5" fill="#555"/>
+    <circle cx="10" cy="16" r="1.5" fill="#555"/>
+  </svg>`;
 }
-
-document.addEventListener('click', closeAllDropdowns);
 
 // =============================================
 // CLASSES VIEW
@@ -109,9 +112,8 @@ function renderClassesView() {
     card.className = 'class-card';
     card.innerHTML = `
       <div class="class-card-top">
-        <div class="class-card-left">
+        <div class="class-card-left" data-classid="${cls.id}">
           <div class="class-icon-wrap">
-            <!-- Replace src with your own icon: <img src="/teacherdashboard/class-icon.png" alt="class"> -->
             <img src="/teacherdashboard/class-icon.png" alt="class icon"
               onerror="this.style.display='none';this.parentElement.innerHTML='📚'">
           </div>
@@ -120,48 +122,56 @@ function renderClassesView() {
             <div class="class-card-meta">${sections.length} section${sections.length !== 1 ? 's' : ''}</div>
           </div>
         </div>
-        <button class="three-dot-btn" id="dotsbtn-cls-${cls.id}"
-          onclick="event.stopPropagation(); toggleClassDots(${cls.id})">
-          <!-- Replace src with your own dots icon -->
-          <img src="/teacherdashboard/dots.png" alt="options"
-            onerror="this.outerHTML='<span style=\'font-size:20px;color:#555;letter-spacing:1px\'>⋯</span>'">
-          <div class="card-dropdown hidden" id="dropdown-cls-${cls.id}">
-            <button class="dropdown-item"
-              onclick="event.stopPropagation(); closeAllDropdowns(); openClassModal(${cls.id})">
-              <!-- Replace src with your own edit icon -->
-              <img src="/teacherdashboard/edit.png" alt="edit"
-                onerror="this.style.display='none'">
-              Edit
-            </button>
-            <button class="dropdown-item danger"
-              onclick="event.stopPropagation(); closeAllDropdowns(); deleteClass(${cls.id})">
-              <!-- Replace src with your own delete icon -->
-              <img src="/teacherdashboard/trash.png" alt="delete"
-                onerror="this.style.display='none'">
-              Delete
-            </button>
-          </div>
+        <button class="three-dot-btn" data-classid="${cls.id}" title="Options">
+          ${dotsIconSVG()}
         </button>
       </div>
       <div class="class-card-bottom">
-        <button class="view-class-btn">View class</button>
+        <button class="view-class-btn" data-classid="${cls.id}">View class</button>
       </div>`;
 
+    // dots → open centered edit modal
+    card.querySelector('.three-dot-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      openEditClassModal(cls.id);
+    });
+
+    // view class
     card.querySelector('.view-class-btn').addEventListener('click', e => {
       e.stopPropagation();
       openClassDetail(cls.id);
     });
-    card.addEventListener('click', () => openClassDetail(cls.id));
+    card.querySelector('.class-card-left').addEventListener('click', () => openClassDetail(cls.id));
     grid.appendChild(card);
   });
 }
 
-function toggleClassDots(clsId) {
-  closeAllDropdowns();
-  document.getElementById(`dropdown-cls-${clsId}`).classList.toggle('hidden');
+// =============================================
+// EDIT CLASS MODAL (centered)
+// =============================================
+function openEditClassModal(classId) {
+  state.editingClassId = classId;
+  const cls = state.classes.find(c => c.id === classId);
+  document.getElementById('edit-class-name-input').value = cls.name;
+  document.getElementById('edit-class-desc-input').value = cls.desc || '';
+  openModal('modal-edit-class');
 }
 
-function deleteClass(id) {
+document.getElementById('cancel-edit-class-modal').addEventListener('click', () => closeModal('modal-edit-class'));
+
+document.getElementById('save-edit-class-modal').addEventListener('click', () => {
+  const name = document.getElementById('edit-class-name-input').value.trim();
+  const desc = document.getElementById('edit-class-desc-input').value.trim();
+  if (!name) { Swal.fire('Error', 'Class name is required.', 'error'); return; }
+  const cls = state.classes.find(c => c.id === state.editingClassId);
+  cls.name = name;
+  cls.desc = desc;
+  closeModal('modal-edit-class');
+  renderClassesView();
+});
+
+document.getElementById('delete-class-modal-btn').addEventListener('click', () => {
+  closeModal('modal-edit-class');
   Swal.fire({
     title: 'Delete class?',
     text: 'This will also delete all sections inside.',
@@ -171,12 +181,12 @@ function deleteClass(id) {
     confirmButtonColor: '#cc0000'
   }).then(r => {
     if (r.isConfirmed) {
-      state.classes = state.classes.filter(c => c.id !== id);
-      state.sections = state.sections.filter(s => s.classId !== id);
+      state.classes = state.classes.filter(c => c.id !== state.editingClassId);
+      state.sections = state.sections.filter(s => s.classId !== state.editingClassId);
       renderClassesView();
     }
   });
-}
+});
 
 // =============================================
 // CLASS DETAIL VIEW
@@ -207,52 +217,64 @@ function renderSectionsList(classId) {
     card.innerHTML = `
       <div class="section-card-left">
         <div class="section-icon-wrap">
-          <!-- Replace src with your own section icon -->
           <img src="/teacherdashboard/section-icon.png" alt="section"
             onerror="this.style.display='none';this.parentElement.innerHTML='👥'">
         </div>
         <div>
-          <div class="section-card-name">${sec.name}</div>
+          <div class="section-card-name">${escHtml(sec.name)}</div>
           <div class="section-card-students">${enrolled} student${enrolled !== 1 ? 's' : ''} enrolled</div>
         </div>
       </div>
       <div class="section-card-right">
-        <button class="section-dots-btn" id="dotsbtn-sec-${sec.id}"
-          onclick="event.stopPropagation(); toggleSectionDots(${sec.id})">
-          <!-- Replace src with your own dots icon -->
-          <img src="/teacherdashboard/dots.png" alt="options"
-            onerror="this.outerHTML='<span style=\'font-size:20px;color:#555;letter-spacing:1px\'>⋯</span>'">
-          <div class="section-dropdown hidden" id="dropdown-sec-${sec.id}">
-            <button class="dropdown-item"
-              onclick="event.stopPropagation(); closeAllDropdowns(); openSectionModal(${sec.id})">
-              <img src="/teacherdashboard/edit.png" alt="edit" onerror="this.style.display='none'">
-              Edit
-            </button>
-            <button class="dropdown-item"
-              onclick="event.stopPropagation(); closeAllDropdowns(); viewClassCode(${sec.id})">
-              <img src="/teacherdashboard/key.png" alt="code" onerror="this.style.display='none'">
-              View Class Code
-            </button>
-            <button class="dropdown-item danger"
-              onclick="event.stopPropagation(); closeAllDropdowns(); deleteSection(${sec.id})">
-              <img src="/teacherdashboard/trash.png" alt="delete" onerror="this.style.display='none'">
-              Delete
-            </button>
-          </div>
+        <button class="section-dots-btn" data-secid="${sec.id}" title="Options">
+          ${dotsIconSVG()}
         </button>
       </div>`;
 
-    card.addEventListener('click', () => openSectionDetail(sec.id));
+    // dots → open centered edit modal
+    card.querySelector('.section-dots-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      openEditSectionModal(sec.id);
+    });
+
+    card.addEventListener('click', e => {
+      if (!e.target.closest('.section-dots-btn')) {
+        openSectionDetail(sec.id);
+      }
+    });
     list.appendChild(card);
   });
 }
 
-function toggleSectionDots(secId) {
-  closeAllDropdowns();
-  document.getElementById(`dropdown-sec-${secId}`).classList.toggle('hidden');
+// =============================================
+// EDIT SECTION MODAL (centered)
+// =============================================
+function openEditSectionModal(sectionId) {
+  state.editingSectionId = sectionId;
+  const sec = state.sections.find(s => s.id === sectionId);
+  document.getElementById('edit-section-name-input').value = sec.name;
+  document.getElementById('edit-section-code-input').value = sec.code || '';
+  document.getElementById('edit-modal-code-display').textContent = sec.code || 'N/A';
+  openModal('modal-edit-section');
 }
 
-function deleteSection(id) {
+document.getElementById('cancel-edit-section-modal').addEventListener('click', () => closeModal('modal-edit-section'));
+
+document.getElementById('save-edit-section-modal').addEventListener('click', () => {
+  const name = document.getElementById('edit-section-name-input').value.trim();
+  const code = document.getElementById('edit-section-code-input').value.trim();
+  if (!name) { Swal.fire('Error', 'Section name is required.', 'error'); return; }
+  if (!code) { Swal.fire('Error', 'Class code cannot be empty.', 'error'); return; }
+  const sec = state.sections.find(s => s.id === state.editingSectionId);
+  sec.name = name;
+  sec.code = code;
+  closeModal('modal-edit-section');
+  renderSectionsList(state.currentClassId);
+  Swal.fire({ icon: 'success', title: 'Section updated!', timer: 1200, showConfirmButton: false });
+});
+
+document.getElementById('delete-section-modal-btn').addEventListener('click', () => {
+  closeModal('modal-edit-section');
   Swal.fire({
     title: 'Delete section?',
     icon: 'warning',
@@ -261,19 +283,11 @@ function deleteSection(id) {
     confirmButtonColor: '#cc0000'
   }).then(r => {
     if (r.isConfirmed) {
-      state.sections = state.sections.filter(s => s.id !== id);
+      state.sections = state.sections.filter(s => s.id !== state.editingSectionId);
       renderSectionsList(state.currentClassId);
     }
   });
-}
-
-function viewClassCode(secId) {
-  state.codeModalSectionId = secId;
-  const sec = state.sections.find(s => s.id === secId);
-  document.getElementById('code-display-value').textContent = sec.code || 'N/A';
-  document.getElementById('edit-code-input').value = sec.code || '';
-  openModal('modal-class-code');
-}
+});
 
 // =============================================
 // SECTION DETAIL VIEW
@@ -318,13 +332,12 @@ function renderMaterialsList() {
     card.innerHTML = `
       <div class="material-card-left">
         <div class="item-icon-wrap">
-          <!-- Replace src with your own lesson icon -->
           <img src="/teacherdashboard/lesson-icon.png" alt="lesson"
             onerror="this.style.display='none';this.parentElement.innerHTML='📖'">
         </div>
         <div class="material-card-info">
-          <span class="material-card-name">${mat.name}</span>
-          <span class="material-card-desc">${mat.desc}</span>
+          <span class="material-card-name">${escHtml(mat.name)}</span>
+          <span class="material-card-desc">${escHtml(mat.desc)}</span>
         </div>
       </div>
       <div class="material-card-actions" onclick="event.stopPropagation()">
@@ -346,17 +359,16 @@ function openMaterialDetail(matId) {
   link.textContent = mat.link || 'No file attached';
   link.href = mat.link || '#';
   document.getElementById('mat-detail-desc').textContent = mat.desc;
-  renderDoneStudents('mat-done-students', 'material', matId);
+  state.activeCompletionTab.mat = 'pending';
+  renderCompletionTabs(document.querySelector('#view-material-detail .completion-tabs'), 'mat');
+  renderDoneStudents('mat-done-students', 'material', matId, 'pending');
   showView('material-detail');
 }
 
 function deleteMaterial(id) {
   Swal.fire({
-    title: 'Delete material?',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Delete',
-    confirmButtonColor: '#cc0000'
+    title: 'Delete material?', icon: 'warning', showCancelButton: true,
+    confirmButtonText: 'Delete', confirmButtonColor: '#cc0000'
   }).then(r => {
     if (r.isConfirmed) {
       state.materials = state.materials.filter(m => m.id !== id);
@@ -380,12 +392,11 @@ function renderQuizzesList() {
     card.innerHTML = `
       <div class="quiz-card-left">
         <div class="item-icon-wrap">
-          <!-- Replace src with your own quiz icon -->
           <img src="/teacherdashboard/quiz-icon.png" alt="quiz"
             onerror="this.style.display='none';this.parentElement.innerHTML='❓'">
         </div>
         <div class="quiz-card-info">
-          <span class="quiz-card-name">${quiz.name}</span>
+          <span class="quiz-card-name">${escHtml(quiz.name)}</span>
           <span class="quiz-card-meta">Due: ${quiz.due || 'N/A'}</span>
         </div>
       </div>
@@ -409,17 +420,16 @@ function openQuizDetail(quizId) {
   link.href = quiz.link || '#';
   document.getElementById('quiz-detail-desc').textContent = quiz.desc;
   document.getElementById('quiz-detail-due').textContent = quiz.due || 'N/A';
-  renderDoneStudents('quiz-done-students', 'quiz', quizId);
+  state.activeCompletionTab.quiz = 'pending';
+  renderCompletionTabs(document.querySelector('#view-quiz-detail .completion-tabs'), 'quiz');
+  renderDoneStudents('quiz-done-students', 'quiz', quizId, 'pending');
   showView('quiz-detail');
 }
 
 function deleteQuiz(id) {
   Swal.fire({
-    title: 'Delete quiz?',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Delete',
-    confirmButtonColor: '#cc0000'
+    title: 'Delete quiz?', icon: 'warning', showCancelButton: true,
+    confirmButtonText: 'Delete', confirmButtonColor: '#cc0000'
   }).then(r => {
     if (r.isConfirmed) {
       state.quizzes = state.quizzes.filter(q => q.id !== id);
@@ -443,12 +453,11 @@ function renderAssignmentsList() {
     card.innerHTML = `
       <div class="quiz-card-left">
         <div class="item-icon-wrap">
-          <!-- Replace src with your own assignment icon -->
           <img src="/teacherdashboard/assignment-icon.png" alt="assignment"
             onerror="this.style.display='none';this.parentElement.innerHTML='📝'">
         </div>
         <div class="quiz-card-info">
-          <span class="quiz-card-name">${assign.name}</span>
+          <span class="quiz-card-name">${escHtml(assign.name)}</span>
           <span class="quiz-card-meta">Due: ${assign.due || 'N/A'} · ${assign.points} pts</span>
         </div>
       </div>
@@ -473,17 +482,16 @@ function openAssignmentDetail(assignId) {
   document.getElementById('assign-detail-desc').textContent = assign.desc;
   document.getElementById('assign-detail-due').textContent = assign.due || 'N/A';
   document.getElementById('assign-detail-points').textContent = assign.points + ' points';
-  renderDoneStudents('assign-done-students', 'assignment', assignId);
+  state.activeCompletionTab.assign = 'pending';
+  renderCompletionTabs(document.querySelector('#view-assignment-detail .completion-tabs'), 'assign');
+  renderDoneStudents('assign-done-students', 'assignment', assignId, 'pending');
   showView('assignment-detail');
 }
 
 function deleteAssignment(id) {
   Swal.fire({
-    title: 'Delete assignment?',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Delete',
-    confirmButtonColor: '#cc0000'
+    title: 'Delete assignment?', icon: 'warning', showCancelButton: true,
+    confirmButtonText: 'Delete', confirmButtonColor: '#cc0000'
   }).then(r => {
     if (r.isConfirmed) {
       state.assignments = state.assignments.filter(a => a.id !== id);
@@ -493,43 +501,71 @@ function deleteAssignment(id) {
 }
 
 // =============================================
-// STUDENT COMPLETION
+// COMPLETION TABS (Pending / Passed / Missed)
 // =============================================
-function renderDoneStudents(containerId, type, itemId) {
+function renderCompletionTabs(container, key) {
+  if (!container) return;
+  container.querySelectorAll('.completion-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.ctab === state.activeCompletionTab[key]);
+    btn.onclick = () => {
+      state.activeCompletionTab[key] = btn.dataset.ctab;
+      renderCompletionTabs(container, key);
+      if (key === 'mat') renderDoneStudents('mat-done-students', 'material', state.currentMaterialId, btn.dataset.ctab);
+      else if (key === 'quiz') renderDoneStudents('quiz-done-students', 'quiz', state.currentQuizId, btn.dataset.ctab);
+      else if (key === 'assign') renderDoneStudents('assign-done-students', 'assignment', state.currentAssignmentId, btn.dataset.ctab);
+    };
+  });
+}
+
+function renderDoneStudents(containerId, type, itemId, filterStatus) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
+
   const sectionId = type === 'material' ? state.materials.find(m => m.id === itemId)?.sectionId
                   : type === 'quiz'     ? state.quizzes.find(q => q.id === itemId)?.sectionId
                   : state.assignments.find(a => a.id === itemId)?.sectionId;
+
   const enrolled = state.students.filter(s => s.sectionId === sectionId && s.status === 'enrolled');
 
+  if (!enrolled.length) {
+    container.innerHTML = '<div class="empty-state">No students enrolled in this section.</div>';
+    return;
+  }
+
+  let filtered = [];
   enrolled.forEach(student => {
-    const done = state.completions.some(
+    const completion = state.completions.find(
       c => c.studentId === student.id && c.itemType === type && c.itemId === itemId
     );
+    const status = completion ? completion.status : 'pending';
+    if (status === filterStatus) filtered.push({ student, status });
+  });
+
+  if (!filtered.length) {
+    const labels = { pending: 'No pending students.', passed: 'No students have passed yet.', missed: 'No students missed this.' };
+    container.innerHTML = `<div class="empty-state">${labels[filterStatus]}</div>`;
+    return;
+  }
+
+  filtered.forEach(({ student, status }) => {
+    const badgeClass = status === 'passed' ? 'badge-done' : status === 'missed' ? 'badge-missed' : 'badge-pending';
+    const badgeLabel = status === 'passed' ? '✓ Passed' : status === 'missed' ? '✗ Missed' : '⏳ Pending';
     const card = document.createElement('div');
     card.className = 'student-done-card';
     card.innerHTML = `
       <div style="display:flex;align-items:center;gap:12px">
         <div class="item-icon-wrap" style="background:#11265c">
-          <!-- Replace src with your own student icon -->
           <img src="/teacherdashboard/student-icon.png" alt="student"
             onerror="this.style.display='none';this.parentElement.innerHTML='👤'">
         </div>
         <div>
-          <div style="font-weight:600">${student.name}</div>
-          <div style="font-size:12px;color:#777">${student.email}</div>
+          <div style="font-weight:600">${escHtml(student.name)}</div>
+          <div style="font-size:12px;color:#777">${escHtml(student.email)}</div>
         </div>
       </div>
-      <span class="student-done-badge ${done ? 'badge-done' : 'badge-pending'}">
-        ${done ? '✓ Done' : 'Pending'}
-      </span>`;
+      <span class="student-done-badge ${badgeClass}">${badgeLabel}</span>`;
     container.appendChild(card);
   });
-
-  if (!enrolled.length) {
-    container.innerHTML = '<div class="empty-state">No students enrolled in this section.</div>';
-  }
 }
 
 // =============================================
@@ -558,8 +594,8 @@ function renderStudentsList() {
               onerror="this.style.display='none';this.parentElement.innerHTML='👤'">
           </div>
           <div>
-            <div class="student-name">${s.name}</div>
-            <div class="student-email">${s.email}</div>
+            <div class="student-name">${escHtml(s.name)}</div>
+            <div class="student-email">${escHtml(s.email)}</div>
           </div>
         </div>
         <button class="btn btn-danger btn-sm" onclick="removeStudent(${s.id})">Remove</button>`;
@@ -580,8 +616,8 @@ function renderStudentsList() {
               onerror="this.style.display='none';this.parentElement.innerHTML='👤'">
           </div>
           <div>
-            <div class="student-name">${s.name}</div>
-            <div class="student-email">${s.email}</div>
+            <div class="student-name">${escHtml(s.name)}</div>
+            <div class="student-email">${escHtml(s.email)}</div>
           </div>
         </div>
         <div style="display:flex;gap:8px">
@@ -595,11 +631,8 @@ function renderStudentsList() {
 
 function removeStudent(id) {
   Swal.fire({
-    title: 'Remove student?',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Remove',
-    confirmButtonColor: '#cc0000'
+    title: 'Remove student?', icon: 'warning', showCancelButton: true,
+    confirmButtonText: 'Remove', confirmButtonColor: '#cc0000'
   }).then(r => {
     if (r.isConfirmed) {
       state.students = state.students.filter(s => s.id !== id);
@@ -631,7 +664,7 @@ function renderProgressView() {
                      + state.quizzes.filter(q => q.sectionId === sec.id).length
                      + state.assignments.filter(a => a.sectionId === sec.id).length;
     let doneCount = 0;
-    enrolled.forEach(s => { doneCount += state.completions.filter(c => c.studentId === s.id).length; });
+    enrolled.forEach(s => { doneCount += state.completions.filter(c => c.studentId === s.id && c.status === 'passed').length; });
     const possible = enrolled.length * totalItems;
     const pct = possible > 0 ? Math.round((doneCount / possible) * 100) : 0;
 
@@ -644,14 +677,14 @@ function renderProgressView() {
       </div>
       <div class="progress-card-body">
         <div class="progress-card-header">
-          <span class="progress-card-name">${sec.name}</span>
+          <span class="progress-card-name">${escHtml(sec.name)}</span>
           <span class="progress-card-count">${pct}% completion</span>
         </div>
         <div class="progress-bar-track">
           <div class="progress-bar-fill" style="width:${pct}%"></div>
         </div>
         <div class="progress-class-label">
-          ${cls ? cls.name : ''} · ${enrolled.length} student${enrolled.length !== 1 ? 's' : ''} · ${totalItems} item${totalItems !== 1 ? 's' : ''}
+          ${cls ? escHtml(cls.name) : ''} · ${enrolled.length} student${enrolled.length !== 1 ? 's' : ''} · ${totalItems} item${totalItems !== 1 ? 's' : ''}
         </div>
       </div>`;
     list.appendChild(card);
@@ -680,22 +713,21 @@ function renderAnnouncementsView() {
     card.className = 'announcement-card';
     card.innerHTML = `
       <div class="announcement-icon-wrap">
-        <!-- Replace src with your own announcement icon -->
         <img src="/teacherdashboard/announcement-icon.png" alt="announcement"
           onerror="this.style.display='none';this.parentElement.innerHTML='📢'">
       </div>
       <div class="announcement-body-wrap">
         <div class="announcement-footer">
           <div>
-            <div class="announcement-title">${a.title}</div>
-            <div class="announcement-meta">${a.audience} · ${a.date}</div>
+            <div class="announcement-title">${escHtml(a.title)}</div>
+            <div class="announcement-meta">${escHtml(a.audience)} · ${a.date}</div>
           </div>
           <div style="display:flex;gap:6px">
             <button class="btn btn-ghost btn-sm" onclick="editAnnouncement(${a.id})">Edit</button>
             <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(${a.id})">Delete</button>
           </div>
         </div>
-        <div class="announcement-body" style="margin-top:10px">${a.body}</div>
+        <div class="announcement-body" style="margin-top:10px">${escHtml(a.body)}</div>
       </div>`;
     list.appendChild(card);
   });
@@ -703,11 +735,8 @@ function renderAnnouncementsView() {
 
 function deleteAnnouncement(id) {
   Swal.fire({
-    title: 'Delete announcement?',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Delete',
-    confirmButtonColor: '#cc0000'
+    title: 'Delete announcement?', icon: 'warning', showCancelButton: true,
+    confirmButtonText: 'Delete', confirmButtonColor: '#cc0000'
   }).then(r => {
     if (r.isConfirmed) {
       state.announcements = state.announcements.filter(a => a.id !== id);
@@ -726,6 +755,58 @@ function editAnnouncement(id) {
 }
 
 // =============================================
+// FILE UPLOAD UI
+// =============================================
+function setupFileUpload(zoneId, inputId, previewId) {
+  const zone = document.getElementById(zoneId);
+  const input = document.getElementById(inputId);
+  const preview = document.getElementById(previewId);
+  if (!zone || !input || !preview) return;
+
+  zone.addEventListener('dragover', e => {
+    e.preventDefault();
+    zone.classList.add('drag-over');
+  });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    handleFiles(e.dataTransfer.files, preview);
+  });
+  input.addEventListener('change', () => {
+    handleFiles(input.files, preview);
+    input.value = '';
+  });
+}
+
+function handleFiles(files, previewEl) {
+  Array.from(files).forEach(file => {
+    const item = document.createElement('div');
+    item.className = 'file-preview-item';
+    const ext = file.name.split('.').pop().toUpperCase();
+    const size = (file.size / 1024).toFixed(1) + ' KB';
+    item.innerHTML = `
+      <div class="file-preview-item-left">
+        <span class="file-preview-badge">${ext}</span>
+        <div>
+          <div class="file-preview-name">${escHtml(file.name)}</div>
+          <div class="file-preview-size">${size}</div>
+        </div>
+      </div>
+      <button class="file-preview-remove" title="Remove">×</button>`;
+    item.querySelector('.file-preview-remove').addEventListener('click', () => item.remove());
+    previewEl.appendChild(item);
+  });
+}
+
+function initFileUploads() {
+  setupFileUpload('material-upload-zone', 'material-file-input', 'material-file-preview');
+  setupFileUpload('assignment-upload-zone', 'assignment-file-input', 'assignment-file-preview');
+  setupFileUpload('quiz-upload-zone', 'quiz-file-input', 'quiz-file-preview');
+}
+initFileUploads();
+
+// =============================================
 // MODALS
 // =============================================
 function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
@@ -737,64 +818,37 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
   });
 });
 
-// ---- Class Modal ----
-function openClassModal(editId = null) {
-  state.editingClassId = editId;
-  const cls = editId ? state.classes.find(c => c.id === editId) : null;
-  document.getElementById('modal-class-title-text').textContent = editId ? 'Edit Class' : 'Create Class';
-  document.getElementById('class-name-input').value = cls ? cls.name : '';
-  document.getElementById('class-desc-input').value = cls ? cls.desc : '';
+// ---- Class Modal (create only) ----
+document.getElementById('btn-create-class').addEventListener('click', () => {
+  document.getElementById('modal-class-title-text').textContent = 'Create Class';
+  document.getElementById('class-name-input').value = '';
+  document.getElementById('class-desc-input').value = '';
   openModal('modal-class');
-}
-document.getElementById('btn-create-class').addEventListener('click', () => openClassModal());
+});
 document.getElementById('cancel-class-modal').addEventListener('click', () => closeModal('modal-class'));
 document.getElementById('save-class-modal').addEventListener('click', () => {
   const name = document.getElementById('class-name-input').value.trim();
   const desc = document.getElementById('class-desc-input').value.trim();
   if (!name) { Swal.fire('Error', 'Class name is required.', 'error'); return; }
-  if (state.editingClassId) {
-    const cls = state.classes.find(c => c.id === state.editingClassId);
-    cls.name = name; cls.desc = desc;
-  } else {
-    state.classes.push({ id: genId(), name, desc });
-  }
+  state.classes.push({ id: genId(), name, desc });
   closeModal('modal-class');
   renderClassesView();
 });
 
-// ---- Section Modal ----
-function openSectionModal(editId = null) {
-  state.editingSectionId = editId;
-  const sec = editId ? state.sections.find(s => s.id === editId) : null;
-  document.getElementById('modal-section-title-text').textContent = editId ? 'Edit Section' : 'Add Section';
-  document.getElementById('section-name-input').value = sec ? sec.name : '';
+// ---- Section Modal (create only) ----
+document.getElementById('btn-add-section').addEventListener('click', () => {
+  document.getElementById('modal-section-title-text').textContent = 'Add Section';
+  document.getElementById('section-name-input').value = '';
   openModal('modal-section');
-}
-document.getElementById('btn-add-section').addEventListener('click', () => openSectionModal());
+});
 document.getElementById('cancel-section-modal').addEventListener('click', () => closeModal('modal-section'));
 document.getElementById('save-section-modal').addEventListener('click', () => {
   const name = document.getElementById('section-name-input').value.trim();
   if (!name) { Swal.fire('Error', 'Section name is required.', 'error'); return; }
-  if (state.editingSectionId) {
-    const sec = state.sections.find(s => s.id === state.editingSectionId);
-    sec.name = name;
-  } else {
-    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-    state.sections.push({ id: genId(), classId: state.currentClassId, name, code });
-  }
+  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+  state.sections.push({ id: genId(), classId: state.currentClassId, name, code });
   closeModal('modal-section');
   renderSectionsList(state.currentClassId);
-});
-
-// ---- Class Code Modal ----
-document.getElementById('cancel-code-modal').addEventListener('click', () => closeModal('modal-class-code'));
-document.getElementById('save-code-modal').addEventListener('click', () => {
-  const code = document.getElementById('edit-code-input').value.trim();
-  if (!code) { Swal.fire('Error', 'Code cannot be empty.', 'error'); return; }
-  const sec = state.sections.find(s => s.id === state.codeModalSectionId);
-  if (sec) sec.code = code;
-  document.getElementById('code-display-value').textContent = code;
-  Swal.fire({ icon: 'success', title: 'Code updated!', timer: 1200, showConfirmButton: false });
 });
 
 // ---- Material Modal ----
@@ -805,6 +859,7 @@ function openMaterialModal(editId = null) {
   document.getElementById('material-name-input').value = mat ? mat.name : '';
   document.getElementById('material-desc-input').value = mat ? mat.desc : '';
   document.getElementById('material-link-input').value = mat ? mat.link : '';
+  document.getElementById('material-file-preview').innerHTML = '';
   openModal('modal-material');
 }
 document.getElementById('btn-add-material').addEventListener('click', () => openMaterialModal());
@@ -847,6 +902,7 @@ function openQuizModal(editId = null) {
   document.getElementById('quiz-desc-input').value = quiz ? quiz.desc : '';
   document.getElementById('quiz-link-input').value = quiz ? quiz.link : '';
   document.getElementById('quiz-due-input').value = quiz ? quiz.due : '';
+  document.getElementById('quiz-file-preview').innerHTML = '';
   openModal('modal-quiz');
 }
 document.getElementById('btn-add-quiz').addEventListener('click', () => openQuizModal());
@@ -891,6 +947,7 @@ function openAssignmentModal(editId = null) {
   document.getElementById('assignment-due-input').value = assign ? assign.due : '';
   document.getElementById('assignment-points-input').value = assign ? assign.points : '';
   document.getElementById('assignment-link-input').value = assign ? assign.link : '';
+  document.getElementById('assignment-file-preview').innerHTML = '';
   openModal('modal-assignment');
 }
 document.getElementById('btn-add-assignment').addEventListener('click', () => openAssignmentModal());
@@ -1006,6 +1063,18 @@ document.getElementById('btn-save-password').addEventListener('click', () => {
   document.getElementById('profile-main').style.display = 'block';
   Swal.fire({ icon: 'success', title: 'Password updated!', timer: 1200, showConfirmButton: false });
 });
+
+// =============================================
+// UTILITY
+// =============================================
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 // =============================================
 // INIT

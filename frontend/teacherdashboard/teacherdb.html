@@ -11,59 +11,46 @@
 <body>
 <div class="app-wrapper">
 
-  <!-- ============================================================ -->
-  <!-- SIDEBAR - DO NOT MODIFY WITHOUT TEAM DISCUSSION              -->
-  <!-- ============================================================ -->
+  <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <img src="/teacherdashboard/logo.png" alt="Eduhub Logo" class="logo-icon" onerror="this.style.display='none'" />
+      <img src="logo.png" alt="Eduhub Logo" class="logo-icon" onerror="this.style.display='none'" />
       <span class="logo-text">Eduhub</span>
     </div>
     <nav class="sidebar-nav">
       <a class="nav-item active" data-view="classes">
-        <img src="/teacherdashboard/classes.png" alt="Classes" class="nav-icon" />
+        <img src="classes.png" alt="Classes" class="nav-icon" />
         <span>Classes</span>
       </a>
       <a class="nav-item" data-view="progress">
-        <img src="/teacherdashboard/progress.png" alt="Progress" class="nav-icon" />
+        <img src="progress.png" alt="Progress" class="nav-icon" />
         <span>Progress</span>
       </a>
       <a class="nav-item" data-view="announcements">
-        <img src="/teacherdashboard/announcement.png" alt="Announcements" class="nav-icon" />
+        <img src="announcements.png" alt="Announcements" class="nav-icon" />
         <span>Announcements</span>
       </a>
       <a class="nav-item" data-view="profile">
-        <img src="/teacherdashboard/profile.png" alt="Profile" class="nav-icon" />
+        <img src="profile.png" alt="Profile" class="nav-icon" />
         <span>Profile</span>
       </a>
     </nav>
   </aside>
-  <!-- ============================================================ -->
-  <!-- END SIDEBAR                                                  -->
-  <!-- ============================================================ -->
 
   <main class="main-content">
 
-    <!-- ============================================================ -->
-    <!-- TOP BAR - SHARED HEADER                                      -->
-    <!-- ============================================================ -->
+    <!-- TOP BAR -->
     <header class="top-bar">
       <div class="search-bar">
-        <img src="/teacherdashboard/search.png" alt="Search" class="search-icon" />
+        <img src="blacksearch.png" alt="Search" class="search-icon" />
         <input type="text" placeholder="Search" id="search-input" />
       </div>
       <div class="user-avatar">
-        <img src="/teacherdashboard/profile-dark.png" alt="User" class="avatar-icon" />
+        <img src="blackprofile.png" alt="User" class="avatar-icon" />
       </div>
     </header>
-    <!-- ============================================================ -->
-    <!-- END TOP BAR                                                  -->
-    <!-- ============================================================ -->
 
-
-    <!-- ############################################################ -->
-    <!-- SECTION 1: CLASSES LIST VIEW                                 -->
-    <!-- ############################################################ -->
+    <!-- SECTION 1: CLASSES LIST VIEW -->
     <div class="page-body" id="view-classes">
       <div class="classes-header">
         <h1 class="page-heading" style="margin-bottom:0">Your Classes</h1>
@@ -72,14 +59,8 @@
       <p class="section-label" style="margin-top:20px">Classes</p>
       <div class="classes-grid" id="classes-grid"></div>
     </div>
-    <!-- ############################################################ -->
-    <!-- END SECTION 1                                                -->
-    <!-- ############################################################ -->
 
-
-    <!-- ############################################################ -->
-    <!-- SECTION 2: CLASS DETAIL VIEW (Sections list)                -->
-    <!-- ############################################################ -->
+    <!-- SECTION 2: CLASS DETAIL VIEW -->
     <div class="page-body hidden" id="view-class-detail">
       <button class="back-btn" id="back-to-classes">← Back to Classes</button>
       <div class="detail-header">
@@ -92,14 +73,8 @@
       <p class="section-label">Sections</p>
       <div class="sections-list" id="sections-list"></div>
     </div>
-    <!-- ############################################################ -->
-    <!-- END SECTION 2                                                -->
-    <!-- ############################################################ -->
 
-
-    <!-- ############################################################ -->
-    <!-- SECTION 3: SECTION DETAIL VIEW (Tabs)                       -->
-    <!-- ############################################################ -->
+    <!-- SECTION 3: SECTION DETAIL VIEW -->
     <div class="page-body hidden" id="view-section-detail">
       <button class="back-btn" id="back-to-class-detail">← Back to Class</button>
       <div class="section-top">
@@ -110,19 +85,19 @@
       </div>
       <div class="section-tabs">
         <button class="tab-btn active" data-tab="lessons">
-          <img src="/teacherdashboard/lesson-icon.png" alt="" />
+          <img src="lessons2.png" alt="" />
           Lessons
         </button>
         <button class="tab-btn" data-tab="assignments">
-          <img src="/teacherdashboard/assignment-icon.png" alt="" />
+          <img src="assignments2.png" alt="" />
           Assignments
         </button>
         <button class="tab-btn" data-tab="quizzes">
-          <img src="/teacherdashboard/quiz-icon.png" alt="" />
+          <img src="quiz2.png" alt="" />
           Quizzes
         </button>
         <button class="tab-btn" data-tab="students">
-          <img src="/teacherdashboard/student-icon.png" alt="" />
+          <img src="students2.png" alt="" />
           Students
         </button>
       </div>
@@ -161,104 +136,103 @@
         <div id="join-requests-list"></div>
       </div>
     </div>
-    <!-- ############################################################ -->
-    <!-- END SECTION 3                                                -->
-    <!-- ############################################################ -->
 
-
-    <!-- ############################################################ -->
-    <!-- SECTION 4: MATERIAL DETAIL VIEW                             -->
-    <!-- ############################################################ -->
+    <!-- SECTION 4: MATERIAL DETAIL VIEW (split layout) -->
     <div class="page-body hidden" id="view-material-detail">
       <button class="back-btn" id="back-to-section-lessons">← Back to Section</button>
-      <p class="section-label" id="mat-section-label"></p>
-      <div class="material-detail-banner" id="mat-detail-banner"></div>
-      <div>
-        <a href="#" class="pdf-link" id="mat-detail-link" target="_blank"></a>
-        <p class="detail-section-title">Description</p>
-        <p class="detail-description" id="mat-detail-desc"></p>
-        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;margin-bottom:24px">
-          <button class="btn btn-ghost btn-sm" id="btn-edit-material">Edit</button>
-          <button class="btn btn-danger btn-sm" id="btn-delete-material">Delete</button>
+      <div class="detail-split-layout">
+        <!-- LEFT: Material Info -->
+        <div class="detail-split-left">
+          <p class="section-label" id="mat-section-label"></p>
+          <div class="material-detail-banner" id="mat-detail-banner"></div>
+          <a href="#" class="pdf-link" id="mat-detail-link" target="_blank"></a>
+          <p class="detail-section-title">Description</p>
+          <p class="detail-description" id="mat-detail-desc"></p>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn btn-ghost btn-sm" id="btn-edit-material">Edit</button>
+            <button class="btn btn-danger btn-sm" id="btn-delete-material">Delete</button>
+          </div>
         </div>
-        <p class="section-label">Student Completion</p>
-        <div class="done-students-list" id="mat-done-students"></div>
+        <!-- RIGHT: Student Completion -->
+        <div class="detail-split-right">
+          <p class="section-label">Student Completion</p>
+          <div class="completion-tabs">
+            <button class="completion-tab-btn active" data-ctab="pending">Pending</button>
+            <button class="completion-tab-btn" data-ctab="passed">Passed</button>
+            <button class="completion-tab-btn" data-ctab="missed">Missed</button>
+          </div>
+          <div class="done-students-list" id="mat-done-students"></div>
+        </div>
       </div>
     </div>
-    <!-- ############################################################ -->
-    <!-- END SECTION 4                                                -->
-    <!-- ############################################################ -->
 
-
-    <!-- ############################################################ -->
-    <!-- SECTION 5: QUIZ DETAIL VIEW                                 -->
-    <!-- ############################################################ -->
+    <!-- SECTION 5: QUIZ DETAIL VIEW (split layout) -->
     <div class="page-body hidden" id="view-quiz-detail">
       <button class="back-btn" id="back-to-section-quizzes">← Back to Section</button>
-      <p class="section-label" id="quiz-section-label"></p>
-      <div class="quiz-detail-banner" id="quiz-detail-banner"></div>
-      <div>
-        <a href="#" class="pdf-link" id="quiz-detail-link" target="_blank"></a>
-        <p class="detail-section-title">Description</p>
-        <p class="detail-description" id="quiz-detail-desc"></p>
-        <p class="detail-section-title">Due Date</p>
-        <p class="detail-description" id="quiz-detail-due"></p>
-        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;margin-bottom:24px">
-          <button class="btn btn-ghost btn-sm" id="btn-edit-quiz">Edit</button>
-          <button class="btn btn-danger btn-sm" id="btn-delete-quiz">Delete</button>
+      <div class="detail-split-layout">
+        <div class="detail-split-left">
+          <p class="section-label" id="quiz-section-label"></p>
+          <div class="quiz-detail-banner" id="quiz-detail-banner"></div>
+          <a href="#" class="pdf-link" id="quiz-detail-link" target="_blank"></a>
+          <p class="detail-section-title">Description</p>
+          <p class="detail-description" id="quiz-detail-desc"></p>
+          <p class="detail-section-title">Due Date</p>
+          <p class="detail-description" id="quiz-detail-due"></p>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn btn-ghost btn-sm" id="btn-edit-quiz">Edit</button>
+            <button class="btn btn-danger btn-sm" id="btn-delete-quiz">Delete</button>
+          </div>
         </div>
-        <p class="section-label">Student Completion</p>
-        <div class="done-students-list" id="quiz-done-students"></div>
+        <div class="detail-split-right">
+          <p class="section-label">Student Completion</p>
+          <div class="completion-tabs">
+            <button class="completion-tab-btn active" data-ctab="pending">Pending</button>
+            <button class="completion-tab-btn" data-ctab="passed">Passed</button>
+            <button class="completion-tab-btn" data-ctab="missed">Missed</button>
+          </div>
+          <div class="done-students-list" id="quiz-done-students"></div>
+        </div>
       </div>
     </div>
-    <!-- ############################################################ -->
-    <!-- END SECTION 5                                                -->
-    <!-- ############################################################ -->
 
-
-    <!-- ############################################################ -->
-    <!-- SECTION 6: ASSIGNMENT DETAIL VIEW                           -->
-    <!-- ############################################################ -->
+    <!-- SECTION 6: ASSIGNMENT DETAIL VIEW (split layout) -->
     <div class="page-body hidden" id="view-assignment-detail">
       <button class="back-btn" id="back-to-section-assignments">← Back to Section</button>
-      <p class="section-label" id="assign-section-label"></p>
-      <div class="quiz-detail-banner" id="assign-detail-banner"></div>
-      <div>
-        <a href="#" class="pdf-link" id="assign-detail-link" target="_blank"></a>
-        <p class="detail-section-title">Instructions</p>
-        <p class="detail-description" id="assign-detail-desc"></p>
-        <p class="detail-section-title">Due Date</p>
-        <p class="detail-description" id="assign-detail-due"></p>
-        <p class="detail-section-title">Points</p>
-        <p class="detail-description" id="assign-detail-points"></p>
-        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;margin-bottom:24px">
-          <button class="btn btn-ghost btn-sm" id="btn-edit-assignment">Edit</button>
-          <button class="btn btn-danger btn-sm" id="btn-delete-assignment">Delete</button>
+      <div class="detail-split-layout">
+        <div class="detail-split-left">
+          <p class="section-label" id="assign-section-label"></p>
+          <div class="quiz-detail-banner" id="assign-detail-banner"></div>
+          <a href="#" class="pdf-link" id="assign-detail-link" target="_blank"></a>
+          <p class="detail-section-title">Instructions</p>
+          <p class="detail-description" id="assign-detail-desc"></p>
+          <p class="detail-section-title">Due Date</p>
+          <p class="detail-description" id="assign-detail-due"></p>
+          <p class="detail-section-title">Points</p>
+          <p class="detail-description" id="assign-detail-points"></p>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn btn-ghost btn-sm" id="btn-edit-assignment">Edit</button>
+            <button class="btn btn-danger btn-sm" id="btn-delete-assignment">Delete</button>
+          </div>
         </div>
-        <p class="section-label">Student Completion</p>
-        <div class="done-students-list" id="assign-done-students"></div>
+        <div class="detail-split-right">
+          <p class="section-label">Student Completion</p>
+          <div class="completion-tabs">
+            <button class="completion-tab-btn active" data-ctab="pending">Pending</button>
+            <button class="completion-tab-btn" data-ctab="passed">Passed</button>
+            <button class="completion-tab-btn" data-ctab="missed">Missed</button>
+          </div>
+          <div class="done-students-list" id="assign-done-students"></div>
+        </div>
       </div>
     </div>
-    <!-- ############################################################ -->
-    <!-- END SECTION 6                                                -->
-    <!-- ############################################################ -->
 
-
-    <!-- ############################################################ -->
-    <!-- SECTION 7: PROGRESS VIEW                                    -->
-    <!-- ############################################################ -->
+    <!-- SECTION 7: PROGRESS VIEW -->
     <div class="page-body hidden" id="view-progress">
       <h1 class="page-heading">Student Progress Overview</h1>
       <div class="progress-list" id="progress-list"></div>
     </div>
-    <!-- ############################################################ -->
-    <!-- END SECTION 7                                                -->
-    <!-- ############################################################ -->
 
-
-    <!-- ############################################################ -->
-    <!-- SECTION 8: ANNOUNCEMENTS VIEW                               -->
-    <!-- ############################################################ -->
+    <!-- SECTION 8: ANNOUNCEMENTS VIEW -->
     <div class="page-body hidden" id="view-announcements">
       <div class="announcements-header">
         <h1 class="page-heading" style="margin-bottom:0">Announcements</h1>
@@ -266,14 +240,8 @@
       </div>
       <div id="announcements-list"></div>
     </div>
-    <!-- ############################################################ -->
-    <!-- END SECTION 8                                                -->
-    <!-- ############################################################ -->
 
-
-    <!-- ############################################################ -->
-    <!-- SECTION 9: PROFILE VIEW                                     -->
-    <!-- ############################################################ -->
+    <!-- SECTION 9: PROFILE VIEW -->
     <div class="page-body hidden" id="view-profile">
       <h1 class="page-heading">Your Profile</h1>
       <div class="profile-layout">
@@ -325,9 +293,6 @@
         </div>
       </div>
     </div>
-    <!-- ############################################################ -->
-    <!-- END SECTION 9                                                -->
-    <!-- ############################################################ -->
 
   </main>
 </div>
@@ -336,11 +301,11 @@
 <!-- MODALS                                                        -->
 <!-- ============================================================ -->
 
-<!-- Create/Edit Class Modal -->
+<!-- Create Class Modal -->
 <div class="modal-overlay hidden" id="modal-class">
   <div class="modal-box">
     <h3 class="modal-title">
-      <img src="/teacherdashboard/class-icon.png" alt="" onerror="this.style.display='none'">
+      <img src="classes.png" alt="" onerror="this.style.display='none'">
       <span id="modal-class-title-text">Create Class</span>
     </h3>
     <div class="modal-field"><label>Class Name</label><input type="text" id="class-name-input" placeholder="e.g. Mathematics 101"></div>
@@ -352,11 +317,30 @@
   </div>
 </div>
 
-<!-- Add/Edit Section Modal -->
+<!-- Edit Class Modal (opened from 3-dot menu) -->
+<div class="modal-overlay hidden" id="modal-edit-class">
+  <div class="modal-box">
+    <h3 class="modal-title">
+      <img src="classes.png" alt="" onerror="this.style.display='none'">
+      Edit Class
+    </h3>
+    <div class="modal-field"><label>Class Name</label><input type="text" id="edit-class-name-input" placeholder="e.g. Mathematics 101"></div>
+    <div class="modal-field"><label>Description (optional)</label><textarea id="edit-class-desc-input" placeholder="Short class description"></textarea></div>
+    <div class="modal-actions-split">
+      <button class="btn btn-danger" id="delete-class-modal-btn">Delete</button>
+      <div class="modal-actions-right">
+        <button class="btn btn-ghost" id="cancel-edit-class-modal">Cancel</button>
+        <button class="btn btn-dark" id="save-edit-class-modal">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Section Modal (create only) -->
 <div class="modal-overlay hidden" id="modal-section">
   <div class="modal-box">
     <h3 class="modal-title">
-      <img src="/teacherdashboard/section-icon.png" alt="" onerror="this.style.display='none'">
+      <img src="section-icon.png" alt="" onerror="this.style.display='none'">
       <span id="modal-section-title-text">Add Section</span>
     </h3>
     <div class="modal-field"><label>Section Name</label><input type="text" id="section-name-input" placeholder="e.g. Section A"></div>
@@ -367,33 +351,59 @@
   </div>
 </div>
 
-<!-- View Class Code Modal -->
-<div class="modal-overlay hidden" id="modal-class-code">
+<!-- Edit Section Modal (opened from 3-dot menu) -->
+<div class="modal-overlay hidden" id="modal-edit-section">
   <div class="modal-box">
     <h3 class="modal-title">
-      <img src="/teacherdashboard/key.png" alt="" onerror="this.style.display='none'">
-      Class Code
+      <img src="section-icon.png" alt="" onerror="this.style.display='none'">
+      Edit Section
     </h3>
-    <p style="font-size:13px;color:#666;margin-bottom:8px">Share this code with students to join the section.</p>
-    <div class="code-display" id="code-display-value">ABC123</div>
-    <div class="modal-field"><label>Edit Class Code</label><input type="text" id="edit-code-input" placeholder="Enter custom code"></div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" id="cancel-code-modal">Close</button>
-      <button class="btn btn-dark" id="save-code-modal">Save Code</button>
+    <div class="modal-field"><label>Section Name</label><input type="text" id="edit-section-name-input" placeholder="e.g. Section A"></div>
+    <div class="modal-field">
+      <label>Class Code</label>
+      <div class="edit-modal-code-display" id="edit-modal-code-display">N/A</div>
+      <input type="text" id="edit-section-code-input" placeholder="e.g. MATH-A1" style="margin-top:8px">
+    </div>
+    <div class="modal-actions-split">
+      <button class="btn btn-danger" id="delete-section-modal-btn">Delete</button>
+      <div class="modal-actions-right">
+        <button class="btn btn-ghost" id="cancel-edit-section-modal">Cancel</button>
+        <button class="btn btn-dark" id="save-edit-section-modal">Save</button>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- Add Material Modal -->
 <div class="modal-overlay hidden" id="modal-material">
-  <div class="modal-box">
+  <div class="modal-box modal-box-wide">
     <h3 class="modal-title">
-      <img src="/teacherdashboard/lesson-icon.png" alt="" onerror="this.style.display='none'">
+      <img src="lessons.png" alt="" onerror="this.style.display='none'">
       <span id="modal-material-title-text">Add Learning Material</span>
     </h3>
     <div class="modal-field"><label>Material Name</label><input type="text" id="material-name-input" placeholder="e.g. Chapter 1 Notes"></div>
     <div class="modal-field"><label>Description</label><textarea id="material-desc-input" placeholder="Brief description of the material"></textarea></div>
-    <div class="modal-field"><label>File / Link</label><input type="text" id="material-link-input" placeholder="Paste a link or upload a file"></div>
+    <div class="modal-field">
+      <label>Upload File</label>
+      <div class="file-upload-zone" id="material-upload-zone">
+        <div class="file-upload-icon">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 3C9.716 3 3 9.716 3 18C3 26.284 9.716 33 18 33C26.284 33 33 26.284 33 18C33 9.716 26.284 3 18 3Z" stroke="#aaa" stroke-width="1.5" fill="none"/>
+            <path d="M12 20C12 23.314 14.686 26 18 26C21.314 26 24 23.314 24 20" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M18 10V22M18 10L15 13M18 10L21 13" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <p class="file-upload-title">Choose a file or drag &amp; drop it here</p>
+        <p class="file-upload-sub">JPEG, PNG, PDF, and MP4 formats, up to 50MB</p>
+        <button type="button" class="btn-browse" onclick="document.getElementById('material-file-input').click()">Browse File</button>
+        <input type="file" id="material-file-input" accept=".jpg,.jpeg,.png,.pdf,.mp4" style="display:none" />
+      </div>
+      <div class="file-preview-list" id="material-file-preview"></div>
+    </div>
+    <div class="modal-field">
+      <label>Or paste a link</label>
+      <input type="text" id="material-link-input" placeholder="https://...">
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancel-material-modal">Cancel</button>
       <button class="btn btn-dark" id="save-material-modal">Save</button>
@@ -403,16 +413,38 @@
 
 <!-- Add Assignment Modal -->
 <div class="modal-overlay hidden" id="modal-assignment">
-  <div class="modal-box">
+  <div class="modal-box modal-box-wide">
     <h3 class="modal-title">
-      <img src="/teacherdashboard/assignment-icon.png" alt="" onerror="this.style.display='none'">
+      <img src="assignments.png" alt="" onerror="this.style.display='none'">
       <span id="modal-assignment-title-text">Add Assignment</span>
     </h3>
     <div class="modal-field"><label>Title</label><input type="text" id="assignment-name-input" placeholder="Assignment title"></div>
     <div class="modal-field"><label>Instructions</label><textarea id="assignment-desc-input" placeholder="Describe what students need to do"></textarea></div>
-    <div class="modal-field"><label>Due Date</label><input type="date" id="assignment-due-input"></div>
-    <div class="modal-field"><label>Points</label><input type="number" id="assignment-points-input" placeholder="e.g. 100"></div>
-    <div class="modal-field"><label>Link / File (optional)</label><input type="text" id="assignment-link-input" placeholder="Attach a link or file"></div>
+    <div class="modal-two-col">
+      <div class="modal-field"><label>Due Date</label><input type="date" id="assignment-due-input"></div>
+      <div class="modal-field"><label>Points</label><input type="number" id="assignment-points-input" placeholder="e.g. 100"></div>
+    </div>
+    <div class="modal-field">
+      <label>Upload File</label>
+      <div class="file-upload-zone" id="assignment-upload-zone">
+        <div class="file-upload-icon">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 3C9.716 3 3 9.716 3 18C3 26.284 9.716 33 18 33C26.284 33 33 26.284 33 18C33 9.716 26.284 3 18 3Z" stroke="#aaa" stroke-width="1.5" fill="none"/>
+            <path d="M12 20C12 23.314 14.686 26 18 26C21.314 26 24 23.314 24 20" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M18 10V22M18 10L15 13M18 10L21 13" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <p class="file-upload-title">Choose a file or drag &amp; drop it here</p>
+        <p class="file-upload-sub">JPEG, PNG, PDF, and MP4 formats, up to 50MB</p>
+        <button type="button" class="btn-browse" onclick="document.getElementById('assignment-file-input').click()">Browse File</button>
+        <input type="file" id="assignment-file-input" accept=".jpg,.jpeg,.png,.pdf,.mp4" style="display:none" />
+      </div>
+      <div class="file-preview-list" id="assignment-file-preview"></div>
+    </div>
+    <div class="modal-field">
+      <label>Or paste a link</label>
+      <input type="text" id="assignment-link-input" placeholder="https://...">
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancel-assignment-modal">Cancel</button>
       <button class="btn btn-dark" id="save-assignment-modal">Save</button>
@@ -422,15 +454,34 @@
 
 <!-- Add Quiz Modal -->
 <div class="modal-overlay hidden" id="modal-quiz">
-  <div class="modal-box">
+  <div class="modal-box modal-box-wide">
     <h3 class="modal-title">
-      <img src="/teacherdashboard/quiz-icon.png" alt="" onerror="this.style.display='none'">
+      <img src="quiz.png" alt="" onerror="this.style.display='none'">
       <span id="modal-quiz-title-text">Add Quiz</span>
     </h3>
     <div class="modal-field"><label>Quiz Title</label><input type="text" id="quiz-name-input" placeholder="Quiz title"></div>
     <div class="modal-field"><label>Description</label><textarea id="quiz-desc-input" placeholder="What is this quiz about?"></textarea></div>
-    <div class="modal-field"><label>Google Form Link</label><input type="text" id="quiz-link-input" placeholder="https://forms.google.com/..."></div>
-    <div class="modal-field"><label>Due Date</label><input type="date" id="quiz-due-input"></div>
+    <div class="modal-two-col">
+      <div class="modal-field"><label>Google Form Link</label><input type="text" id="quiz-link-input" placeholder="https://forms.google.com/..."></div>
+      <div class="modal-field"><label>Due Date</label><input type="date" id="quiz-due-input"></div>
+    </div>
+    <div class="modal-field">
+      <label>Upload File (optional)</label>
+      <div class="file-upload-zone" id="quiz-upload-zone">
+        <div class="file-upload-icon">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M18 3C9.716 3 3 9.716 3 18C3 26.284 9.716 33 18 33C26.284 33 33 26.284 33 18C33 9.716 26.284 3 18 3Z" stroke="#aaa" stroke-width="1.5" fill="none"/>
+            <path d="M12 20C12 23.314 14.686 26 18 26C21.314 26 24 23.314 24 20" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M18 10V22M18 10L15 13M18 10L21 13" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <p class="file-upload-title">Choose a file or drag &amp; drop it here</p>
+        <p class="file-upload-sub">JPEG, PNG, PDF, and MP4 formats, up to 50MB</p>
+        <button type="button" class="btn-browse" onclick="document.getElementById('quiz-file-input').click()">Browse File</button>
+        <input type="file" id="quiz-file-input" accept=".jpg,.jpeg,.png,.pdf,.mp4" style="display:none" />
+      </div>
+      <div class="file-preview-list" id="quiz-file-preview"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancel-quiz-modal">Cancel</button>
       <button class="btn btn-dark" id="save-quiz-modal">Save</button>
@@ -442,7 +493,7 @@
 <div class="modal-overlay hidden" id="modal-announcement">
   <div class="modal-box">
     <h3 class="modal-title">
-      <img src="/teacherdashboard/announcement-icon.png" alt="" onerror="this.style.display='none'">
+      <img src="announcements.png" alt="" onerror="this.style.display='none'">
       <span id="modal-announcement-title-text">New Announcement</span>
     </h3>
     <div class="modal-field"><label>Title</label><input type="text" id="announcement-title-input" placeholder="Announcement title"></div>
@@ -460,13 +511,6 @@
   </div>
 </div>
 
-<!-- ============================================================ -->
-<!-- JAVASCRIPT                                                    -->
-<!-- ============================================================ -->
 <script src="teacherdb.js"></script>
-<!-- ============================================================ -->
-<!-- END JAVASCRIPT                                                -->
-<!-- ============================================================ -->
-
 </body>
 </html>
