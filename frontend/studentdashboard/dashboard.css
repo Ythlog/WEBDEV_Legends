@@ -212,6 +212,7 @@ body {
   padding: 16px 20px;
   margin-bottom: 14px;
   background-color: #ffffff;
+  min-height: auto;
 }
 
 .announcement-main {
@@ -224,6 +225,8 @@ body {
 .announcement-sub {
   font-size: 12px;
   color: #555555;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
 .todo-card {

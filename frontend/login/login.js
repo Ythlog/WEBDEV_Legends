@@ -233,12 +233,16 @@ async function handleLogin() {
             return Swal.fire("Error", result.message, "error");
         }
 
-        // ✅ SAVE USER TO LOCALSTORAGE
+    // ✅ SAVE USER TO LOCALSTORAGE
         localStorage.setItem('eduhub_user', JSON.stringify(result.user));
         console.log('Saved to localStorage:', result.user); // debug
 
         Swal.fire("Welcome!", "Login successful.", "success").then(() => {
-            window.location.href = "/dashboard";
+            if (result.user.role === 'teacher') {
+                window.location.href = "/teacher-dashboard";
+            } else {
+                window.location.href = "/dashboard";
+            }
         });
     } catch (err) {
         Swal.fire("Error", "Server error.", "error");

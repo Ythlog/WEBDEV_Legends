@@ -50,10 +50,7 @@ let state = {
     { studentId: 2, itemType: 'quiz', itemId: 1, status: 'missed' },
     { studentId: 1, itemType: 'assignment', itemId: 1, status: 'passed' },
   ],
-  announcements: [
-    { id: 1, title: 'Welcome to the new semester!', body: 'Hello students! Classes begin this Monday. Please check your assigned sections.', audience: 'All Classes', date: '2025-06-01' },
-    { id: 2, title: 'Quiz Schedule Posted', body: 'The quiz schedule for June has been posted. Please check the Quizzes section.', audience: 'Mathematics 101', date: '2025-06-03' },
-  ],
+  announcements: [],
   nextId: 100,
 };
 
@@ -701,6 +698,27 @@ function renderProgressView() {
 function renderAnnouncementsView() {
   showView('announcements');
   const list = document.getElementById('announcements-list');
+  list.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">Loading announcements...</div>';
+  fetchAnnouncements();
+}
+
+async function fetchAnnouncements() {
+  try {
+    const response = await fetch(`/api/teacher-announcements?teacherId=${TEACHER_DATA.profile.id}`);
+    if (!response.ok) throw new Error('Failed to fetch');
+    
+    const data = await response.json();
+    state.announcements = data;
+    renderAnnouncementList();
+  } catch (err) {
+    console.error('Fetch announcements error:', err);
+    const list = document.getElementById('announcements-list');
+    list.innerHTML = '<div class="empty-state">Failed to load announcements.</div>';
+  }
+}
+
+function renderAnnouncementList() {
+  const list = document.getElementById('announcements-list');
   list.innerHTML = '';
 
   if (!state.announcements.length) {
@@ -709,6 +727,9 @@ function renderAnnouncementsView() {
   }
 
   state.announcements.forEach(a => {
+    const date = new Date(a.created_at).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric'
+    });
     const card = document.createElement('div');
     card.className = 'announcement-card';
     card.innerHTML = `
@@ -720,7 +741,7 @@ function renderAnnouncementsView() {
         <div class="announcement-footer">
           <div>
             <div class="announcement-title">${escHtml(a.title)}</div>
-            <div class="announcement-meta">${escHtml(a.audience)} · ${a.date}</div>
+            <div class="announcement-meta">${escHtml(a.audience)} · ${date}</div>
           </div>
           <div style="display:flex;gap:6px">
             <button class="btn btn-ghost btn-sm" onclick="editAnnouncement(${a.id})">Edit</button>
@@ -733,16 +754,25 @@ function renderAnnouncementsView() {
   });
 }
 
-function deleteAnnouncement(id) {
-  Swal.fire({
+async function deleteAnnouncement(id) {
+  const result = await Swal.fire({
     title: 'Delete announcement?', icon: 'warning', showCancelButton: true,
     confirmButtonText: 'Delete', confirmButtonColor: '#cc0000'
-  }).then(r => {
-    if (r.isConfirmed) {
-      state.announcements = state.announcements.filter(a => a.id !== id);
-      renderAnnouncementsView();
-    }
   });
+  
+  if (result.isConfirmed) {
+    try {
+      const response = await fetch(`/api/announcements/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        Swal.fire('Deleted', 'Announcement deleted.', 'success');
+        fetchAnnouncements();
+      } else {
+        Swal.fire('Error', 'Failed to delete.', 'error');
+      }
+    } catch (err) {
+      Swal.fire('Error', 'Could not connect to server.', 'error');
+    }
+  }
 }
 
 function editAnnouncement(id) {
@@ -750,6 +780,7 @@ function editAnnouncement(id) {
   state.editingAnnouncementId = id;
   document.getElementById('announcement-title-input').value = a.title;
   document.getElementById('announcement-body-input').value = a.body;
+  document.getElementById('announcement-audience-input').value = a.audience;
   document.getElementById('modal-announcement-title-text').textContent = 'Edit Announcement';
   openModal('modal-announcement');
 }
@@ -992,20 +1023,49 @@ document.getElementById('btn-new-announcement').addEventListener('click', () => 
   openModal('modal-announcement');
 });
 document.getElementById('cancel-announcement-modal').addEventListener('click', () => closeModal('modal-announcement'));
-document.getElementById('save-announcement-modal').addEventListener('click', () => {
+document.getElementById('save-announcement-modal').addEventListener('click', async () => {
   const title = document.getElementById('announcement-title-input').value.trim();
   const body = document.getElementById('announcement-body-input').value.trim();
   const audience = document.getElementById('announcement-audience-input').value;
-  if (!title || !body) { Swal.fire('Error', 'Title and message are required.', 'error'); return; }
-  const today = new Date().toISOString().split('T')[0];
-  if (state.editingAnnouncementId) {
-    const a = state.announcements.find(an => an.id === state.editingAnnouncementId);
-    a.title = title; a.body = body; a.audience = audience;
-  } else {
-    state.announcements.unshift({ id: genId(), title, body, audience, date: today });
+  
+  if (!title || !body) { 
+    Swal.fire('Error', 'Title and message are required.', 'error'); 
+    return; 
   }
-  closeModal('modal-announcement');
-  renderAnnouncementsView();
+
+  try {
+    let response;
+    if (state.editingAnnouncementId) {
+      response = await fetch(`/api/announcements/${state.editingAnnouncementId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, body, audience })
+      });
+    } else {
+      response = await fetch('/api/announcements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          teacherId: TEACHER_DATA.profile.id, 
+          title, 
+          body, 
+          audience 
+        })
+      });
+    }
+
+    const data = await response.json();
+
+    if (response.ok) {
+      closeModal('modal-announcement');
+      Swal.fire('Success', data.message, 'success');
+      fetchAnnouncements();
+    } else {
+      Swal.fire('Error', data.message || 'Failed to save.', 'error');
+    }
+  } catch (err) {
+    Swal.fire('Error', 'Could not connect to server.', 'error');
+  }
 });
 
 // =============================================
@@ -1018,50 +1078,219 @@ document.getElementById('back-to-section-quizzes').addEventListener('click', () 
 document.getElementById('back-to-section-assignments').addEventListener('click', () => { openSectionDetail(state.currentSectionId); switchTab('assignments'); });
 
 // =============================================
-// PROFILE
+// PROFILE - API CONNECTED
 // =============================================
+const TEACHER_DATA = {
+  profile: { id: null, firstName: '', lastName: '', username: '', email: '', role: '' },
+  profileLoaded: false
+};
+
+async function fetchTeacherProfile() {
+  const savedUser = localStorage.getItem('eduhub_user');
+  if (savedUser) {
+    try {
+      const user = JSON.parse(savedUser);
+      TEACHER_DATA.profile.id = user.id;
+      TEACHER_DATA.profile.firstName = user.first_name || 'Teacher';
+      TEACHER_DATA.profile.lastName = user.last_name || '';
+      TEACHER_DATA.profile.username = user.username || 'teacher';
+      TEACHER_DATA.profile.email = user.email || '';
+      TEACHER_DATA.profile.role = user.role || 'teacher';
+      TEACHER_DATA.profileLoaded = true;
+      return;
+    } catch (e) { console.error('Error parsing saved user:', e); }
+  }
+  TEACHER_DATA.profileLoaded = true;
+}
+
+function refreshTeacherProfileDisplay() {
+  const p = TEACHER_DATA.profile;
+  document.getElementById('display-firstname').textContent = p.firstName || 'Teacher';
+  document.getElementById('display-lastname').textContent = p.lastName || '';
+  document.getElementById('display-username').textContent = p.username || 'teacher';
+  document.getElementById('display-email').textContent = p.email || '';
+  document.getElementById('profile-username-display').textContent = p.username || 'teacher';
+  document.getElementById('profile-role-display').textContent = p.role || 'Teacher';
+  document.getElementById('pw-username-display').value = p.username || 'teacher';
+  document.getElementById('edit-firstname').value = p.firstName || '';
+  document.getElementById('edit-lastname').value = p.lastName || '';
+  document.getElementById('edit-username').value = p.username || '';
+  document.getElementById('edit-email').value = p.email || '';
+}
+
+function showTeacherProfilePanel(panel) {
+  document.getElementById('profile-main').style.display = (panel === 'main') ? 'block' : 'none';
+  document.getElementById('profile-edit-info').style.display = (panel === 'edit-info') ? 'block' : 'none';
+  document.getElementById('profile-change-password').style.display = (panel === 'change-password') ? 'block' : 'none';
+}
+
+// Edit profile button
 document.getElementById('btn-edit-profile').addEventListener('click', () => {
-  document.getElementById('profile-main').style.display = 'none';
-  document.getElementById('profile-change-password').style.display = 'none';
-  document.getElementById('profile-edit-info').style.display = 'block';
+  showTeacherProfilePanel('edit-info');
 });
+
+// Cancel edit
 document.getElementById('btn-cancel-edit').addEventListener('click', () => {
-  document.getElementById('profile-edit-info').style.display = 'none';
-  document.getElementById('profile-main').style.display = 'block';
+  showTeacherProfilePanel('main');
 });
-document.getElementById('btn-save-profile').addEventListener('click', () => {
-  const fn = document.getElementById('edit-firstname').value;
-  const ln = document.getElementById('edit-lastname').value;
-  const un = document.getElementById('edit-username').value;
-  const em = document.getElementById('edit-email').value;
-  document.getElementById('display-firstname').textContent = fn;
-  document.getElementById('display-lastname').textContent = ln;
-  document.getElementById('display-username').textContent = un;
-  document.getElementById('display-email').textContent = em;
-  document.getElementById('profile-username-display').textContent = un;
-  document.getElementById('profile-edit-info').style.display = 'none';
-  document.getElementById('profile-main').style.display = 'block';
-  Swal.fire({ icon: 'success', title: 'Profile updated!', timer: 1200, showConfirmButton: false });
+
+// Save profile
+document.getElementById('btn-save-profile').addEventListener('click', async () => {
+  const updated = {
+    userId: TEACHER_DATA.profile.id,
+    firstName: document.getElementById('edit-firstname').value.trim(),
+    lastName: document.getElementById('edit-lastname').value.trim(),
+    username: document.getElementById('edit-username').value.trim(),
+    email: document.getElementById('edit-email').value.trim()
+  };
+
+  if (!updated.firstName || !updated.lastName || !updated.username || !updated.email) {
+    Swal.fire('Missing', 'All fields are required.', 'warning');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/update-profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated)
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      const savedUser = {
+        id: updated.userId,
+        first_name: updated.firstName,
+        last_name: updated.lastName,
+        username: updated.username,
+        email: updated.email,
+        role: TEACHER_DATA.profile.role
+      };
+      localStorage.setItem('eduhub_user', JSON.stringify(savedUser));
+      await fetchTeacherProfile();
+      refreshTeacherProfileDisplay();
+      showTeacherProfilePanel('main');
+      Swal.fire('Saved', 'Profile updated successfully.', 'success');
+    } else {
+      Swal.fire('Error', data.message || 'Failed to update profile.', 'error');
+    }
+  } catch (error) {
+    Swal.fire('Error', 'Could not connect to server.', 'error');
+  }
 });
+
+// Change password button
 document.getElementById('btn-change-password').addEventListener('click', () => {
-  document.getElementById('profile-main').style.display = 'none';
-  document.getElementById('profile-edit-info').style.display = 'none';
-  document.getElementById('profile-change-password').style.display = 'block';
-  document.getElementById('pw-username-display').value = document.getElementById('display-username').textContent;
+  showTeacherProfilePanel('change-password');
+  document.getElementById('pw-new').value = '';
+  document.getElementById('pw-confirm').value = '';
+  document.getElementById('pw-verification-code').value = '';
+  document.getElementById('verification-code-section').style.display = 'none';
+  document.getElementById('btn-send-code').style.display = 'block';
+  document.getElementById('btn-save-password').style.display = 'none';
 });
+
+// Cancel password
 document.getElementById('btn-cancel-password').addEventListener('click', () => {
-  document.getElementById('profile-change-password').style.display = 'none';
-  document.getElementById('profile-main').style.display = 'block';
+  showTeacherProfilePanel('main');
 });
-document.getElementById('btn-save-password').addEventListener('click', () => {
-  const cur = document.getElementById('pw-current').value;
-  const nw = document.getElementById('pw-new').value;
-  const conf = document.getElementById('pw-confirm').value;
-  if (!cur || !nw || !conf) { Swal.fire('Error', 'All fields are required.', 'error'); return; }
-  if (nw !== conf) { Swal.fire('Error', 'Passwords do not match.', 'error'); return; }
-  document.getElementById('profile-change-password').style.display = 'none';
-  document.getElementById('profile-main').style.display = 'block';
-  Swal.fire({ icon: 'success', title: 'Password updated!', timer: 1200, showConfirmButton: false });
+
+// Send code
+document.getElementById('btn-send-code').addEventListener('click', async () => {
+  try {
+    const response = await fetch('/api/send-change-password-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: TEACHER_DATA.profile.id })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      Swal.fire('Code Sent', 'A verification code has been sent to your email.', 'success');
+      document.getElementById('verification-code-section').style.display = 'block';
+      document.getElementById('btn-send-code').style.display = 'none';
+      document.getElementById('btn-save-password').style.display = 'block';
+    } else {
+      Swal.fire('Error', data.message, 'error');
+    }
+  } catch (error) {
+    Swal.fire('Error', 'Could not connect to server.', 'error');
+  }
+});
+
+// Update password
+document.getElementById('btn-save-password').addEventListener('click', async () => {
+  const code = document.getElementById('pw-verification-code').value.trim();
+  const newPw = document.getElementById('pw-new').value.trim();
+  const confirm = document.getElementById('pw-confirm').value.trim();
+
+  if (!code || !newPw || !confirm) {
+    Swal.fire('Missing', 'All fields are required.', 'warning');
+    return;
+  }
+  if (code.length !== 6) {
+    Swal.fire('Invalid', 'Please enter the 6-digit verification code.', 'warning');
+    return;
+  }
+  if (newPw !== confirm) {
+    Swal.fire('Mismatch', 'New passwords do not match.', 'error');
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/change-password', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: TEACHER_DATA.profile.id,
+        code: code,
+        newPassword: newPw
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      Swal.fire('Updated', 'Password changed successfully.', 'success');
+      document.getElementById('pw-new').value = '';
+      document.getElementById('pw-confirm').value = '';
+      document.getElementById('pw-verification-code').value = '';
+      showTeacherProfilePanel('main');
+    } else {
+      Swal.fire('Error', data.message || 'Failed to change password.', 'error');
+    }
+  } catch (error) {
+    Swal.fire('Error', 'Could not connect to server.', 'error');
+  }
+});
+
+// Logout
+document.getElementById('btn-logout').addEventListener('click', () => {
+  Swal.fire({
+    title: 'Are you sure?',
+    text: 'You will be logged out of your account.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, logout!',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#dc2626'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      localStorage.removeItem('eduhub_user');
+      sessionStorage.clear();
+      Swal.fire({
+        title: 'Logged out',
+        text: 'You have been logged out successfully.',
+        icon: 'success',
+        timer: 1500,
+        showConfirmButton: false
+      }).then(() => {
+        window.location.href = '/login/login.html';
+      });
+    }
+  });
 });
 
 // =============================================
@@ -1079,4 +1308,8 @@ function escHtml(str) {
 // =============================================
 // INIT
 // =============================================
-renderClassesView();
+(async function init() {
+  await fetchTeacherProfile();
+  refreshTeacherProfileDisplay();
+  renderClassesView();
+})();

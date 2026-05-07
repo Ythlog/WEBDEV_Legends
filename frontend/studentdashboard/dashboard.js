@@ -85,18 +85,9 @@ async function markDone(type) {
 const DATA = {
   profileLoaded: false,
 
-  announcements: [
-    { 
-      main: 'Prof. Catherine Sorbito posted a new lesson', 
-      sub: 'Check it out',
-      timestamp: new Date('2026-05-07T09:30:00')
-    },
-    { 
-      main: 'A new quiz was posted in your Web Dev Class', 
-      sub: 'Due dates are important, complete your assignments today',
-      timestamp: new Date('2026-05-06T14:15:00')
-    }
-  ],
+  announcements: [],
+  announcementsLoaded: false,
+
 
   todos: [
     { title: 'Open learning material 1 in Web Development', due: 'June 12, 2026', dueDate: new Date('2026-06-12') },
@@ -310,7 +301,14 @@ async function renderHome() {
       await fetchClasses();
     } catch (error) {
       console.error('Failed to fetch classes for home view:', error);
-      // Continue rendering even if classes fail to load
+    }
+  }
+    // ===== Fetch announcements if not loaded =====
+  if (!DATA.announcementsLoaded) {
+    try {
+      await fetchAnnouncements();
+    } catch (error) {
+      console.error('Failed to fetch announcements:', error);
     }
   }
 
@@ -325,23 +323,21 @@ async function renderHome() {
   const annSection = document.getElementById('announcements-section');
   annSection.innerHTML = '<h2 class="section-title">Announcements</h2>';
 
-  // Create scrollable container for announcements
   const annScrollContainer = document.createElement('div');
   annScrollContainer.className = 'announcements-scroll-container';
 
-  if (DATA.announcements.length === 0) {
+  if (!DATA.announcements || DATA.announcements.length === 0) {
     annScrollContainer.innerHTML = '<div class="announcement-empty">No announcements yet</div>';
   } else {
     DATA.announcements.forEach(a => {
       const card = document.createElement('div');
       card.className = 'announcement-card';
       
-      // Format timestamp nicely
-      const timestamp = a.timestamp ? formatAnnouncementTime(a.timestamp) : '';
+      const timestamp = a.created_at ? formatAnnouncementTime(new Date(a.created_at)) : '';
       
       card.innerHTML = `
-        <p class="announcement-main">${a.main}</p>
-        <p class="announcement-sub">${a.sub}</p>
+        <p class="announcement-main">${a.title}</p>
+        <p class="announcement-sub">${a.body}</p>
         ${timestamp ? `<p class="announcement-time">${timestamp}</p>` : ''}
       `;
       annScrollContainer.appendChild(card);
@@ -499,6 +495,18 @@ function formatDueDate(dateVal) {
 }
 
 /** ---------- FETCH CLASSES ---------- */
+async function fetchAnnouncements() {
+  try {
+    const res = await fetch('/api/announcements');
+    if (!res.ok) return;
+    const data = await res.json();
+    DATA.announcements = data;
+    DATA.announcementsLoaded = true;
+  } catch (err) {
+    console.error('fetchAnnouncements error:', err);
+  }
+}
+
 async function fetchClasses() {
   try {
     const response = await fetch('/api/classes');
@@ -915,7 +923,6 @@ document.addEventListener('click', async (e) => {
 
   if (e.target.id === 'btn-save-password') {
     const code = document.getElementById('pw-verification-code').value.trim();
-    console.log('Sending code:', code); //yther
     const newPw = document.getElementById('pw-new').value.trim();
     const confirm = document.getElementById('pw-confirm').value.trim();
 
@@ -1010,6 +1017,11 @@ document.addEventListener('click', async (e) => {
     await fetchClasses();
   } catch (error) {
     console.error('Classes fetch failed:', error);
+  }
+    try {
+    await fetchAnnouncements();
+  } catch (error) {
+    console.error('Announcements fetch failed:', error);
   }
   
   try {

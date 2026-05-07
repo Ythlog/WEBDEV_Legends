@@ -67,8 +67,9 @@ app.get("/", (req, res) => {
 app.get("/dashboard", (req, res) => {
     res.sendFile(path.join(__dirname, "..", "..", "frontend", "studentdashboard", "dashboard.html"));
 });
-
-
+app.get("/teacher-dashboard", (req, res) => {
+    res.sendFile(path.join(__dirname, "..", "..", "frontend", "teacherdashboard", "teacherdb.html"));
+});
 // =====================================================
 // ✅ FIXED API: CLASSES WITH DUE DATES
 // =====================================================
@@ -553,6 +554,109 @@ app.put("/api/change-password", async (req, res) => {
     } catch (err) {
         console.error("Change password error:", err);
         res.status(500).json({ message: "Server error: " + err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// ========================= ANNOUNCEMENTS =========================
+// Get all announcements (for student dashboard)
+app.get("/api/announcements", async (req, res) => {
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const rows = await conn.query(
+            "SELECT id, title, body, audience, created_at FROM announcements ORDER BY created_at DESC"
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error("Get announcements error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Get teacher's own announcements (for teacher dashboard)
+app.get("/api/teacher-announcements", async (req, res) => {
+    const { teacherId } = req.query;
+    if (!teacherId) return res.status(400).json({ message: "Missing teacherId" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const rows = await conn.query(
+            "SELECT id, title, body, audience, created_at FROM announcements WHERE teacher_id = ? ORDER BY created_at DESC",
+            [teacherId]
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error("Get teacher announcements error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Create announcement
+app.post("/api/announcements", async (req, res) => {
+    const { teacherId, title, body, audience } = req.body;
+    if (!teacherId || !title || !body) {
+        return res.status(400).json({ message: "Missing required fields." });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query(
+            "INSERT INTO announcements (teacher_id, title, body, audience) VALUES (?, ?, ?, ?)",
+            [teacherId, title, body, audience || 'All Classes']
+        );
+        res.json({ message: "Announcement posted successfully." });
+    } catch (err) {
+        console.error("Create announcement error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Update announcement
+app.put("/api/announcements/:id", async (req, res) => {
+    const { id } = req.params;
+    const { title, body, audience } = req.body;
+    if (!title || !body) {
+        return res.status(400).json({ message: "Title and body are required." });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query(
+            "UPDATE announcements SET title = ?, body = ?, audience = ? WHERE id = ?",
+            [title, body, audience || 'All Classes', id]
+        );
+        res.json({ message: "Announcement updated successfully." });
+    } catch (err) {
+        console.error("Update announcement error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Delete announcement
+app.delete("/api/announcements/:id", async (req, res) => {
+    const { id } = req.params;
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query("DELETE FROM announcements WHERE id = ?", [id]);
+        res.json({ message: "Announcement deleted successfully." });
+    } catch (err) {
+        console.error("Delete announcement error:", err);
+        res.status(500).json({ message: "Server error" });
     } finally {
         if (conn) conn.release();
     }

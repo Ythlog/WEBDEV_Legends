@@ -645,6 +645,7 @@ body { font-family: 'Poppins', sans-serif; background-color: #ffffff; height: 10
   background-color: #ffffff;
   display: flex;
   gap: 16px;
+  min-height: auto;
 }
 .announcement-icon-wrap {
   width: 40px;
@@ -657,12 +658,29 @@ body { font-family: 'Poppins', sans-serif; background-color: #ffffff; height: 10
   flex-shrink: 0;
   overflow: hidden;
 }
-.announcement-icon-wrap img { width: 20px; height: 20px; object-fit: contain; }
-.announcement-body-wrap { flex: 1; }
-.announcement-title { font-size: 14px; font-weight: 700; color: #000; margin-bottom: 4px; }
-.announcement-body { font-size: 13px; color: #444; line-height: 1.7; margin-bottom: 8px; }
-.announcement-meta { font-size: 11px; color: #888; }
-.announcement-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+.announcement-icon-wrap img { 
+  width: 20px; height: 20px; object-fit: contain;
+ }
+.announcement-body-wrap {
+   flex: 1; 
+  }
+.announcement-title {
+   font-size: 14px; font-weight: 700; color: #000; margin-bottom: 4px; 
+  }
+.announcement-body { 
+  font-size: 13px; 
+  color: #444; 
+  line-height: 1.7; 
+  margin-bottom: 8px; 
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.announcement-meta {
+   font-size: 11px; color: #888; 
+  }
+.announcement-footer {
+   display: flex; justify-content: space-between; align-items: center; margin-top: 10px; 
+  }
 
 /* ===== PROFILE VIEW ===== */
 .profile-layout { display: grid; grid-template-columns: 280px 1fr; gap: 24px; margin-top: 20px; }

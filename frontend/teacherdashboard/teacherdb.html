@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Eduhub – Teacher Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="teacherdb.css" />
+  <link rel="stylesheet" href="/teacherdashboard/teacherdb.css" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
@@ -14,24 +14,24 @@
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sidebar-logo">
-      <img src="logo.png" alt="Eduhub Logo" class="logo-icon" onerror="this.style.display='none'" />
+      <img src="/teacherdashboard/logo.png" alt="Eduhub Logo" class="logo-icon" onerror="this.style.display='none'" />
       <span class="logo-text">Eduhub</span>
     </div>
     <nav class="sidebar-nav">
       <a class="nav-item active" data-view="classes">
-        <img src="classes.png" alt="Classes" class="nav-icon" />
+        <img src="/teacherdashboard/classes.png" alt="Classes" class="nav-icon" />
         <span>Classes</span>
       </a>
       <a class="nav-item" data-view="progress">
-        <img src="progress.png" alt="Progress" class="nav-icon" />
+        <img src="/teacherdashboard/progress.png" alt="Progress" class="nav-icon" />
         <span>Progress</span>
       </a>
       <a class="nav-item" data-view="announcements">
-        <img src="announcements.png" alt="Announcements" class="nav-icon" />
+        <img src="/teacherdashboard/announcements.png" alt="Announcements" class="nav-icon" />
         <span>Announcements</span>
       </a>
       <a class="nav-item" data-view="profile">
-        <img src="profile.png" alt="Profile" class="nav-icon" />
+        <img src="/teacherdashboard/profile.png" alt="Profile" class="nav-icon" />
         <span>Profile</span>
       </a>
     </nav>
@@ -42,11 +42,11 @@
     <!-- TOP BAR -->
     <header class="top-bar">
       <div class="search-bar">
-        <img src="blacksearch.png" alt="Search" class="search-icon" />
+        <img src="/teacherdashboard/blacksearch.png" alt="Search" class="search-icon" />
         <input type="text" placeholder="Search" id="search-input" />
       </div>
       <div class="user-avatar">
-        <img src="blackprofile.png" alt="User" class="avatar-icon" />
+        <img src="/teacherdashboard/blackprofile.png" alt="User" class="avatar-icon" />
       </div>
     </header>
 
@@ -85,19 +85,19 @@
       </div>
       <div class="section-tabs">
         <button class="tab-btn active" data-tab="lessons">
-          <img src="lessons2.png" alt="" />
+          <img src="/teacherdashboard/lessons2.png" alt="" />
           Lessons
         </button>
         <button class="tab-btn" data-tab="assignments">
-          <img src="assignments2.png" alt="" />
+          <img src="/teacherdashboard/assignments2.png" alt="" />
           Assignments
         </button>
         <button class="tab-btn" data-tab="quizzes">
-          <img src="quiz2.png" alt="" />
+          <img src="/teacherdashboard/quiz2.png" alt="" />
           Quizzes
         </button>
         <button class="tab-btn" data-tab="students">
-          <img src="students2.png" alt="" />
+          <img src="/teacherdashboard/students2.png" alt="" />
           Students
         </button>
       </div>
@@ -141,7 +141,6 @@
     <div class="page-body hidden" id="view-material-detail">
       <button class="back-btn" id="back-to-section-lessons">← Back to Section</button>
       <div class="detail-split-layout">
-        <!-- LEFT: Material Info -->
         <div class="detail-split-left">
           <p class="section-label" id="mat-section-label"></p>
           <div class="material-detail-banner" id="mat-detail-banner"></div>
@@ -153,7 +152,6 @@
             <button class="btn btn-danger btn-sm" id="btn-delete-material">Delete</button>
           </div>
         </div>
-        <!-- RIGHT: Student Completion -->
         <div class="detail-split-right">
           <p class="section-label">Student Completion</p>
           <div class="completion-tabs">
@@ -252,25 +250,26 @@
           <div class="profile-actions">
             <button class="profile-btn" id="btn-edit-profile">Edit Info</button>
             <button class="profile-btn secondary" id="btn-change-password">Change Password</button>
+            <button class="profile-btn" id="btn-logout" style="background:#dc2626;color:#fff;">Logout</button>
           </div>
         </div>
         <div class="profile-panels">
           <section id="profile-main">
             <h3 class="panel-title">Profile Information</h3>
             <div class="profile-info-grid">
-              <div class="info-item"><span class="label">First name</span><span class="value" id="display-firstname">Maria</span></div>
-              <div class="info-item"><span class="label">Last name</span><span class="value" id="display-lastname">Santos</span></div>
-              <div class="info-item"><span class="label">Username</span><span class="value" id="display-username">teacher01</span></div>
-              <div class="info-item"><span class="label">Email</span><span class="value" id="display-email">maria@eduhub.edu</span></div>
+              <div class="info-item"><span class="label">First name</span><span class="value" id="display-firstname"></span></div>
+              <div class="info-item"><span class="label">Last name</span><span class="value" id="display-lastname"></span></div>
+              <div class="info-item"><span class="label">Username</span><span class="value" id="display-username"></span></div>
+              <div class="info-item"><span class="label">Email</span><span class="value" id="display-email"></span></div>
             </div>
           </section>
           <section id="profile-edit-info" style="display:none">
             <h3 class="panel-title">Edit Information</h3>
             <div class="form-grid">
-              <label>First name<input id="edit-firstname" type="text" value="Maria"></label>
-              <label>Last name<input id="edit-lastname" type="text" value="Santos"></label>
-              <label>Username<input id="edit-username" type="text" value="teacher01"></label>
-              <label>Email<input id="edit-email" type="email" value="maria@eduhub.edu"></label>
+              <label>First name<input id="edit-firstname" type="text"></label>
+              <label>Last name<input id="edit-lastname" type="text"></label>
+              <label>Username<input id="edit-username" type="text"></label>
+              <label>Email<input id="edit-email" type="email"></label>
             </div>
             <div class="panel-actions">
               <button class="profile-btn" id="btn-save-profile">Save</button>
@@ -279,14 +278,21 @@
           </section>
           <section id="profile-change-password" style="display:none">
             <h3 class="panel-title">Change Password</h3>
+            <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">A verification code will be sent to your email.</p>
             <div class="form-grid">
-              <label>Username<input id="pw-username-display" type="text" value="teacher01" disabled></label>
-              <label>Current password<input id="pw-current" type="password"></label>
-              <label>New password<input id="pw-new" type="password"></label>
-              <label>Confirm new password<input id="pw-confirm" type="password"></label>
+              <label>Username<input id="pw-username-display" type="text" disabled autocomplete="off"></label>
+              <label>New password<input id="pw-new" type="password" autocomplete="new-password"></label>
+              <label>Confirm new password<input id="pw-confirm" type="password" autocomplete="new-password"></label>
             </div>
-            <div class="panel-actions">
-              <button class="profile-btn" id="btn-save-password">Update Password</button>
+            <div id="verification-code-section" style="display:none; margin-top:16px;">
+              <label style="display:grid; gap:6px; font-size:12px; color:#6b7280;">
+                Verification code
+                <input id="pw-verification-code" type="text" placeholder="Enter 6-digit code" maxlength="6" style="padding:10px 12px; border-radius:8px; border:1px solid #e5e7eb; font-family:'Poppins',sans-serif; font-size:13px; outline:none; width:200px;">
+              </label>
+            </div>
+            <div class="panel-actions" style="margin-top:16px; display:flex; gap:10px;">
+              <button class="profile-btn" id="btn-send-code">Send code</button>
+              <button class="profile-btn" id="btn-save-password" style="display:none;">Update password</button>
               <button class="profile-btn secondary" id="btn-cancel-password">Cancel</button>
             </div>
           </section>
@@ -297,15 +303,10 @@
   </main>
 </div>
 
-<!-- ============================================================ -->
-<!-- MODALS                                                        -->
-<!-- ============================================================ -->
-
 <!-- Create Class Modal -->
 <div class="modal-overlay hidden" id="modal-class">
   <div class="modal-box">
     <h3 class="modal-title">
-      <img src="classes.png" alt="" onerror="this.style.display='none'">
       <span id="modal-class-title-text">Create Class</span>
     </h3>
     <div class="modal-field"><label>Class Name</label><input type="text" id="class-name-input" placeholder="e.g. Mathematics 101"></div>
@@ -317,13 +318,10 @@
   </div>
 </div>
 
-<!-- Edit Class Modal (opened from 3-dot menu) -->
+<!-- Edit Class Modal -->
 <div class="modal-overlay hidden" id="modal-edit-class">
   <div class="modal-box">
-    <h3 class="modal-title">
-      <img src="classes.png" alt="" onerror="this.style.display='none'">
-      Edit Class
-    </h3>
+    <h3 class="modal-title">Edit Class</h3>
     <div class="modal-field"><label>Class Name</label><input type="text" id="edit-class-name-input" placeholder="e.g. Mathematics 101"></div>
     <div class="modal-field"><label>Description (optional)</label><textarea id="edit-class-desc-input" placeholder="Short class description"></textarea></div>
     <div class="modal-actions-split">
@@ -336,13 +334,10 @@
   </div>
 </div>
 
-<!-- Add Section Modal (create only) -->
+<!-- Add Section Modal -->
 <div class="modal-overlay hidden" id="modal-section">
   <div class="modal-box">
-    <h3 class="modal-title">
-      <img src="section-icon.png" alt="" onerror="this.style.display='none'">
-      <span id="modal-section-title-text">Add Section</span>
-    </h3>
+    <h3 class="modal-title"><span id="modal-section-title-text">Add Section</span></h3>
     <div class="modal-field"><label>Section Name</label><input type="text" id="section-name-input" placeholder="e.g. Section A"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancel-section-modal">Cancel</button>
@@ -351,14 +346,11 @@
   </div>
 </div>
 
-<!-- Edit Section Modal (opened from 3-dot menu) -->
+<!-- Edit Section Modal -->
 <div class="modal-overlay hidden" id="modal-edit-section">
   <div class="modal-box">
-    <h3 class="modal-title">
-      <img src="section-icon.png" alt="" onerror="this.style.display='none'">
-      Edit Section
-    </h3>
-    <div class="modal-field"><label>Section Name</label><input type="text" id="edit-section-name-input" placeholder="e.g. Section A"></div>
+    <h3 class="modal-title">Edit Section</h3>
+    <div class="modal-field"><label>Section Name</label><input type="text" id="edit-section-name-input"></div>
     <div class="modal-field">
       <label>Class Code</label>
       <div class="edit-modal-code-display" id="edit-modal-code-display">N/A</div>
@@ -377,33 +369,10 @@
 <!-- Add Material Modal -->
 <div class="modal-overlay hidden" id="modal-material">
   <div class="modal-box modal-box-wide">
-    <h3 class="modal-title">
-      <img src="lessons.png" alt="" onerror="this.style.display='none'">
-      <span id="modal-material-title-text">Add Learning Material</span>
-    </h3>
+    <h3 class="modal-title"><span id="modal-material-title-text">Add Learning Material</span></h3>
     <div class="modal-field"><label>Material Name</label><input type="text" id="material-name-input" placeholder="e.g. Chapter 1 Notes"></div>
-    <div class="modal-field"><label>Description</label><textarea id="material-desc-input" placeholder="Brief description of the material"></textarea></div>
-    <div class="modal-field">
-      <label>Upload File</label>
-      <div class="file-upload-zone" id="material-upload-zone">
-        <div class="file-upload-icon">
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M18 3C9.716 3 3 9.716 3 18C3 26.284 9.716 33 18 33C26.284 33 33 26.284 33 18C33 9.716 26.284 3 18 3Z" stroke="#aaa" stroke-width="1.5" fill="none"/>
-            <path d="M12 20C12 23.314 14.686 26 18 26C21.314 26 24 23.314 24 20" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M18 10V22M18 10L15 13M18 10L21 13" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <p class="file-upload-title">Choose a file or drag &amp; drop it here</p>
-        <p class="file-upload-sub">JPEG, PNG, PDF, and MP4 formats, up to 50MB</p>
-        <button type="button" class="btn-browse" onclick="document.getElementById('material-file-input').click()">Browse File</button>
-        <input type="file" id="material-file-input" accept=".jpg,.jpeg,.png,.pdf,.mp4" style="display:none" />
-      </div>
-      <div class="file-preview-list" id="material-file-preview"></div>
-    </div>
-    <div class="modal-field">
-      <label>Or paste a link</label>
-      <input type="text" id="material-link-input" placeholder="https://...">
-    </div>
+    <div class="modal-field"><label>Description</label><textarea id="material-desc-input" placeholder="Brief description"></textarea></div>
+    <div class="modal-field"><label>Or paste a link</label><input type="text" id="material-link-input" placeholder="https://..."></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancel-material-modal">Cancel</button>
       <button class="btn btn-dark" id="save-material-modal">Save</button>
@@ -414,37 +383,14 @@
 <!-- Add Assignment Modal -->
 <div class="modal-overlay hidden" id="modal-assignment">
   <div class="modal-box modal-box-wide">
-    <h3 class="modal-title">
-      <img src="assignments.png" alt="" onerror="this.style.display='none'">
-      <span id="modal-assignment-title-text">Add Assignment</span>
-    </h3>
+    <h3 class="modal-title"><span id="modal-assignment-title-text">Add Assignment</span></h3>
     <div class="modal-field"><label>Title</label><input type="text" id="assignment-name-input" placeholder="Assignment title"></div>
-    <div class="modal-field"><label>Instructions</label><textarea id="assignment-desc-input" placeholder="Describe what students need to do"></textarea></div>
+    <div class="modal-field"><label>Instructions</label><textarea id="assignment-desc-input" placeholder="Instructions"></textarea></div>
     <div class="modal-two-col">
       <div class="modal-field"><label>Due Date</label><input type="date" id="assignment-due-input"></div>
-      <div class="modal-field"><label>Points</label><input type="number" id="assignment-points-input" placeholder="e.g. 100"></div>
+      <div class="modal-field"><label>Points</label><input type="number" id="assignment-points-input" placeholder="100"></div>
     </div>
-    <div class="modal-field">
-      <label>Upload File</label>
-      <div class="file-upload-zone" id="assignment-upload-zone">
-        <div class="file-upload-icon">
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M18 3C9.716 3 3 9.716 3 18C3 26.284 9.716 33 18 33C26.284 33 33 26.284 33 18C33 9.716 26.284 3 18 3Z" stroke="#aaa" stroke-width="1.5" fill="none"/>
-            <path d="M12 20C12 23.314 14.686 26 18 26C21.314 26 24 23.314 24 20" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M18 10V22M18 10L15 13M18 10L21 13" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <p class="file-upload-title">Choose a file or drag &amp; drop it here</p>
-        <p class="file-upload-sub">JPEG, PNG, PDF, and MP4 formats, up to 50MB</p>
-        <button type="button" class="btn-browse" onclick="document.getElementById('assignment-file-input').click()">Browse File</button>
-        <input type="file" id="assignment-file-input" accept=".jpg,.jpeg,.png,.pdf,.mp4" style="display:none" />
-      </div>
-      <div class="file-preview-list" id="assignment-file-preview"></div>
-    </div>
-    <div class="modal-field">
-      <label>Or paste a link</label>
-      <input type="text" id="assignment-link-input" placeholder="https://...">
-    </div>
+    <div class="modal-field"><label>Or paste a link</label><input type="text" id="assignment-link-input" placeholder="https://..."></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancel-assignment-modal">Cancel</button>
       <button class="btn btn-dark" id="save-assignment-modal">Save</button>
@@ -455,32 +401,12 @@
 <!-- Add Quiz Modal -->
 <div class="modal-overlay hidden" id="modal-quiz">
   <div class="modal-box modal-box-wide">
-    <h3 class="modal-title">
-      <img src="quiz.png" alt="" onerror="this.style.display='none'">
-      <span id="modal-quiz-title-text">Add Quiz</span>
-    </h3>
+    <h3 class="modal-title"><span id="modal-quiz-title-text">Add Quiz</span></h3>
     <div class="modal-field"><label>Quiz Title</label><input type="text" id="quiz-name-input" placeholder="Quiz title"></div>
-    <div class="modal-field"><label>Description</label><textarea id="quiz-desc-input" placeholder="What is this quiz about?"></textarea></div>
+    <div class="modal-field"><label>Description</label><textarea id="quiz-desc-input" placeholder="Description"></textarea></div>
     <div class="modal-two-col">
       <div class="modal-field"><label>Google Form Link</label><input type="text" id="quiz-link-input" placeholder="https://forms.google.com/..."></div>
       <div class="modal-field"><label>Due Date</label><input type="date" id="quiz-due-input"></div>
-    </div>
-    <div class="modal-field">
-      <label>Upload File (optional)</label>
-      <div class="file-upload-zone" id="quiz-upload-zone">
-        <div class="file-upload-icon">
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M18 3C9.716 3 3 9.716 3 18C3 26.284 9.716 33 18 33C26.284 33 33 26.284 33 18C33 9.716 26.284 3 18 3Z" stroke="#aaa" stroke-width="1.5" fill="none"/>
-            <path d="M12 20C12 23.314 14.686 26 18 26C21.314 26 24 23.314 24 20" stroke="#aaa" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M18 10V22M18 10L15 13M18 10L21 13" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </div>
-        <p class="file-upload-title">Choose a file or drag &amp; drop it here</p>
-        <p class="file-upload-sub">JPEG, PNG, PDF, and MP4 formats, up to 50MB</p>
-        <button type="button" class="btn-browse" onclick="document.getElementById('quiz-file-input').click()">Browse File</button>
-        <input type="file" id="quiz-file-input" accept=".jpg,.jpeg,.png,.pdf,.mp4" style="display:none" />
-      </div>
-      <div class="file-preview-list" id="quiz-file-preview"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancel-quiz-modal">Cancel</button>
@@ -492,10 +418,7 @@
 <!-- New Announcement Modal -->
 <div class="modal-overlay hidden" id="modal-announcement">
   <div class="modal-box">
-    <h3 class="modal-title">
-      <img src="announcements.png" alt="" onerror="this.style.display='none'">
-      <span id="modal-announcement-title-text">New Announcement</span>
-    </h3>
+    <h3 class="modal-title"><span id="modal-announcement-title-text">New Announcement</span></h3>
     <div class="modal-field"><label>Title</label><input type="text" id="announcement-title-input" placeholder="Announcement title"></div>
     <div class="modal-field"><label>Message</label><textarea id="announcement-body-input" placeholder="Write your announcement here..." style="min-height:100px"></textarea></div>
     <div class="modal-field">
@@ -511,6 +434,6 @@
   </div>
 </div>
 
-<script src="teacherdb.js"></script>
+<script src="/teacherdashboard/teacherdb.js"></script>
 </body>
 </html>
