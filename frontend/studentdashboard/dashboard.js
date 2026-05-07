@@ -86,8 +86,16 @@ const DATA = {
   profileLoaded: false,
 
   announcements: [
-    { main: 'Prof. Catherine Sorbito posted a new lesson', sub: 'Check it out' },
-    { main: 'A new quiz was posted in your Web Dev Class', sub: 'Due dates are important, complete your assignments today' }
+    { 
+      main: 'Prof. Catherine Sorbito posted a new lesson', 
+      sub: 'Check it out',
+      timestamp: new Date('2026-05-07T09:30:00')
+    },
+    { 
+      main: 'A new quiz was posted in your Web Dev Class', 
+      sub: 'Due dates are important, complete your assignments today',
+      timestamp: new Date('2026-05-06T14:15:00')
+    }
   ],
 
   todos: [
@@ -296,8 +304,14 @@ async function renderHome() {
 
   updateAllHeadings(); 
 
+  // ===== Fetch classes if not loaded yet (with error handling) =====
   if (!DATA.classesLoaded) {
-    await fetchClasses();
+    try {
+      await fetchClasses();
+    } catch (error) {
+      console.error('Failed to fetch classes for home view:', error);
+      // Continue rendering even if classes fail to load
+    }
   }
 
   // ===== Welcome Heading with logged-in username =====
@@ -310,12 +324,31 @@ async function renderHome() {
   // ===== Announcements Section =====
   const annSection = document.getElementById('announcements-section');
   annSection.innerHTML = '<h2 class="section-title">Announcements</h2>';
-  DATA.announcements.forEach(a => {
-    const card = document.createElement('div');
-    card.className = 'announcement-card';
-    card.innerHTML = `<p class="announcement-main">${a.main}</p><p class="announcement-sub">${a.sub}</p>`;
-    annSection.appendChild(card);
-  });
+
+  // Create scrollable container for announcements
+  const annScrollContainer = document.createElement('div');
+  annScrollContainer.className = 'announcements-scroll-container';
+
+  if (DATA.announcements.length === 0) {
+    annScrollContainer.innerHTML = '<div class="announcement-empty">No announcements yet</div>';
+  } else {
+    DATA.announcements.forEach(a => {
+      const card = document.createElement('div');
+      card.className = 'announcement-card';
+      
+      // Format timestamp nicely
+      const timestamp = a.timestamp ? formatAnnouncementTime(a.timestamp) : '';
+      
+      card.innerHTML = `
+        <p class="announcement-main">${a.main}</p>
+        <p class="announcement-sub">${a.sub}</p>
+        ${timestamp ? `<p class="announcement-time">${timestamp}</p>` : ''}
+      `;
+      annScrollContainer.appendChild(card);
+    });
+  }
+
+  annSection.appendChild(annScrollContainer);
 
   // ===== Scrollable To-Do List from Classes =====
   const todoSection = document.getElementById('todo-section');
@@ -334,23 +367,27 @@ async function renderHome() {
 
   // Collect all pending quizzes/assignments due this week
   const pendingItems = [];
-  DATA.classes.forEach(cls => {
-    if (cls.quizzes && cls.quizzes.length > 0) {
-      cls.quizzes.forEach(quiz => {
-        if (state.done.has(completionKey('quiz', quiz.id))) return;
-        const dueDate = quiz.dueDate ? new Date(quiz.dueDate) : null;
-        if (!dueDate || isNaN(dueDate.getTime())) return;
-        if (dueDate >= monday && dueDate <= sunday) {
-          pendingItems.push({
-            id: quiz.id,
-            title: quiz.title,
-            dueDate: quiz.dueDate,
-            className: cls.title
-          });
-        }
-      });
-    }
-  });
+  
+  // Only process classes if they loaded successfully
+  if (DATA.classes && DATA.classes.length > 0) {
+    DATA.classes.forEach(cls => {
+      if (cls.quizzes && cls.quizzes.length > 0) {
+        cls.quizzes.forEach(quiz => {
+          if (state.done.has(completionKey('quiz', quiz.id))) return;
+          const dueDate = quiz.dueDate ? new Date(quiz.dueDate) : null;
+          if (!dueDate || isNaN(dueDate.getTime())) return;
+          if (dueDate >= monday && dueDate <= sunday) {
+            pendingItems.push({
+              id: quiz.id,
+              title: quiz.title,
+              dueDate: quiz.dueDate,
+              className: cls.title
+            });
+          }
+        });
+      }
+    });
+  }
 
   // Sort by due date (closest first)
   pendingItems.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
@@ -375,6 +412,37 @@ async function renderHome() {
   }
 
   todoSection.appendChild(scrollContainer);
+}
+
+function formatAnnouncementTime(dateVal) {
+  if (!dateVal) return null;
+  
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return null;
+  
+  const now = new Date();
+  const diffMs = now - d;
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  // Less than 1 hour ago
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+  
+  // Less than 24 hours ago
+  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+  
+  // Less than 7 days ago
+  if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+  
+  // More than 7 days ago - show date
+  const phTime = new Date(d.getTime() + (8 * 60 * 60 * 1000));
+  return phTime.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
 }
 
 // #################################################################
@@ -743,13 +811,51 @@ function showProfilePanel(panel) {
 }
 
 // profile buttons
-document.addEventListener('click', (e) => {
+// profile buttons
+// profile buttons
+// profile buttons
+document.addEventListener('click', async (e) => {
   if (e.target.id === 'btn-edit-profile') {
     showProfilePanel('edit-info');
   }
 
   if (e.target.id === 'btn-change-password') {
     showProfilePanel('change-password');
+    document.getElementById('pw-new').value = '';
+    document.getElementById('pw-confirm').value = '';
+    if (document.getElementById('pw-verification-code')) {
+      document.getElementById('pw-verification-code').value = '';
+    }
+    if (document.getElementById('verification-code-section')) {
+      document.getElementById('verification-code-section').style.display = 'none';
+    }
+    if (document.getElementById('btn-send-code')) {
+      document.getElementById('btn-send-code').style.display = 'block';
+    }
+    document.getElementById('btn-save-password').style.display = 'none';
+  }
+
+  if (e.target.id === 'btn-send-code') {
+    try {
+      const response = await fetch('/api/send-change-password-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: DATA.profile.id })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Swal.fire('Code Sent', 'A verification code has been sent to your email.', 'success');
+        document.getElementById('verification-code-section').style.display = 'block';
+        document.getElementById('btn-send-code').style.display = 'none';
+        document.getElementById('btn-save-password').style.display = 'block';
+      } else {
+        Swal.fire('Error', data.message, 'error');
+      }
+    } catch (error) {
+      Swal.fire('Error', 'Could not connect to server.', 'error');
+    }
   }
 
   if (e.target.id === 'btn-cancel-edit') {
@@ -761,30 +867,64 @@ document.addEventListener('click', (e) => {
   }
 
   if (e.target.id === 'btn-save-profile') {
-    // Save to localStorage (or replace with API call)
     const updated = {
-      id: DATA.profile.id,
-      first_name: document.getElementById('edit-firstname').value.trim(),
-      last_name: document.getElementById('edit-lastname').value.trim(),
+      userId: DATA.profile.id,
+      firstName: document.getElementById('edit-firstname').value.trim(),
+      lastName: document.getElementById('edit-lastname').value.trim(),
       username: document.getElementById('edit-username').value.trim(),
-      email: document.getElementById('edit-email').value.trim(),
-      role: DATA.profile.role || 'student'
+      email: document.getElementById('edit-email').value.trim()
     };
-    localStorage.setItem('eduhub_user', JSON.stringify(updated));
-    Swal.fire('Saved', 'Your profile was updated.', 'success');
-    fetchProfile().then(() => {
-      refreshProfileDisplay();
-      showProfilePanel('main');
-    });
+
+    if (!updated.firstName || !updated.lastName || !updated.username || !updated.email) {
+      Swal.fire('Missing', 'All fields are required.', 'warning');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/update-profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const savedUser = {
+          id: updated.userId,
+          first_name: updated.firstName,
+          last_name: updated.lastName,
+          username: updated.username,
+          email: updated.email,
+          role: DATA.profile.role || 'student'
+        };
+        localStorage.setItem('eduhub_user', JSON.stringify(savedUser));
+
+        Swal.fire('Saved', 'Your profile was updated.', 'success');
+        await fetchProfile();
+        refreshProfileDisplay();
+        showProfilePanel('main');
+      } else {
+        Swal.fire('Error', data.message || 'Failed to update profile.', 'error');
+      }
+    } catch (error) {
+      console.error('Update profile error:', error);
+      Swal.fire('Error', 'Could not connect to server.', 'error');
+    }
   }
 
   if (e.target.id === 'btn-save-password') {
-    const current = document.getElementById('pw-current').value.trim();
+    const code = document.getElementById('pw-verification-code').value.trim();
+    console.log('Sending code:', code); //yther
     const newPw = document.getElementById('pw-new').value.trim();
     const confirm = document.getElementById('pw-confirm').value.trim();
 
-    if (!current || !newPw || !confirm) {
-      Swal.fire('Missing', 'Fill out all password fields.', 'warning');
+    if (!code || !newPw || !confirm) {
+      Swal.fire('Missing', 'All fields are required.', 'warning');
+      return;
+    }
+    if (code.length !== 6) {
+      Swal.fire('Invalid', 'Please enter the 6-digit verification code.', 'warning');
       return;
     }
     if (newPw !== confirm) {
@@ -792,12 +932,60 @@ document.addEventListener('click', (e) => {
       return;
     }
 
-    // Replace with API call
-    Swal.fire('Updated', 'Password updated successfully.', 'success');
-    document.getElementById('pw-current').value = '';
-    document.getElementById('pw-new').value = '';
-    document.getElementById('pw-confirm').value = '';
-    showProfilePanel('main');
+    try {
+      const response = await fetch('/api/change-password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: DATA.profile.id,
+          code: code,
+          newPassword: newPw
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Swal.fire('Updated', 'Password changed successfully.', 'success');
+        document.getElementById('pw-new').value = '';
+        document.getElementById('pw-confirm').value = '';
+        document.getElementById('pw-verification-code').value = '';
+        showProfilePanel('main');
+      } else {
+        Swal.fire('Error', data.message || 'Failed to change password.', 'error');
+      }
+    } catch (error) {
+      console.error('Change password error:', error);
+      Swal.fire('Error', 'Could not connect to server.', 'error');
+    }
+  }
+
+  // ===== LOGOUT BUTTON =====
+  if (e.target.id === 'btn-logout') {
+    Swal.fire({
+      title: 'Are you sure?',
+      text: 'You will be logged out of your account.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, logout!',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#dc2626'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.removeItem('eduhub_user');
+        sessionStorage.clear();
+        
+        Swal.fire({
+          title: 'Logged out',
+          text: 'You have been logged out successfully.',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false
+        }).then(() => {
+          window.location.href = '/login/login.html';
+        });
+      }
+    });
   }
 });
 
@@ -812,9 +1000,23 @@ document.addEventListener('click', (e) => {
 // #################################################################
 
 (async function init() {
-  await fetchProfile();
-  await fetchClasses();
-  await fetchCompletions();
+  try {
+    await fetchProfile();
+  } catch (error) {
+    console.error('Profile fetch failed:', error);
+  }
+  
+  try {
+    await fetchClasses();
+  } catch (error) {
+    console.error('Classes fetch failed:', error);
+  }
+  
+  try {
+    await fetchCompletions();
+  } catch (error) {
+    console.error('Completions fetch failed:', error);
+  }
 
   const homeNav = document.querySelector('.nav-item[data-view="home"]');
   if (homeNav) setActiveNav(homeNav);

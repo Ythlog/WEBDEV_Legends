@@ -231,9 +231,10 @@
           <p class="profile-role" id="profile-role-display">student</p>
 
           <div class="profile-actions">
-            <button class="profile-btn" id="btn-edit-profile">Edit info</button>
-            <button class="profile-btn secondary" id="btn-change-password">Change password</button>
-          </div>
+          <button class="profile-btn" id="btn-edit-profile">Edit info</button>
+          <button class="profile-btn secondary" id="btn-change-password">Change password</button>
+          <button class="profile-btn logout-btn" id="btn-logout">Logout</button>
+        </div>
         </div>
 
         <!-- RIGHT: PANELS -->
@@ -276,17 +277,24 @@
             </div>
           </section>
 
+        <!-- CHANGE PASSWORD -->
           <!-- CHANGE PASSWORD -->
           <section id="profile-change-password" style="display:none;">
             <h3 class="panel-title">Change password</h3>
             <div class="form-grid">
               <label>Username<input id="pw-username-display" type="text" disabled></label>
-              <label>Current password<input id="pw-current" type="password"></label>
-              <label>New password<input id="pw-new" type="password"></label>
-              <label>Confirm new password<input id="pw-confirm" type="password"></label>
+              <label>New password<input id="pw-new" type="password" autocomplete="new-password"></label>
+              <label>Confirm new password<input id="pw-confirm" type="password" autocomplete="new-password"></label>
             </div>
-            <div class="panel-actions">
-              <button class="profile-btn" id="btn-save-password">Update password</button>
+            <div id="verification-code-section" style="display:none; margin-top:16px;">
+              <label style="display:grid; gap:6px; font-size:12px; color:#6b7280;">
+                Verification code
+                <input id="pw-verification-code" type="text" placeholder="Enter 6-digit code" maxlength="6" style="padding:10px 12px; border-radius:8px; border:1px solid #e5e7eb; font-family:'Poppins',sans-serif; font-size:13px; outline:none; width:200px;">
+              </label>
+            </div>
+            <div class="panel-actions" style="margin-top:16px; display:flex; gap:10px;">
+              <button class="profile-btn" id="btn-send-code">Send code</button>
+              <button class="profile-btn" id="btn-save-password" style="display:none;">Update password</button>
               <button class="profile-btn secondary" id="btn-cancel-password">Cancel</button>
             </div>
           </section>

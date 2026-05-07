@@ -29,7 +29,14 @@ function generateCode() {
 }
 
 function sendVerificationEmail(email, code, type) {
-    const subject = type === 'signup' ? 'Verify your EduHub account' : 'Password Reset Code';
+    let subject;
+    if (type === 'signup') {
+        subject = 'Verify your EduHub account';
+    } else if (type === 'change_password') {
+        subject = 'Change Your EduHub Password';
+    } else {
+        subject = 'Password Reset Code';
+    }
     const text = `Your verification code is: ${code}. Valid for 5 minutes.`;
     return transporter.sendMail({
         from: process.env.EMAIL_USER,
@@ -404,6 +411,147 @@ app.post("/api/login", async (req, res) => {
         });
     } catch (err) {
         console.error("Login error:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// ========================= UPDATE PROFILE =========================
+app.put("/api/update-profile", async (req, res) => {
+    const { userId, firstName, lastName, username, email } = req.body;
+
+    if (!userId || !firstName || !lastName || !username || !email) {
+        return res.status(400).json({ message: "All fields are required." });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+
+        // Check if username or email is already taken by another user
+        const existing = await conn.query(
+            "SELECT id FROM users WHERE (username = ? OR email = ?) AND id != ?",
+            [username, email, userId]
+        );
+
+        if (existing.length > 0) {
+            return res.status(409).json({ message: "Username or email already taken." });
+        }
+
+        await conn.query(
+            "UPDATE users SET first_name = ?, last_name = ?, username = ?, email = ? WHERE id = ?",
+            [firstName, lastName, username, email, userId]
+        );
+
+        res.json({ 
+            message: "Profile updated successfully.",
+            user: {
+                id: userId,
+                first_name: firstName,
+                last_name: lastName,
+                username: username,
+                email: email
+            }
+        });
+
+    } catch (err) {
+        console.error("Update profile error:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+// ========================= SEND CHANGE PASSWORD CODE =========================
+app.post("/api/send-change-password-code", async (req, res) => {
+    const { userId } = req.body;
+
+    if (!userId) {
+        return res.status(400).json({ message: "User ID is required." });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+
+        const users = await conn.query("SELECT id, email FROM users WHERE id = ?", [userId]);
+
+        if (users.length === 0) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        const user = users[0];
+
+        // Invalidate old codes
+        await conn.query(
+            "UPDATE verification_codes SET used = 1 WHERE email = ? AND type = 'change_password' AND used = 0",
+            [user.email]
+        );
+
+        const code = generateCode();
+        const expiresAt = new Date(Date.now() + 5 * 60000);
+
+        await conn.query(
+            "INSERT INTO verification_codes (email, code, type, expires_at) VALUES (?, ?, 'change_password', ?)",
+            [user.email, code, expiresAt]
+        );
+
+        await sendVerificationEmail(user.email, code, 'change_password');
+
+        res.json({ message: "Verification code sent to your email!" });
+    } catch (err) {
+        console.error("Send change password code error:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// ========================= CHANGE PASSWORD WITH CODE =========================
+app.put("/api/change-password", async (req, res) => {
+    const { userId, code, newPassword } = req.body;
+
+    if (!userId || !code || !newPassword) {
+        return res.status(400).json({ message: "All fields are required." });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+
+        // Get user email
+        const users = await conn.query("SELECT id, email FROM users WHERE id = ?", [userId]);
+
+        if (users.length === 0) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        const user = users[0];
+
+        // Verify code
+        const codes = await conn.query(
+            "SELECT * FROM verification_codes WHERE email = ? AND code = ? AND type = 'change_password' AND used = 0 AND expires_at > NOW()",
+            [user.email, code]
+        );
+
+        if (codes.length === 0) {
+            return res.status(400).json({ message: "Invalid or expired code." });
+        }
+
+        // Mark code as used
+        await conn.query("UPDATE verification_codes SET used = 1 WHERE id = ?", [codes[0].id]);
+
+        // Hash new password and update
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await conn.query(
+            "UPDATE users SET password = ? WHERE id = ?",
+            [hashedPassword, userId]
+        );
+
+        res.json({ message: "Password changed successfully." });
+
+    } catch (err) {
+        console.error("Change password error:", err);
         res.status(500).json({ message: "Server error: " + err.message });
     } finally {
         if (conn) conn.release();

@@ -956,3 +956,62 @@ body {
 .todo-missing-card {
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
+
+/* ============================================================ */
+/* ANNOUNCEMENTS SCROLL CONTAINER                               */
+/* ============================================================ */
+
+.announcements-scroll-container {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Scrollbar styling to match todo */
+.announcements-scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.announcements-scroll-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.announcements-scroll-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.announcements-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Announcement card with timestamp */
+.announcement-time {
+  font-size: 12px;
+  color: #888;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+/* Empty state */
+.announcement-empty {
+  text-align: center;
+  color: #999;
+  padding: 40px 20px;
+  font-size: 14px;
+}
+/* ===== LOGOUT BUTTON ===== */
+.logout-btn {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  margin-top: 8px;
+}
+
+.logout-btn:hover {
+  background-color: #b91c1c !important;
+  opacity: 1 !important;
+}
