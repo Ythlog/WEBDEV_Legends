@@ -123,7 +123,7 @@ body { font-family: 'Poppins', sans-serif; background-color: #ffffff; height: 10
 }
 .btn:hover { opacity: 0.85; transform: translateY(-1px); }
 .btn-dark { background-color: #231e1f; color: #ffffff; }
-.btn-yellow { background-color: #fff8cf; color: #000000; border: 1.5px solid #e0d89a; }
+.btn-yellow { background-color: #F4F7FB; color: #000000; border: 1.5px solid #C9D6EA; }
 .btn-ghost { background-color: #f6f6f6; color: #000000; border: 1.5px solid #e7e7e7; }
 .btn-sm { font-size: 12px; padding: 7px 14px; }
 .btn-danger { background-color: #fff0f0; color: #cc0000; border: 1.5px solid #ffcccc; }
@@ -134,8 +134,8 @@ body { font-family: 'Poppins', sans-serif; background-color: #ffffff; height: 10
 
 /* ===== CLASS CARD ===== */
 .class-card {
-  background-color: #fff9d6;
-  border: 1.5px solid #e8dfa0;
+  background-color: #F4F7FB;
+  border: 1.5px solid #C9D6EA;
   border-radius: 14px;
   padding: 18px 22px;
   transition: transform 0.15s, box-shadow 0.15s;
@@ -228,8 +228,6 @@ body { font-family: 'Poppins', sans-serif; background-color: #ffffff; height: 10
 .section-dots-btn svg { pointer-events: none; }
 
 /* ===== CLASS / SECTION EDIT MODAL (centered, like other modals) ===== */
-/* These reuse .modal-overlay and .modal-box — no extra CSS needed beyond field helpers */
-
 .edit-modal-code-display {
   background: #f0f4ff;
   border: 1.5px solid #c5d3f0;
@@ -325,8 +323,8 @@ body { font-family: 'Poppins', sans-serif; background-color: #ffffff; height: 10
 /* ===== MATERIALS ===== */
 .material-list { display: flex; flex-direction: column; gap: 12px; }
 .material-card {
-  background: #fff9d6;
-  border: 1.5px solid #e8dfa0;
+  background: #F4F7FB;
+  border: 1.5px solid #C9D6EA;
   border-radius: 10px;
   padding: 16px 20px;
   cursor: pointer;
@@ -384,8 +382,8 @@ body { font-family: 'Poppins', sans-serif; background-color: #ffffff; height: 10
 
 /* Material/Quiz/Assignment detail left */
 .material-detail-banner {
-  background: #fff9d6;
-  border: 1.5px solid #e8dfa0;
+  background: #F4F7FB;
+  border: 1.5px solid #C9D6EA;
   border-radius: 10px;
   padding: 22px;
   text-align: center;
@@ -512,8 +510,8 @@ body { font-family: 'Poppins', sans-serif; background-color: #ffffff; height: 10
 .student-name { font-size: 14px; font-weight: 500; color: #000; }
 .student-email { font-size: 12px; color: #777; }
 .join-request-card {
-  background: #fff9d6;
-  border: 1.5px solid #e8dfa0;
+  background: #F4F7FB;
+  border: 1.5px solid #C9D6EA;
   border-radius: 8px;
   padding: 12px 18px;
   display: flex;
