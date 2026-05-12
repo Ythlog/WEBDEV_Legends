@@ -5,7 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Eduhub – Teacher Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+ <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" href="/teacherdashboard/teacherdb.css" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
@@ -16,24 +17,26 @@
     <!-- SIDEBAR -->
     <aside class="sidebar">
       <div class="sidebar-logo">
-        <img src="/teacherdashboard/logo.png" alt="Eduhub Logo" class="logo-icon" onerror="this.style.display='none'" />
+        <div class="logo-mark">
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
         <span class="logo-text">Eduhub</span>
       </div>
       <nav class="sidebar-nav">
         <a class="nav-item active" data-view="classes">
-          <img src="/teacherdashboard/classes.png" alt="Classes" class="nav-icon" />
+          <i class="fa-solid fa-chalkboard nav-icon"></i>
           <span>Classes</span>
         </a>
         <a class="nav-item" data-view="progress">
-          <img src="/teacherdashboard/progress.png" alt="Progress" class="nav-icon" />
+          <i class="fa-solid fa-chart-line nav-icon"></i>
           <span>Progress</span>
         </a>
         <a class="nav-item" data-view="announcements">
-          <img src="/teacherdashboard/announcements.png" alt="Announcements" class="nav-icon" />
+          <i class="fa-solid fa-bullhorn nav-icon"></i>
           <span>Announcements</span>
         </a>
         <a class="nav-item" data-view="profile">
-          <img src="/teacherdashboard/profile.png" alt="Profile" class="nav-icon" />
+          <i class="fa-solid fa-circle-user nav-icon"></i>
           <span>Profile</span>
         </a>
       </nav>
@@ -44,11 +47,8 @@
       <!-- TOP BAR -->
       <header class="top-bar">
         <div class="search-bar">
-          <img src="/teacherdashboard/blacksearch.png" alt="Search" class="search-icon" />
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
           <input type="text" placeholder="Search" id="search-input" />
-        </div>
-        <div class="user-avatar">
-          <img src="/teacherdashboard/blackprofile.png" alt="User" class="avatar-icon" />
         </div>
       </header>
 
@@ -56,7 +56,7 @@
       <div class="page-body" id="view-classes">
         <div class="classes-header">
           <h1 class="page-heading" style="margin-bottom:0">Your Classes</h1>
-          <button class="btn btn-dark" id="btn-create-class">+ Create Class</button>
+          <button class="btn btn-dark" id="btn-create-class"><i class="fa-solid fa-plus"></i> Create Class</button>
         </div>
         <p class="section-label" style="margin-top:20px">Classes</p>
         <div class="classes-grid" id="classes-grid"></div>
@@ -64,13 +64,13 @@
 
       <!-- SECTION 2: CLASS DETAIL VIEW -->
       <div class="page-body hidden" id="view-class-detail">
-        <button class="back-btn" id="back-to-classes">← Back to Classes</button>
+        <button class="back-btn" id="back-to-classes"><i class="fa-solid fa-arrow-left"></i> Back to Classes</button>
         <div class="detail-header">
           <div>
             <h1 class="page-heading" style="margin-bottom:4px" id="class-detail-name"></h1>
             <p style="font-size:13px;color:#666" id="class-detail-meta"></p>
           </div>
-          <button class="btn btn-dark" id="btn-add-section">+ Add Section</button>
+          <button class="btn btn-dark" id="btn-add-section"><i class="fa-solid fa-plus"></i> Add Section</button>
         </div>
         <p class="section-label">Sections</p>
         <div class="sections-list" id="sections-list"></div>
@@ -78,7 +78,7 @@
 
       <!-- SECTION 3: SECTION DETAIL VIEW -->
       <div class="page-body hidden" id="view-section-detail">
-        <button class="back-btn" id="back-to-class-detail">← Back to Class</button>
+        <button class="back-btn" id="back-to-class-detail"><i class="fa-solid fa-arrow-left"></i> Back to Class</button>
         <div class="section-top">
           <div>
             <h1 class="page-heading" style="margin-bottom:4px" id="section-detail-name"></h1>
@@ -87,19 +87,19 @@
         </div>
         <div class="section-tabs">
           <button class="tab-btn active" data-tab="lessons">
-            <img src="/teacherdashboard/lessons2.png" alt="" />
+            <i class="fa-solid fa-book-open"></i>
             Lessons
           </button>
           <button class="tab-btn" data-tab="assignments">
-            <img src="/teacherdashboard/assignments2.png" alt="" />
+            <i class="fa-solid fa-file-lines"></i>
             Assignments
           </button>
           <button class="tab-btn" data-tab="quizzes">
-            <img src="/teacherdashboard/quiz2.png" alt="" />
+            <i class="fa-solid fa-clipboard-question"></i>
             Quizzes
           </button>
           <button class="tab-btn" data-tab="students">
-            <img src="/teacherdashboard/students2.png" alt="" />
+            <i class="fa-solid fa-users"></i>
             Students
           </button>
         </div>
@@ -107,7 +107,7 @@
         <!-- LESSONS TAB -->
         <div class="tab-content active" id="tab-lessons">
           <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
-            <button class="btn btn-dark" id="btn-add-material">+ Add Material</button>
+            <button class="btn btn-dark" id="btn-add-material"><i class="fa-solid fa-plus"></i> Add Material</button>
           </div>
           <div class="material-list" id="materials-list"></div>
         </div>
@@ -115,7 +115,7 @@
         <!-- ASSIGNMENTS TAB -->
         <div class="tab-content" id="tab-assignments">
           <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
-            <button class="btn btn-dark" id="btn-add-assignment">+ Add Assignment</button>
+            <button class="btn btn-dark" id="btn-add-assignment"><i class="fa-solid fa-plus"></i> Add Assignment</button>
           </div>
           <div id="assignments-list"></div>
         </div>
@@ -123,12 +123,11 @@
         <!-- QUIZZES TAB -->
         <div class="tab-content" id="tab-quizzes">
           <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
-            <button class="btn btn-dark" id="btn-add-quiz">+ Add Quiz</button>
+            <button class="btn btn-dark" id="btn-add-quiz"><i class="fa-solid fa-plus"></i> Add Quiz</button>
           </div>
           <div id="quizzes-list"></div>
         </div>
 
-        <!-- STUDENTS TAB -->
         <!-- STUDENTS TAB -->
         <div class="tab-content" id="tab-students">
           <div class="students-header">
@@ -139,7 +138,7 @@
 
         <!-- SECTION 4: MATERIAL DETAIL VIEW (split layout) -->
         <div class="page-body hidden" id="view-material-detail">
-          <button class="back-btn" id="back-to-section-lessons">← Back to Section</button>
+          <button class="back-btn" id="back-to-section-lessons"><i class="fa-solid fa-arrow-left"></i> Back to Section</button>
           <div class="detail-split-layout">
             <div class="detail-split-left">
               <p class="section-label" id="mat-section-label"></p>
@@ -148,8 +147,8 @@
               <p class="detail-section-title">Description</p>
               <p class="detail-description" id="mat-detail-desc"></p>
               <div style="display:flex;gap:8px;margin-top:16px">
-                <button class="btn btn-ghost btn-sm" id="btn-edit-material">Edit</button>
-                <button class="btn btn-danger btn-sm" id="btn-delete-material">Delete</button>
+                <button class="btn btn-ghost btn-sm" id="btn-edit-material"><i class="fa-solid fa-pen"></i> Edit</button>
+                <button class="btn btn-danger btn-sm" id="btn-delete-material"><i class="fa-solid fa-trash"></i> Delete</button>
               </div>
             </div>
             <div class="detail-split-right">
@@ -165,7 +164,7 @@
 
         <!-- SECTION 5: QUIZ DETAIL VIEW (split layout) -->
         <div class="page-body hidden" id="view-quiz-detail">
-          <button class="back-btn" id="back-to-section-quizzes">← Back to Section</button>
+          <button class="back-btn" id="back-to-section-quizzes"><i class="fa-solid fa-arrow-left"></i> Back to Section</button>
           <div class="detail-split-layout">
             <div class="detail-split-left">
               <p class="section-label" id="quiz-section-label"></p>
@@ -176,8 +175,8 @@
               <p class="detail-section-title">Due Date</p>
               <p class="detail-description" id="quiz-detail-due"></p>
               <div style="display:flex;gap:8px;margin-top:16px">
-                <button class="btn btn-ghost btn-sm" id="btn-edit-quiz">Edit</button>
-                <button class="btn btn-danger btn-sm" id="btn-delete-quiz">Delete</button>
+                <button class="btn btn-ghost btn-sm" id="btn-edit-quiz"><i class="fa-solid fa-pen"></i> Edit</button>
+                <button class="btn btn-danger btn-sm" id="btn-delete-quiz"><i class="fa-solid fa-trash"></i> Delete</button>
               </div>
             </div>
             <div class="detail-split-right">
@@ -194,7 +193,7 @@
 
         <!-- SECTION 6: ASSIGNMENT DETAIL VIEW (split layout) -->
         <div class="page-body hidden" id="view-assignment-detail">
-          <button class="back-btn" id="back-to-section-assignments">← Back to Section</button>
+          <button class="back-btn" id="back-to-section-assignments"><i class="fa-solid fa-arrow-left"></i> Back to Section</button>
           <div class="detail-split-layout">
             <div class="detail-split-left">
               <p class="section-label" id="assign-section-label"></p>
@@ -207,8 +206,8 @@
               <p class="detail-section-title">Points</p>
               <p class="detail-description" id="assign-detail-points"></p>
               <div style="display:flex;gap:8px;margin-top:16px">
-                <button class="btn btn-ghost btn-sm" id="btn-edit-assignment">Edit</button>
-                <button class="btn btn-danger btn-sm" id="btn-delete-assignment">Delete</button>
+                <button class="btn btn-ghost btn-sm" id="btn-edit-assignment"><i class="fa-solid fa-pen"></i> Edit</button>
+                <button class="btn btn-danger btn-sm" id="btn-delete-assignment"><i class="fa-solid fa-trash"></i> Delete</button>
               </div>
             </div>
             <div class="detail-split-right">
@@ -233,7 +232,7 @@
         <div class="page-body hidden" id="view-announcements">
           <div class="announcements-header">
             <h1 class="page-heading" style="margin-bottom:0">Announcements</h1>
-            <button class="btn btn-dark" id="btn-new-announcement">+ New Announcement</button>
+            <button class="btn btn-dark" id="btn-new-announcement"><i class="fa-solid fa-plus"></i> New Announcement</button>
           </div>
           <div id="announcements-list"></div>
         </div>
@@ -243,27 +242,23 @@
           <h1 class="page-heading">Your Profile</h1>
           <div class="profile-layout">
             <div class="profile-card">
-              <div class="profile-avatar">👤</div>
+              <div class="profile-avatar"><i class="fa-solid fa-user"></i></div>
               <h2 id="profile-username-display">teacher</h2>
               <p class="profile-role" id="profile-role-display">Teacher</p>
               <div class="profile-actions">
-                <button class="profile-btn" id="btn-edit-profile">Edit Info</button>
-                <button class="profile-btn secondary" id="btn-change-password">Change Password</button>
-                <button class="profile-btn" id="btn-logout" style="background:#dc2626;color:#fff;">Logout</button>
+                <button class="profile-btn" id="btn-edit-profile"><i class="fa-solid fa-pen-to-square"></i> Edit Info</button>
+                <button class="profile-btn secondary" id="btn-change-password"><i class="fa-solid fa-key"></i> Change Password</button>
+                <button class="profile-btn" id="btn-logout" style="background:#dc2626;color:#fff;"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
               </div>
             </div>
             <div class="profile-panels">
               <section id="profile-main">
                 <h3 class="panel-title">Profile Information</h3>
                 <div class="profile-info-grid">
-                  <div class="info-item"><span class="label">First name</span><span class="value"
-                      id="display-firstname"></span></div>
-                  <div class="info-item"><span class="label">Last name</span><span class="value"
-                      id="display-lastname"></span></div>
-                  <div class="info-item"><span class="label">Username</span><span class="value"
-                      id="display-username"></span></div>
-                  <div class="info-item"><span class="label">Email</span><span class="value" id="display-email"></span>
-                  </div>
+                  <div class="info-item"><span class="label">First name</span><span class="value" id="display-firstname"></span></div>
+                  <div class="info-item"><span class="label">Last name</span><span class="value" id="display-lastname"></span></div>
+                  <div class="info-item"><span class="label">Username</span><span class="value" id="display-username"></span></div>
+                  <div class="info-item"><span class="label">Email</span><span class="value" id="display-email"></span></div>
                 </div>
               </section>
               <section id="profile-edit-info" style="display:none">
@@ -281,8 +276,7 @@
               </section>
               <section id="profile-change-password" style="display:none">
                 <h3 class="panel-title">Change Password</h3>
-                <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">A verification code will be sent to your
-                  email.</p>
+                <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">A verification code will be sent to your email.</p>
                 <div class="form-grid">
                   <label>Username<input id="pw-username-display" type="text" disabled autocomplete="off"></label>
                   <label>New password<input id="pw-new" type="password" autocomplete="new-password"></label>
@@ -292,7 +286,7 @@
                   <label style="display:grid; gap:6px; font-size:12px; color:#6b7280;">
                     Verification code
                     <input id="pw-verification-code" type="text" placeholder="Enter 6-digit code" maxlength="6"
-                      style="padding:10px 12px; border-radius:8px; border:1px solid #e5e7eb; font-family:'Poppins',sans-serif; font-size:13px; outline:none; width:200px;">
+                      style="padding:10px 12px; border-radius:8px; border:1px solid #e5e7eb; font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; outline:none; width:200px;">
                   </label>
                 </div>
                 <div class="panel-actions" style="margin-top:16px; display:flex; gap:10px;">
@@ -312,12 +306,11 @@
   <div class="modal-overlay hidden" id="modal-class">
     <div class="modal-box">
       <h3 class="modal-title">
+        <i class="fa-solid fa-chalkboard"></i>
         <span id="modal-class-title-text">Create Class</span>
       </h3>
-      <div class="modal-field"><label>Class Name</label><input type="text" id="class-name-input"
-          placeholder="e.g. Mathematics 101"></div>
-      <div class="modal-field"><label>Description (optional)</label><textarea id="class-desc-input"
-          placeholder="Short class description"></textarea></div>
+      <div class="modal-field"><label>Class Name</label><input type="text" id="class-name-input" placeholder="e.g. Mathematics 101"></div>
+      <div class="modal-field"><label>Description (optional)</label><textarea id="class-desc-input" placeholder="Short class description"></textarea></div>
       <div class="modal-actions">
         <button class="btn btn-ghost" id="cancel-class-modal">Cancel</button>
         <button class="btn btn-dark" id="save-class-modal">Save</button>
@@ -328,13 +321,11 @@
   <!-- Edit Class Modal -->
   <div class="modal-overlay hidden" id="modal-edit-class">
     <div class="modal-box">
-      <h3 class="modal-title">Edit Class</h3>
-      <div class="modal-field"><label>Class Name</label><input type="text" id="edit-class-name-input"
-          placeholder="e.g. Mathematics 101"></div>
-      <div class="modal-field"><label>Description (optional)</label><textarea id="edit-class-desc-input"
-          placeholder="Short class description"></textarea></div>
+      <h3 class="modal-title"><i class="fa-solid fa-pen-to-square"></i> Edit Class</h3>
+      <div class="modal-field"><label>Class Name</label><input type="text" id="edit-class-name-input" placeholder="e.g. Mathematics 101"></div>
+      <div class="modal-field"><label>Description (optional)</label><textarea id="edit-class-desc-input" placeholder="Short class description"></textarea></div>
       <div class="modal-actions-split">
-        <button class="btn btn-danger" id="delete-class-modal-btn">Delete</button>
+        <button class="btn btn-danger" id="delete-class-modal-btn"><i class="fa-solid fa-trash"></i> Delete</button>
         <div class="modal-actions-right">
           <button class="btn btn-ghost" id="cancel-edit-class-modal">Cancel</button>
           <button class="btn btn-dark" id="save-edit-class-modal">Save</button>
@@ -346,9 +337,8 @@
   <!-- Add Section Modal -->
   <div class="modal-overlay hidden" id="modal-section">
     <div class="modal-box">
-      <h3 class="modal-title"><span id="modal-section-title-text">Add Section</span></h3>
-      <div class="modal-field"><label>Section Name</label><input type="text" id="section-name-input"
-          placeholder="e.g. Section A"></div>
+      <h3 class="modal-title"><i class="fa-solid fa-layer-group"></i> <span id="modal-section-title-text">Add Section</span></h3>
+      <div class="modal-field"><label>Section Name</label><input type="text" id="section-name-input" placeholder="e.g. Section A"></div>
       <div class="modal-actions">
         <button class="btn btn-ghost" id="cancel-section-modal">Cancel</button>
         <button class="btn btn-dark" id="save-section-modal">Save</button>
@@ -359,7 +349,7 @@
   <!-- Edit Section Modal -->
   <div class="modal-overlay hidden" id="modal-edit-section">
     <div class="modal-box">
-      <h3 class="modal-title">Edit Section</h3>
+      <h3 class="modal-title"><i class="fa-solid fa-pen-to-square"></i> Edit Section</h3>
       <div class="modal-field"><label>Section Name</label><input type="text" id="edit-section-name-input"></div>
       <div class="modal-field">
         <label>Class Code</label>
@@ -367,7 +357,7 @@
         <input type="text" id="edit-section-code-input" placeholder="e.g. MATH-A1" style="margin-top:8px">
       </div>
       <div class="modal-actions-split">
-        <button class="btn btn-danger" id="delete-section-modal-btn">Delete</button>
+        <button class="btn btn-danger" id="delete-section-modal-btn"><i class="fa-solid fa-trash"></i> Delete</button>
         <div class="modal-actions-right">
           <button class="btn btn-ghost" id="cancel-edit-section-modal">Cancel</button>
           <button class="btn btn-dark" id="save-edit-section-modal">Save</button>
@@ -379,13 +369,10 @@
   <!-- Add Material Modal -->
   <div class="modal-overlay hidden" id="modal-material">
     <div class="modal-box modal-box-wide">
-      <h3 class="modal-title"><span id="modal-material-title-text">Add Learning Material</span></h3>
-      <div class="modal-field"><label>Material Name</label><input type="text" id="material-name-input"
-          placeholder="e.g. Chapter 1 Notes"></div>
-      <div class="modal-field"><label>Description</label><textarea id="material-desc-input"
-          placeholder="Brief description"></textarea></div>
-      <div class="modal-field"><label>Or paste a link</label><input type="text" id="material-link-input"
-          placeholder="https://..."></div>
+      <h3 class="modal-title"><i class="fa-solid fa-book"></i> <span id="modal-material-title-text">Add Learning Material</span></h3>
+      <div class="modal-field"><label>Material Name</label><input type="text" id="material-name-input" placeholder="e.g. Chapter 1 Notes"></div>
+      <div class="modal-field"><label>Description</label><textarea id="material-desc-input" placeholder="Brief description"></textarea></div>
+      <div class="modal-field"><label>Or paste a link</label><input type="text" id="material-link-input" placeholder="https://..."></div>
       <div class="modal-actions">
         <button class="btn btn-ghost" id="cancel-material-modal">Cancel</button>
         <button class="btn btn-dark" id="save-material-modal">Save</button>
@@ -396,19 +383,14 @@
   <!-- Add Assignment Modal -->
   <div class="modal-overlay hidden" id="modal-assignment">
     <div class="modal-box modal-box-wide">
-      <h3 class="modal-title"><span id="modal-assignment-title-text">Add Assignment</span></h3>
-      <div class="modal-field"><label>Title</label><input type="text" id="assignment-name-input"
-          placeholder="Assignment title"></div>
-      <div class="modal-field"><label>Instructions</label><textarea id="assignment-desc-input"
-          placeholder="Instructions"></textarea></div>
+      <h3 class="modal-title"><i class="fa-solid fa-file-lines"></i> <span id="modal-assignment-title-text">Add Assignment</span></h3>
+      <div class="modal-field"><label>Title</label><input type="text" id="assignment-name-input" placeholder="Assignment title"></div>
+      <div class="modal-field"><label>Instructions</label><textarea id="assignment-desc-input" placeholder="Instructions"></textarea></div>
       <div class="modal-two-col">
-        <div class="modal-field"><label>Due Date & Time</label><input type="datetime-local" id="assignment-due-input">
-        </div>
-        <div class="modal-field"><label>Points</label><input type="number" id="assignment-points-input"
-            placeholder="100"></div>
+        <div class="modal-field"><label>Due Date & Time</label><input type="datetime-local" id="assignment-due-input"></div>
+        <div class="modal-field"><label>Points</label><input type="number" id="assignment-points-input" placeholder="100"></div>
       </div>
-      <div class="modal-field"><label>Or paste a link</label><input type="text" id="assignment-link-input"
-          placeholder="https://..."></div>
+      <div class="modal-field"><label>Or paste a link</label><input type="text" id="assignment-link-input" placeholder="https://..."></div>
       <div class="modal-actions">
         <button class="btn btn-ghost" id="cancel-assignment-modal">Cancel</button>
         <button class="btn btn-dark" id="save-assignment-modal">Save</button>
@@ -419,14 +401,11 @@
   <!-- Add Quiz Modal -->
   <div class="modal-overlay hidden" id="modal-quiz">
     <div class="modal-box modal-box-wide">
-      <h3 class="modal-title"><span id="modal-quiz-title-text">Add Quiz</span></h3>
-      <div class="modal-field"><label>Quiz Title</label><input type="text" id="quiz-name-input"
-          placeholder="Quiz title"></div>
-      <div class="modal-field"><label>Description</label><textarea id="quiz-desc-input"
-          placeholder="Description"></textarea></div>
+      <h3 class="modal-title"><i class="fa-solid fa-clipboard-question"></i> <span id="modal-quiz-title-text">Add Quiz</span></h3>
+      <div class="modal-field"><label>Quiz Title</label><input type="text" id="quiz-name-input" placeholder="Quiz title"></div>
+      <div class="modal-field"><label>Description</label><textarea id="quiz-desc-input" placeholder="Description"></textarea></div>
       <div class="modal-two-col">
-        <div class="modal-field"><label>Google Form Link</label><input type="text" id="quiz-link-input"
-            placeholder="https://forms.google.com/..."></div>
+        <div class="modal-field"><label>Google Form Link</label><input type="text" id="quiz-link-input" placeholder="https://forms.google.com/..."></div>
         <div class="modal-field"><label>Due Date & Time</label><input type="datetime-local" id="quiz-due-input"></div>
       </div>
       <div class="modal-actions">
@@ -439,11 +418,9 @@
   <!-- New Announcement Modal -->
   <div class="modal-overlay hidden" id="modal-announcement">
     <div class="modal-box">
-      <h3 class="modal-title"><span id="modal-announcement-title-text">New Announcement</span></h3>
-      <div class="modal-field"><label>Title</label><input type="text" id="announcement-title-input"
-          placeholder="Announcement title"></div>
-      <div class="modal-field"><label>Message</label><textarea id="announcement-body-input"
-          placeholder="Write your announcement here..." style="min-height:100px"></textarea></div>
+      <h3 class="modal-title"><i class="fa-solid fa-bullhorn"></i> <span id="modal-announcement-title-text">New Announcement</span></h3>
+      <div class="modal-field"><label>Title</label><input type="text" id="announcement-title-input" placeholder="Announcement title"></div>
+      <div class="modal-field"><label>Message</label><textarea id="announcement-body-input" placeholder="Write your announcement here..." style="min-height:100px"></textarea></div>
       <div class="modal-field">
         <label>Audience</label>
         <select id="announcement-audience-input">

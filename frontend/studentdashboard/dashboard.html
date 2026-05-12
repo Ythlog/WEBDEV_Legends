@@ -3,99 +3,14 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>Eduhub – Student Dashboard</title>
-  <link rel="stylesheet" href="/studentdashboard/dashboard.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Google Fonts: Poppins -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <style>
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 9999;
-      justify-content: center;
-      align-items: center;
-    }
-    .modal-container {
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      width: 400px;
-      max-width: 90%;
-      animation: slideIn 0.3s ease;
-    }
-    @keyframes slideIn {
-      from { transform: translateY(-50px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-    .modal-header h2 { margin: 0; color: #1f2937; }
-    .close-modal { cursor: pointer; font-size: 28px; color: #6b7280; }
-    .close-modal:hover { color: #ef4444; }
-    .form-group { margin-bottom: 20px; }
-    .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #374151; }
-    .form-group input {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      font-size: 16px;
-      font-family: 'Poppins', sans-serif;
-    }
-    .form-group input:focus { outline: none; border-color: #6366f1; }
-    .form-group small { color: #6b7280; display: block; margin-top: 5px; }
-    .class-preview {
-      background: #f3f4f6;
-      padding: 15px;
-      border-radius: 8px;
-      margin: 15px 0;
-    }
-    .class-preview p { margin: 5px 0; }
-    .preview-title { font-weight: 600; color: #6366f1; }
-    .modal-buttons { display: flex; gap: 10px; margin-top: 20px; }
-    .btn-primary {
-      flex: 1;
-      padding: 10px;
-      background: #6366f1;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    .btn-primary:disabled { background: #9ca3af; cursor: not-allowed; }
-    .btn-secondary {
-      flex: 1;
-      padding: 10px;
-      background: #9ca3af;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    .join-class-btn {
-      background: #6366f1;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 14px;
-    }
-    .join-class-btn:hover { background: #4f46e5; }
-  </style>
+  <link rel="stylesheet" href="/studentdashboard/dashboard.css" />
 </head>
 
 <body>
@@ -103,28 +18,30 @@
     <!-- SIDEBAR -->
     <aside class="sidebar">
       <div class="sidebar-logo">
-        <img src="/studentdashboard/logo.png" alt="Eduhub Logo" class="logo-icon" />
+        <div class="logo-mark">
+          <i class="fa-solid fa-graduation-cap"></i>
+        </div>
         <span class="logo-text">Eduhub</span>
       </div>
       <nav class="sidebar-nav">
         <a href="#" class="nav-item active" data-view="home">
-          <img src="/studentdashboard/home.png" alt="Home" class="nav-icon" />
+          <i class="fa-solid fa-house nav-icon"></i>
           <span>Home</span>
         </a>
         <a href="#" class="nav-item" data-view="classes">
-          <img src="/studentdashboard/course.png" alt="Classes" class="nav-icon" />
+          <i class="fa-solid fa-chalkboard-user nav-icon"></i>
           <span>Classes</span>
         </a>
         <a href="#" class="nav-item" data-view="progress">
-          <img src="/studentdashboard/progress.png" alt="Progress" class="nav-icon" />
+          <i class="fa-solid fa-chart-simple nav-icon"></i>
           <span>Progress</span>
         </a>
         <a href="#" class="nav-item" data-view="todo">
-          <img src="/studentdashboard/list.png" alt="To Do List" class="nav-icon" />
+          <i class="fa-solid fa-list-check nav-icon"></i>
           <span>To do List</span>
         </a>
         <a href="#" class="nav-item" data-view="profile">
-          <img src="/studentdashboard/profile.png" alt="Profile" class="nav-icon" />
+          <i class="fa-solid fa-circle-user nav-icon"></i>
           <span>Profile</span>
         </a>
       </nav>
@@ -134,89 +51,128 @@
     <main class="main-content">
       <header class="top-bar">
         <div class="search-bar">
-          <img src="/studentdashboard/blacksearch.png" alt="Search" class="search-icon" />
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
           <input type="text" placeholder="Search classes, materials, quizzes..." id="search-input" autocomplete="off" />
           <div id="search-dropdown" class="search-dropdown hidden"></div>
         </div>
         <div class="user-avatar">
-          <div class="avatar"></div>
+          <div class="avatar">
+            <i class="fa-solid fa-user-astronaut"></i>
+          </div>
         </div>
       </header>
 
       <!-- HOME VIEW -->
       <div class="page-body" id="view-home">
-        <h1 class="welcome-heading">Welcome, Student!</h1>
+        <div class="welcome-section">
+          <h1 class="welcome-heading">Welcome, Student!</h1>
+          <p class="welcome-subheading">Stay on top of your learning journey</p>
+        </div>
         <div class="content-columns">
           <section class="announcements-section" id="announcements-section">
-            <h2 class="section-title">Announcements</h2>
+            <div class="section-header">
+              <h2 class="section-title">Announcements</h2>
+              <i class="fa-regular fa-bell"></i>
+            </div>
+            <div class="announcements-scroll-container" id="announcements-container"></div>
           </section>
           <section class="todo-section" id="todo-section">
-            <h2 class="section-title">To Do List</h2>
+            <div class="section-header">
+              <h2 class="section-title">To Do List</h2>
+              <i class="fa-regular fa-calendar-check"></i>
+            </div>
+            <div class="todo-scroll-container" id="home-todo-container"></div>
           </section>
         </div>
       </div>
 
       <!-- CLASSES VIEW -->
       <div class="page-body hidden" id="view-classes">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-          <h1 class="page-heading" style="margin-bottom: 0;">Continue learning with your courses!</h1>
-          <button class="join-class-btn" id="join-class-btn">+ Join Class</button>
+        <div class="classes-header">
+          <div>
+            <h1 class="page-heading">Continue learning with your courses!</h1>
+            <p class="page-subheading">Access all your enrolled classes and materials</p>
+          </div>
+          <button class="join-class-btn" id="join-class-btn"><i class="fa-solid fa-plus"></i> Join Class</button>
         </div>
-        <p class="section-label">My Classes</p>
         <div class="classes-grid" id="classes-grid"></div>
       </div>
 
       <!-- CLASS DETAIL VIEW -->
       <div class="page-body hidden" id="view-class-detail">
-        <h1 class="page-heading">Continue learning with your courses!</h1>
-        <button class="back-btn">← Back to Classes</button>
-        <p class="section-label" id="detail-class-name"></p>
+        <button class="back-btn" id="back-to-classes"><i class="fa-solid fa-arrow-left"></i> Back to Classes</button>
+        <div class="detail-header">
+          <div>
+            <h1 class="page-heading" id="detail-class-name"></h1>
+            <p class="class-meta-text" id="detail-class-meta"></p>
+          </div>
+        </div>
         <div class="detail-scroll-area">
+          <div class="section-label"><i class="fa-solid fa-book-open"></i> Learning Materials</div>
           <div id="materials-list"></div>
-          <p class="section-label quizzes-label" id="quizzes-label"></p>
+          <div class="section-label quizzes-label" id="quizzes-label"><i class="fa-solid fa-clipboard-question"></i> Quizzes</div>
           <div id="quizzes-list"></div>
         </div>
       </div>
 
       <!-- MATERIAL DETAIL VIEW -->
       <div class="page-body hidden" id="view-material-detail">
-        <h1 class="page-heading">Continue learning with your courses!</h1>
-        <button class="back-btn">← Back to Class</button>
-        <p class="section-label" id="mat-class-name"></p>
+        <button class="back-btn" id="back-to-class-from-material"><i class="fa-solid fa-arrow-left"></i> Back to Class</button>
+        <div class="detail-header">
+          <div>
+            <h1 class="page-heading" id="mat-title"></h1>
+            <p class="class-meta-text" id="mat-class-name"></p>
+          </div>
+        </div>
         <div class="due-date-text" id="mat-due-text"></div>
-        <div class="item-banner yellow" id="mat-banner"></div>
+        <div class="item-banner yellow" id="mat-banner">
+          <i class="fa-regular fa-file-pdf"></i> Learning Material
+        </div>
         <div class="item-scroll-area">
-          <a href="#" class="pdf-link" id="mat-pdf-link" target="_blank">Open Material</a>
+          <a href="#" class="pdf-link" id="mat-pdf-link" target="_blank"><i class="fa-regular fa-eye"></i> Open Material</a>
           <p class="item-section-title">Description</p>
           <p class="item-description" id="mat-description"></p>
         </div>
         <div class="mark-done-row">
-          <button class="mark-done-btn dark" id="mat-mark-btn">Mark as done</button>
+          <button class="mark-done-btn dark" id="mat-mark-btn"><i class="fa-regular fa-circle-check"></i> Mark as done</button>
         </div>
       </div>
 
       <!-- QUIZ DETAIL VIEW -->
       <div class="page-body hidden" id="view-quiz-detail">
-        <h1 class="page-heading">Continue learning with your courses!</h1>
-        <button class="back-btn">← Back to Class</button>
-        <p class="section-label" id="quiz-class-name"></p>
+        <button class="back-btn" id="back-to-class-from-quiz"><i class="fa-solid fa-arrow-left"></i> Back to Class</button>
+        <div class="detail-header">
+          <div>
+            <h1 class="page-heading" id="quiz-title"></h1>
+            <p class="class-meta-text" id="quiz-class-name"></p>
+          </div>
+        </div>
         <div class="due-date-text" id="quiz-due-text"></div>
-        <div class="item-banner grey" id="quiz-banner"></div>
+        <div class="item-banner grey" id="quiz-banner">
+          <i class="fa-regular fa-clipboard"></i> Quiz
+        </div>
         <div class="item-scroll-area">
-          <a href="#" class="quiz-link" target="_blank" id="quiz-link">Open Quiz</a>
+          <a href="#" class="quiz-link" target="_blank" id="quiz-link"><i class="fa-regular fa-pen-to-square"></i> Open Quiz</a>
           <p class="item-section-title">Description</p>
           <p class="item-description" id="quiz-description"></p>
           <p class="item-section-title">Instructions:</p>
-          <ul class="quiz-instructions" id="quiz-instructions"></ul>
+          <ul class="quiz-instructions" id="quiz-instructions">
+            <li>Read each question carefully</li>
+            <li>Submit before the due date</li>
+            <li>You can only take the quiz once</li>
+          </ul>
         </div>
         <div class="mark-done-row">
-          <button class="mark-done-btn yellow" id="quiz-mark-btn">Mark as done</button>
+          <button class="mark-done-btn yellow" id="quiz-mark-btn"><i class="fa-regular fa-circle-check"></i> Mark as done</button>
         </div>
       </div>
 
       <!-- PROGRESS VIEW -->
       <div class="page-body hidden" id="view-progress">
-        <h1 class="page-heading">Keep track of your progress</h1>
+        <div class="progress-header">
+          <h1 class="page-heading">Keep track of your progress</h1>
+          <p class="page-subheading">Monitor your learning achievements across all classes</p>
+        </div>
         <div class="progress-summary" id="progress-summary"></div>
         <div class="progress-list" id="progress-list"></div>
       </div>
@@ -224,12 +180,22 @@
       <!-- TO DO LIST VIEW -->
       <div class="page-body hidden" id="view-todo">
         <h1 class="page-heading">See your tasks!</h1>
-        <p class="section-label">To Do List</p>
+        <p class="page-subheading">Stay organized with pending and upcoming assignments</p>
         <div class="todo-page-scroll">
-          <p class="todo-group-label">Assigned tasks</p>
-          <div id="todo-assigned-list"></div>
-          <p class="todo-group-label">Missing tasks</p>
-          <div id="todo-missing-list"></div>
+          <div class="todo-group">
+            <div class="todo-group-header">
+              <i class="fa-regular fa-clock"></i>
+              <p class="todo-group-label">Assigned tasks</p>
+            </div>
+            <div id="todo-assigned-list"></div>
+          </div>
+          <div class="todo-group">
+            <div class="todo-group-header">
+              <i class="fa-regular fa-calendar-xmark"></i>
+              <p class="todo-group-label">Missing tasks</p>
+            </div>
+            <div id="todo-missing-list"></div>
+          </div>
         </div>
       </div>
 
@@ -239,24 +205,27 @@
         <div class="profile-layout">
           <div class="profile-card">
             <div class="profile-picture-section">
-              <img id="profile-picture-img" class="profile-avatar" alt="Profile Picture" />
+              <div class="profile-avatar" id="profile-avatar-container">
+                <i class="fa-solid fa-user" id="profile-picture-icon"></i>
+                <img id="profile-picture-img" style="display: none; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />
+              </div>
               <input type="file" id="profile-picture-input" accept="image/jpeg,image/jpg,image/png,image/gif" style="display: none;" />
-              <div>
-                <button id="upload-picture-btn" class="upload-picture-btn">Upload Picture</button>
-                <button id="remove-picture-btn" class="remove-picture-btn">Remove Picture</button>
+              <div class="profile-picture-buttons">
+                <button id="upload-picture-btn" class="upload-picture-btn"><i class="fa-solid fa-camera"></i> Upload</button>
+                <button id="remove-picture-btn" class="remove-picture-btn"><i class="fa-solid fa-trash"></i> Remove</button>
               </div>
             </div>
             <h2 id="profile-username-display">student</h2>
-            <p class="profile-role" id="profile-role-display">student</p>
+            <p class="profile-role" id="profile-role-display">Student</p>
             <div class="profile-actions">
-              <button class="profile-btn" id="btn-edit-profile">Edit info</button>
-              <button class="profile-btn secondary" id="btn-change-password">Change password</button>
-              <button class="profile-btn logout-btn" id="btn-logout">Logout</button>
+              <button class="profile-btn" id="btn-edit-profile"><i class="fa-solid fa-pen-to-square"></i> Edit info</button>
+              <button class="profile-btn secondary" id="btn-change-password"><i class="fa-solid fa-key"></i> Change password</button>
+              <button class="profile-btn logout-btn" id="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
             </div>
           </div>
           <div class="profile-panels">
             <section id="profile-main">
-              <h3 class="panel-title">Profile information</h3>
+              <h3 class="panel-title">Profile Information</h3>
               <div class="profile-info-grid">
                 <div class="info-item"><span class="label">First name</span><span class="value" id="display-firstname"></span></div>
                 <div class="info-item"><span class="label">Last name</span><span class="value" id="display-lastname"></span></div>
@@ -265,7 +234,7 @@
               </div>
             </section>
             <section id="profile-edit-info" style="display:none;">
-              <h3 class="panel-title">Edit information</h3>
+              <h3 class="panel-title">Edit Information</h3>
               <div class="form-grid">
                 <label>First name<input id="edit-firstname" type="text"></label>
                 <label>Last name<input id="edit-lastname" type="text"></label>
@@ -278,14 +247,15 @@
               </div>
             </section>
             <section id="profile-change-password" style="display:none;">
-              <h3 class="panel-title">Change password</h3>
+              <h3 class="panel-title">Change Password</h3>
+              <p class="password-hint">A verification code will be sent to your email.</p>
               <div class="form-grid">
                 <label>Username<input id="pw-username-display" type="text" disabled></label>
                 <label>New password<input id="pw-new" type="password"></label>
                 <label>Confirm new password<input id="pw-confirm" type="password"></label>
               </div>
               <div id="verification-code-section" style="display:none; margin-top:16px;">
-                <label>Verification code
+                <label class="code-label">Verification code
                   <input id="pw-verification-code" type="text" placeholder="Enter 6-digit code" maxlength="6">
                 </label>
               </div>
@@ -305,7 +275,7 @@
   <div id="join-modal" class="modal-overlay">
     <div class="modal-container">
       <div class="modal-header">
-        <h2>Join a Class Section</h2>
+        <h2><i class="fa-solid fa-door-open"></i> Join a Class Section</h2>
         <span class="close-modal">&times;</span>
       </div>
       <div class="form-group">
@@ -315,7 +285,7 @@
       </div>
       <div id="preview-container" style="display: none;">
         <div class="class-preview">
-          <p><strong>📖 Class Section Found!</strong></p>
+          <p><strong><i class="fa-solid fa-graduation-cap"></i> Class Section Found!</strong></p>
           <p><strong>Class:</strong> <span id="preview-class-title"></span></p>
           <p><strong>Section:</strong> <span id="preview-section-name"></span></p>
           <p><strong>Professor:</strong> <span id="preview-professor"></span></p>
