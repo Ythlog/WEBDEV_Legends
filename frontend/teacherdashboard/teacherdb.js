@@ -1,5 +1,5 @@
 // =============================================
-// TEACHER DASHBOARD - API CONNECTED
+// TEACHER DASHBOARD - FULL WORKING VERSION
 // =============================================
 
 // =============================================
@@ -281,6 +281,25 @@ async function fetchAndRenderSections(classId) {
   renderSectionsList();
 }
 
+// =============================================
+// OPEN SECTION DETAIL - DEFINED BEFORE renderSectionsList
+// =============================================
+function openSectionDetail(sectionId, sectionName) {
+  console.log("Opening section detail. Section ID:", sectionId);
+  console.log("Section ID type:", typeof sectionId);
+  
+  state.currentSectionId = sectionId;
+  
+  const cls = TEACHER_DATA.classes.find(c => c.id === state.currentClassId);
+  document.getElementById('section-detail-name').textContent = sectionName;
+  document.getElementById('section-detail-class').textContent = cls ? cls.title : '';
+  switchTab('lessons');
+  showView('section-detail');
+}
+
+// =============================================
+// RENDER SECTIONS LIST
+// =============================================
 function renderSectionsList() {
   const list = document.getElementById('sections-list');
   list.innerHTML = '';
@@ -308,21 +327,42 @@ function renderSectionsList() {
         <div>
           <div class="section-card-name">${escHtml(sec.name)}</div>
           <div class="section-card-students">${enrolledCount} student${enrolledCount !== 1 ? 's' : ''} enrolled</div>
+          <div class="section-card-code" style="margin-top: 8px;">
+            <span style="font-size: 12px; color: #666;">🔑 Enrollment Code: </span>
+            <span style="font-size: 14px; font-weight: 600; background: #f0fdf4; padding: 2px 8px; border-radius: 4px; font-family: monospace;">${sec.enrollment_code || 'N/A'}</span>
+            <button class="copy-code-btn" data-code="${sec.enrollment_code}" style="margin-left: 8px; padding: 2px 8px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Copy</button>
+          </div>
+          <div style="font-size: 11px; color: #999; margin-top: 4px;">Display Code: ${sec.code}</div>
         </div>
       </div>
       <div class="section-card-right">
-        <span style="font-size:12px;color:#888;margin-right:8px">Code: ${sec.code}</span>
         <button class="section-dots-btn" data-secid="${sec.id}" title="Options">
           ${dotsIconSVG()}
         </button>
       </div>`;
+
+    const copyBtn = card.querySelector('.copy-code-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const code = copyBtn.getAttribute('data-code');
+        navigator.clipboard.writeText(code);
+        Swal.fire({
+          icon: 'success',
+          title: 'Copied!',
+          text: `Enrollment code ${code} copied to clipboard`,
+          timer: 1500,
+          showConfirmButton: false
+        });
+      });
+    }
 
     card.querySelector('.section-dots-btn').addEventListener('click', e => {
       e.stopPropagation();
       openEditSectionModal(sec.id);
     });
     card.addEventListener('click', e => {
-      if (!e.target.closest('.section-dots-btn')) {
+      if (!e.target.closest('.section-dots-btn') && !e.target.closest('.copy-code-btn')) {
         openSectionDetail(sec.id, sec.name);
       }
     });
@@ -331,13 +371,42 @@ function renderSectionsList() {
 }
 
 // =============================================
-// EDIT SECTION MODAL (code cannot be edited)
+// EDIT SECTION MODAL
 // =============================================
 function openEditSectionModal(sectionId) {
   state.editingSectionId = sectionId;
   const sec = TEACHER_DATA.sections.find(s => s.id === sectionId);
   document.getElementById('edit-section-name-input').value = sec.name;
-  document.getElementById('edit-modal-code-display').textContent = sec.code;
+  
+  document.getElementById('edit-modal-code-display').innerHTML = `
+    <div style="margin-bottom: 8px;">
+      <strong style="color: #666;">Display Code:</strong> 
+      <span style="font-family: monospace;">${sec.code}</span>
+    </div>
+    <div>
+      <strong style="color: #666;">🔑 Enrollment Code (share with students):</strong><br/>
+      <span style="font-family: monospace; font-size: 18px; font-weight: bold; background: #f0fdf4; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px;">${sec.enrollment_code || 'N/A'}</span>
+      <button class="copy-code-modal-btn" data-code="${sec.enrollment_code}" style="margin-left: 10px; padding: 4px 12px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer;">Copy</button>
+    </div>
+  `;
+  
+  setTimeout(() => {
+    const copyBtn = document.querySelector('.copy-code-modal-btn');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        const code = copyBtn.getAttribute('data-code');
+        navigator.clipboard.writeText(code);
+        Swal.fire({
+          icon: 'success',
+          title: 'Copied!',
+          text: `Enrollment code ${code} copied`,
+          timer: 1500,
+          showConfirmButton: false
+        });
+      });
+    }
+  }, 100);
+  
   document.getElementById('edit-section-code-input').value = '';
   document.getElementById('edit-section-code-input').disabled = true;
   document.getElementById('edit-section-code-input').placeholder = 'Code cannot be changed';
@@ -381,26 +450,37 @@ document.getElementById('delete-section-modal-btn').addEventListener('click', as
 });
 
 // =============================================
-// SECTION DETAIL VIEW
+// SWITCH TAB - FIXED
 // =============================================
-function openSectionDetail(sectionId, sectionName) {
-  state.currentSectionId = sectionId;
-  const cls = TEACHER_DATA.classes.find(c => c.id === state.currentClassId);
-  document.getElementById('section-detail-name').textContent = sectionName;
-  document.getElementById('section-detail-class').textContent = cls ? cls.title : '';
-  switchTab('lessons');
-  showView('section-detail');
-}
-
 function switchTab(tab) {
+  console.log("Switching to tab:", tab);
   state.activeSectionTab = tab;
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  document.getElementById('tab-' + tab).classList.add('active');
-  if (tab === 'lessons') fetchAndRenderMaterials();
-  else if (tab === 'quizzes') fetchAndRenderQuizzes();
-  else if (tab === 'assignments') fetchAndRenderAssignments();
-  else if (tab === 'students') fetchAndRenderStudents();
+  
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  
+  document.querySelectorAll('.tab-content').forEach(c => {
+    c.classList.remove('active');
+  });
+  
+  const activeTab = document.getElementById('tab-' + tab);
+  if (activeTab) {
+    activeTab.classList.add('active');
+  } else {
+    console.error("Tab content not found: tab-" + tab);
+  }
+  
+  if (tab === 'lessons') {
+    fetchAndRenderMaterials();
+  } else if (tab === 'quizzes') {
+    fetchAndRenderQuizzes();
+  } else if (tab === 'assignments') {
+    fetchAndRenderAssignments();
+  } else if (tab === 'students') {
+    console.log('Students tab clicked, section ID:', state.currentSectionId);
+    fetchAndRenderStudents();
+  }
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -498,7 +578,7 @@ function renderQuizzesList() {
   const list = document.getElementById('quizzes-list');
   list.innerHTML = '';
   if (!TEACHER_DATA.quizzes.length) {
-    list.innerHTML = '<div class="empty-state">No quizzes yet.</div>';
+    list.innerHTML = '<div class="empty-state">No quizzes yet. Click "Add Quiz" to create one.</div>';
     return;
   }
 
@@ -514,7 +594,7 @@ function renderQuizzesList() {
         <div class="quiz-card-info">
           <span class="quiz-card-name">${escHtml(quiz.title)}</span>
           <span class="quiz-card-meta">Due: ${quiz.due_date ? new Date(quiz.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}</span>       
-          </div>
+        </div>
       </div>
       <div class="material-card-actions" onclick="event.stopPropagation()">
         <button class="btn btn-ghost btn-sm" onclick="openQuizModal(${quiz.id})">Edit</button>
@@ -533,7 +613,8 @@ function openQuizDetail(quiz) {
   link.textContent = quiz.link || 'No link attached';
   link.href = quiz.link || '#';
   document.getElementById('quiz-detail-desc').textContent = quiz.description || '';
-  document.getElementById('quiz-detail-due').textContent = quiz.due_date ? new Date(quiz.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A';  state.activeCompletionTab.quiz = 'pending';
+  document.getElementById('quiz-detail-due').textContent = quiz.due_date ? new Date(quiz.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A';
+  state.activeCompletionTab.quiz = 'pending';
   renderCompletionTabs(document.querySelector('#view-quiz-detail .completion-tabs'), 'quiz');
   renderCompletionStudents('quiz-done-students', 'quiz', quiz.id, 'pending');
   showView('quiz-detail');
@@ -572,7 +653,7 @@ function renderAssignmentsList() {
   const list = document.getElementById('assignments-list');
   list.innerHTML = '';
   if (!TEACHER_DATA.assignments.length) {
-    list.innerHTML = '<div class="empty-state">No assignments yet.</div>';
+    list.innerHTML = '<div class="empty-state">No assignments yet. Click "Add Assignment" to create one.</div>';
     return;
   }
 
@@ -607,7 +688,8 @@ function openAssignmentDetail(assign) {
   link.textContent = assign.link || 'No file attached';
   link.href = assign.link || '#';
   document.getElementById('assign-detail-desc').textContent = assign.description || '';
-  document.getElementById('assign-detail-due').textContent = assign.due_date ? new Date(assign.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A';  document.getElementById('assign-detail-points').textContent = (assign.points || 0) + ' points';
+  document.getElementById('assign-detail-due').textContent = assign.due_date ? new Date(assign.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A';
+  document.getElementById('assign-detail-points').textContent = (assign.points || 0) + ' points';
   state.activeCompletionTab.assign = 'pending';
   renderCompletionTabs(document.querySelector('#view-assignment-detail .completion-tabs'), 'assign');
   renderCompletionStudents('assign-done-students', 'assignment', assign.id, 'pending');
@@ -665,8 +747,6 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
       status: s.completed_at ? 'finished' : 'pending'
     }));
 
-    // For materials: only pending/finished (no missed)
-    // For quizzes/assignments: also check due date for missed
     if (type !== 'material') {
       let dueDate = null;
       if (type === 'quiz') {
@@ -729,108 +809,137 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
 // STUDENTS TAB
 // =============================================
 async function fetchAndRenderStudents() {
+  if (!state.currentSectionId) {
+    console.error('No section ID set');
+    const enrolledEl = document.getElementById('enrolled-students-list');
+    if (enrolledEl) {
+      enrolledEl.innerHTML = '<div class="empty-state">No section selected. Please select a section first.</div>';
+    }
+    return;
+  }
+  
+  console.log('=== FETCHING STUDENTS ===');
+  console.log('Current Section ID:', state.currentSectionId);
+  
   try {
-    TEACHER_DATA.students = await apiGet(`/api/teacher/students?sectionId=${state.currentSectionId}`);
+    const enrolledEl = document.getElementById('enrolled-students-list');
+    if (enrolledEl) {
+      enrolledEl.innerHTML = '<div class="loading-state">Loading students...</div>';
+    }
+    
+    const response = await fetch(`/api/teacher/students?sectionId=${state.currentSectionId}`);
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Error response:', errorData);
+      throw new Error(errorData.message || 'Failed to fetch');
+    }
+    
+    const students = await response.json();
+    console.log('Students received:', students);
+    console.log('Number of students:', students.length);
+    
+    TEACHER_DATA.students = students;
+    renderStudentsList();
   } catch (err) {
     console.error('Fetch students error:', err);
     TEACHER_DATA.students = [];
+    renderStudentsList();
+    Swal.fire('Error', 'Failed to load students: ' + err.message, 'error');
   }
-  renderStudentsList();
 }
 
 function renderStudentsList() {
   const enrolledEl = document.getElementById('enrolled-students-list');
-  const requestsEl = document.getElementById('join-requests-list');
+  
+  if (!enrolledEl) {
+    console.error('enrolled-students-list element not found');
+    return;
+  }
+  
+  console.log('Rendering students list. Students:', TEACHER_DATA.students);
+  console.log('Number of students:', TEACHER_DATA.students.length);
+  
   enrolledEl.innerHTML = '';
-  requestsEl.innerHTML = '';
 
-  const enrolled = TEACHER_DATA.students.filter(s => s.status === 'enrolled');
-  const pending = TEACHER_DATA.students.filter(s => s.status === 'pending');
-
-  if (!enrolled.length) {
-    enrolledEl.innerHTML = '<div class="empty-state">No enrolled students.</div>';
-  } else {
-    enrolled.forEach(s => {
-      const card = document.createElement('div');
-      card.className = 'student-card';
-      card.innerHTML = `
-        <div class="student-card-left">
-          <div class="item-icon-wrap" style="background:#11265c">
-            <img src="/teacherdashboard/student-icon.png" alt="student"
-              onerror="this.style.display='none';this.parentElement.innerHTML='👤'">
-          </div>
-          <div>
-            <div class="student-name">${escHtml(s.first_name + ' ' + s.last_name)}</div>
-            <div class="student-email">${escHtml(s.email)}</div>
-          </div>
-        </div>
-        <button class="btn btn-danger btn-sm" onclick="removeStudent(${s.id})">Remove</button>`;
-      enrolledEl.appendChild(card);
-    });
+  if (!TEACHER_DATA.students || TEACHER_DATA.students.length === 0) {
+    enrolledEl.innerHTML = '<div class="empty-state">No enrolled students yet. Share the enrollment code with students.</div>';
+    return;
   }
 
-  if (!pending.length) {
-    requestsEl.innerHTML = '<div class="empty-state">No pending join requests.</div>';
-  } else {
-    pending.forEach(s => {
-      const card = document.createElement('div');
-      card.className = 'join-request-card';
-      card.innerHTML = `
-        <div class="student-card-left">
-          <div class="item-icon-wrap" style="background:#11265c">
-            <img src="/teacherdashboard/student-icon.png" alt="student"
-              onerror="this.style.display='none';this.parentElement.innerHTML='👤'">
-          </div>
-          <div>
-            <div class="student-name">${escHtml(s.first_name + ' ' + s.last_name)}</div>
-            <div class="student-email">${escHtml(s.email)}</div>
-          </div>
+  TEACHER_DATA.students.forEach(student => {
+    const card = document.createElement('div');
+    card.className = 'student-card';
+    card.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #e5e7eb; background: white; border-radius: 8px; margin-bottom: 10px;';
+    
+    const enrollmentDate = student.enrolled_at ? new Date(student.enrolled_at).toLocaleDateString() : 'Recently';
+    const firstName = student.first_name || '';
+    const lastName = student.last_name || '';
+    const fullName = (firstName + ' ' + lastName).trim() || 'Unknown';
+    
+    card.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="background: #11265c; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+          <span style="color: white; font-size: 18px;">👤</span>
         </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-dark btn-sm" onclick="approveStudent(${s.id})">Approve</button>
-          <button class="btn btn-danger btn-sm" onclick="rejectStudent(${s.id})">Reject</button>
-        </div>`;
-      requestsEl.appendChild(card);
+        <div>
+          <div style="font-weight: 600; color: #1f2937;">${escHtml(fullName)}</div>
+          <div style="font-size: 12px; color: #6b7280;">${escHtml(student.email)}</div>
+          <div style="font-size: 11px; color: #22c55e; margin-top: 4px;">✅ Enrolled: ${enrollmentDate}</div>
+        </div>
+      </div>
+      <button class="remove-student-btn" data-student-id="${student.id}" style="padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">Remove</button>`;
+    
+    const removeBtn = card.querySelector('.remove-student-btn');
+    removeBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await removeStudent(student.id);
     });
-  }
+    
+    enrolledEl.appendChild(card);
+  });
+  
+  console.log('Rendered', TEACHER_DATA.students.length, 'students successfully');
 }
 
 async function removeStudent(studentId) {
   const result = await Swal.fire({
-    title: 'Remove student?', icon: 'warning', showCancelButton: true,
-    confirmButtonText: 'Remove', confirmButtonColor: '#cc0000'
+    title: 'Remove student?',
+    text: 'This student will be removed from this section.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Remove',
+    confirmButtonColor: '#cc0000'
   });
+  
   if (result.isConfirmed) {
     try {
-      await apiDelete('/api/teacher/students', { sectionId: state.currentSectionId, studentId });
-      fetchAndRenderStudents();
-      Swal.fire('Removed', 'Student removed.', 'success');
+      const response = await fetch('/api/teacher/students', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          sectionId: state.currentSectionId, 
+          studentId: studentId 
+        })
+      });
+      
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Remove failed');
+      }
+      
+      Swal.fire('Removed', 'Student removed successfully.', 'success');
+      await fetchAndRenderStudents();
     } catch (err) {
+      console.error('Remove student error:', err);
       Swal.fire('Error', err.message, 'error');
     }
   }
 }
 
-async function approveStudent(studentId) {
-  try {
-    await apiPut('/api/teacher/students/approve', { sectionId: state.currentSectionId, studentId });
-    fetchAndRenderStudents();
-  } catch (err) {
-    Swal.fire('Error', err.message, 'error');
-  }
-}
-
-async function rejectStudent(studentId) {
-  try {
-    await apiDelete('/api/teacher/students', { sectionId: state.currentSectionId, studentId });
-    fetchAndRenderStudents();
-  } catch (err) {
-    Swal.fire('Error', err.message, 'error');
-  }
-}
-
 // =============================================
-// MODALS (Create Class, Section, Material, Quiz, Assignment)
+// MODALS
 // =============================================
 function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
@@ -876,7 +985,39 @@ document.getElementById('save-section-modal').addEventListener('click', async ()
   try {
     const result = await apiPost('/api/teacher/sections', { classId: state.currentClassId, name });
     closeModal('modal-section');
-    Swal.fire({ icon: 'success', title: `Section created! Code: ${result.code}`, timer: 2000, showConfirmButton: false });
+    
+    Swal.fire({
+      icon: 'success',
+      title: 'Section Created!',
+      html: `
+        <div style="text-align: left;">
+          <p><strong>Section Name:</strong> ${escHtml(name)}</p>
+          <p><strong>Display Code:</strong> <code>${result.code}</code></p>
+          <p><strong>🔑 Enrollment Code (SHARE THIS WITH STUDENTS):</strong><br/>
+          <span style="background: #f0fdf4; padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 18px; font-weight: bold; display: inline-block; margin-top: 5px;">${result.enrollment_code}</span></p>
+          <button id="copy-enrollment-code" style="margin-top: 10px; padding: 5px 12px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer;">Copy Enrollment Code</button>
+        </div>
+      `,
+      showConfirmButton: true,
+      confirmButtonText: 'OK'
+    });
+    
+    setTimeout(() => {
+      const copyBtn = document.getElementById('copy-enrollment-code');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+          navigator.clipboard.writeText(result.enrollment_code);
+          Swal.fire({
+            icon: 'success',
+            title: 'Copied!',
+            text: 'Enrollment code copied to clipboard',
+            timer: 1500,
+            showConfirmButton: false
+          });
+        });
+      }
+    }, 100);
+    
     await fetchAndRenderSections(state.currentClassId);
   } catch (err) {
     Swal.fire('Error', err.message, 'error');
@@ -891,13 +1032,6 @@ function openMaterialModal(editId = null) {
   document.getElementById('material-name-input').value = mat ? mat.title : '';
   document.getElementById('material-desc-input').value = mat ? mat.description || '' : '';
   document.getElementById('material-link-input').value = mat ? mat.pdf_url || '' : '';
-  
-  // ✅ Only clear file preview if it exists
-  const filePreview = document.getElementById('material-file-preview');
-  if (filePreview) {
-    filePreview.innerHTML = '';
-  }
-  
   openModal('modal-material');
 }
 
@@ -933,15 +1067,9 @@ function openQuizModal(editId = null) {
   document.getElementById('quiz-desc-input').value = quiz ? quiz.description || '' : '';
   document.getElementById('quiz-link-input').value = quiz ? quiz.link || '' : '';
   document.getElementById('quiz-due-input').value = quiz && quiz.due_date ? formatDateTimeLocal(quiz.due_date) : '';
-  
-  // ✅ Only clear file preview if it exists
-  const filePreview = document.getElementById('quiz-file-preview');
-  if (filePreview) {
-    filePreview.innerHTML = '';
-  }
-  
   openModal('modal-quiz');
 }
+
 document.getElementById('btn-add-quiz').addEventListener('click', () => openQuizModal());
 document.getElementById('btn-edit-quiz').addEventListener('click', () => openQuizModal(state.currentQuizId));
 document.getElementById('btn-delete-quiz').addEventListener('click', () => deleteQuiz(state.currentQuizId));
@@ -973,15 +1101,9 @@ function openAssignmentModal(editId = null) {
   document.getElementById('modal-assignment-title-text').textContent = editId ? 'Edit Assignment' : 'Add Assignment';
   document.getElementById('assignment-name-input').value = assign ? assign.title : '';
   document.getElementById('assignment-desc-input').value = assign ? assign.description || '' : '';
-  document.getElementById('assignment-due-input').value = assign && assign.due_date ? formatDateTimeLocal(assign.due_date) : '';  document.getElementById('assignment-points-input').value = assign ? assign.points || '' : '';
+  document.getElementById('assignment-due-input').value = assign && assign.due_date ? formatDateTimeLocal(assign.due_date) : '';
+  document.getElementById('assignment-points-input').value = assign ? assign.points || '' : '';
   document.getElementById('assignment-link-input').value = assign ? assign.link || '' : '';
-  
-  // ✅ Only clear file preview if it exists
-  const filePreview = document.getElementById('assignment-file-preview');
-  if (filePreview) {
-    filePreview.innerHTML = '';
-  }
-  
   openModal('modal-assignment');
 }
 
@@ -1007,6 +1129,48 @@ document.getElementById('save-assignment-modal').addEventListener('click', async
     Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
   } catch (err) {
     Swal.fire('Error', err.message, 'error');
+  }
+});
+
+// ---- Announcement Modal ----
+document.getElementById('btn-new-announcement').addEventListener('click', () => {
+  state.editingAnnouncementId = null;
+  document.getElementById('modal-announcement-title-text').textContent = 'New Announcement';
+  document.getElementById('announcement-title-input').value = '';
+  document.getElementById('announcement-body-input').value = '';
+  openModal('modal-announcement');
+});
+
+document.getElementById('cancel-announcement-modal').addEventListener('click', () => closeModal('modal-announcement'));
+
+document.getElementById('save-announcement-modal').addEventListener('click', async () => {
+  const title = document.getElementById('announcement-title-input').value.trim();
+  const body = document.getElementById('announcement-body-input').value.trim();
+  const audience = document.getElementById('announcement-audience-input').value;
+  if (!title || !body) { Swal.fire('Error', 'Title and message are required.', 'error'); return; }
+  try {
+    let response;
+    if (state.editingAnnouncementId) {
+      response = await fetch(`/api/announcements/${state.editingAnnouncementId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, body, audience })
+      });
+    } else {
+      response = await fetch('/api/announcements', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teacherId: TEACHER_DATA.profile.id, title, body, audience })
+      });
+    }
+    const data = await response.json();
+    if (response.ok) {
+      closeModal('modal-announcement');
+      Swal.fire('Success', data.message, 'success');
+      fetchAnnouncements();
+    } else {
+      Swal.fire('Error', data.message || 'Failed to save.', 'error');
+    }
+  } catch (err) {
+    Swal.fire('Error', 'Could not connect to server.', 'error');
   }
 });
 
@@ -1083,7 +1247,7 @@ async function renderProgressView() {
 }
 
 // =============================================
-// ANNOUNCEMENTS VIEW (Keep existing connected code)
+// ANNOUNCEMENTS VIEW
 // =============================================
 function renderAnnouncementsView() {
   showView('announcements');
@@ -1138,6 +1302,16 @@ function renderAnnouncementList() {
   });
 }
 
+function editAnnouncement(id) {
+  const a = state.announcements.find(an => an.id === id);
+  state.editingAnnouncementId = id;
+  document.getElementById('announcement-title-input').value = a.title;
+  document.getElementById('announcement-body-input').value = a.body;
+  document.getElementById('announcement-audience-input').value = a.audience;
+  document.getElementById('modal-announcement-title-text').textContent = 'Edit Announcement';
+  openModal('modal-announcement');
+}
+
 async function deleteAnnouncement(id) {
   const result = await Swal.fire({
     title: 'Delete announcement?', icon: 'warning', showCancelButton: true,
@@ -1154,67 +1328,32 @@ async function deleteAnnouncement(id) {
   }
 }
 
-function editAnnouncement(id) {
-  const a = state.announcements.find(an => an.id === id);
-  state.editingAnnouncementId = id;
-  document.getElementById('announcement-title-input').value = a.title;
-  document.getElementById('announcement-body-input').value = a.body;
-  document.getElementById('announcement-audience-input').value = a.audience;
-  document.getElementById('modal-announcement-title-text').textContent = 'Edit Announcement';
-  openModal('modal-announcement');
-}
-
-// Announcement modal handlers
-document.getElementById('btn-new-announcement').addEventListener('click', () => {
-  state.editingAnnouncementId = null;
-  document.getElementById('modal-announcement-title-text').textContent = 'New Announcement';
-  document.getElementById('announcement-title-input').value = '';
-  document.getElementById('announcement-body-input').value = '';
-  openModal('modal-announcement');
-});
-document.getElementById('cancel-announcement-modal').addEventListener('click', () => closeModal('modal-announcement'));
-document.getElementById('save-announcement-modal').addEventListener('click', async () => {
-  const title = document.getElementById('announcement-title-input').value.trim();
-  const body = document.getElementById('announcement-body-input').value.trim();
-  const audience = document.getElementById('announcement-audience-input').value;
-  if (!title || !body) { Swal.fire('Error', 'Title and message are required.', 'error'); return; }
-  try {
-    let response;
-    if (state.editingAnnouncementId) {
-      response = await fetch(`/api/announcements/${state.editingAnnouncementId}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, body, audience })
-      });
-    } else {
-      response = await fetch('/api/announcements', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teacherId: TEACHER_DATA.profile.id, title, body, audience })
-      });
-    }
-    const data = await response.json();
-    if (response.ok) {
-      closeModal('modal-announcement');
-      Swal.fire('Success', data.message, 'success');
-      fetchAnnouncements();
-    } else {
-      Swal.fire('Error', data.message || 'Failed to save.', 'error');
-    }
-  } catch (err) {
-    Swal.fire('Error', 'Could not connect to server.', 'error');
-  }
-});
-
 // =============================================
 // BACK BUTTONS
 // =============================================
 document.getElementById('back-to-classes').addEventListener('click', fetchAndRenderClasses);
 document.getElementById('back-to-class-detail').addEventListener('click', () => openClassDetail(state.currentClassId));
-document.getElementById('back-to-section-lessons').addEventListener('click', () => { openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name').textContent); switchTab('lessons'); });
-document.getElementById('back-to-section-quizzes').addEventListener('click', () => { openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name').textContent); switchTab('quizzes'); });
-document.getElementById('back-to-section-assignments').addEventListener('click', () => { openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name').textContent); switchTab('assignments'); });
+document.getElementById('back-to-section-lessons').addEventListener('click', () => { 
+  if (state.currentSectionId) {
+    openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name').textContent); 
+    switchTab('lessons');
+  }
+});
+document.getElementById('back-to-section-quizzes').addEventListener('click', () => { 
+  if (state.currentSectionId) {
+    openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name').textContent); 
+    switchTab('quizzes');
+  }
+});
+document.getElementById('back-to-section-assignments').addEventListener('click', () => { 
+  if (state.currentSectionId) {
+    openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name').textContent); 
+    switchTab('assignments');
+  }
+});
 
 // =============================================
-// PROFILE (Keep existing connected code)
+// PROFILE FUNCTIONS
 // =============================================
 function refreshTeacherProfileDisplay() {
   const p = TEACHER_DATA.profile;
@@ -1237,9 +1376,9 @@ function showTeacherProfilePanel(panel) {
   document.getElementById('profile-change-password').style.display = (panel === 'change-password') ? 'block' : 'none';
 }
 
-// Edit profile button
 document.getElementById('btn-edit-profile').addEventListener('click', () => showTeacherProfilePanel('edit-info'));
 document.getElementById('btn-cancel-edit').addEventListener('click', () => showTeacherProfilePanel('main'));
+
 document.getElementById('btn-save-profile').addEventListener('click', async () => {
   const updated = {
     userId: TEACHER_DATA.profile.id,
@@ -1259,7 +1398,14 @@ document.getElementById('btn-save-profile').addEventListener('click', async () =
     });
     const data = await response.json();
     if (response.ok) {
-      const savedUser = { id: updated.userId, first_name: updated.firstName, last_name: updated.lastName, username: updated.username, email: updated.email, role: TEACHER_DATA.profile.role };
+      const savedUser = { 
+        id: updated.userId, 
+        first_name: updated.firstName, 
+        last_name: updated.lastName, 
+        username: updated.username, 
+        email: updated.email, 
+        role: TEACHER_DATA.profile.role 
+      };
       localStorage.setItem('eduhub_user', JSON.stringify(savedUser));
       await fetchTeacherProfile();
       refreshTeacherProfileDisplay();
@@ -1273,7 +1419,6 @@ document.getElementById('btn-save-profile').addEventListener('click', async () =
   }
 });
 
-// Change password button
 document.getElementById('btn-change-password').addEventListener('click', () => {
   showTeacherProfilePanel('change-password');
   document.getElementById('pw-new').value = '';
@@ -1283,7 +1428,9 @@ document.getElementById('btn-change-password').addEventListener('click', () => {
   document.getElementById('btn-send-code').style.display = 'block';
   document.getElementById('btn-save-password').style.display = 'none';
 });
+
 document.getElementById('btn-cancel-password').addEventListener('click', () => showTeacherProfilePanel('main'));
+
 document.getElementById('btn-send-code').addEventListener('click', async () => {
   try {
     const response = await fetch('/api/send-change-password-code', {
@@ -1303,13 +1450,23 @@ document.getElementById('btn-send-code').addEventListener('click', async () => {
     Swal.fire('Error', 'Could not connect to server.', 'error');
   }
 });
+
 document.getElementById('btn-save-password').addEventListener('click', async () => {
   const code = document.getElementById('pw-verification-code').value.trim();
   const newPw = document.getElementById('pw-new').value.trim();
   const confirm = document.getElementById('pw-confirm').value.trim();
-  if (!code || !newPw || !confirm) { Swal.fire('Missing', 'All fields are required.', 'warning'); return; }
-  if (code.length !== 6) { Swal.fire('Invalid', 'Please enter the 6-digit verification code.', 'warning'); return; }
-  if (newPw !== confirm) { Swal.fire('Mismatch', 'New passwords do not match.', 'error'); return; }
+  if (!code || !newPw || !confirm) { 
+    Swal.fire('Missing', 'All fields are required.', 'warning'); 
+    return; 
+  }
+  if (code.length !== 6) { 
+    Swal.fire('Invalid', 'Please enter the 6-digit verification code.', 'warning'); 
+    return; 
+  }
+  if (newPw !== confirm) { 
+    Swal.fire('Mismatch', 'New passwords do not match.', 'error'); 
+    return; 
+  }
   try {
     const response = await fetch('/api/change-password', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -1330,17 +1487,28 @@ document.getElementById('btn-save-password').addEventListener('click', async () 
   }
 });
 
-// Logout
 document.getElementById('btn-logout').addEventListener('click', () => {
   Swal.fire({
-    title: 'Are you sure?', text: 'You will be logged out of your account.', icon: 'warning',
-    showCancelButton: true, confirmButtonText: 'Yes, logout!', cancelButtonText: 'Cancel', confirmButtonColor: '#dc2626'
+    title: 'Are you sure?', 
+    text: 'You will be logged out of your account.', 
+    icon: 'warning',
+    showCancelButton: true, 
+    confirmButtonText: 'Yes, logout!', 
+    cancelButtonText: 'Cancel', 
+    confirmButtonColor: '#dc2626'
   }).then((result) => {
     if (result.isConfirmed) {
       localStorage.removeItem('eduhub_user');
       sessionStorage.clear();
-      Swal.fire({ title: 'Logged out', text: 'You have been logged out successfully.', icon: 'success', timer: 1500, showConfirmButton: false })
-        .then(() => { window.location.href = '/login/login.html'; });
+      Swal.fire({ 
+        title: 'Logged out', 
+        text: 'You have been logged out successfully.', 
+        icon: 'success', 
+        timer: 1500, 
+        showConfirmButton: false 
+      }).then(() => { 
+        window.location.href = '/login/login.html'; 
+      });
     }
   });
 });
@@ -1353,7 +1521,6 @@ function formatDateTimeLocal(dateVal) {
   const d = new Date(dateVal);
   if (isNaN(d.getTime())) return '';
   
-  // Convert to local datetime-local format: YYYY-MM-DDTHH:MM
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -1362,6 +1529,7 @@ function formatDateTimeLocal(dateVal) {
   
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
+
 // =============================================
 // UTILITY
 // =============================================
@@ -1371,7 +1539,7 @@ function escHtml(str) {
 }
 
 // =============================================
-// INIT
+// INITIALIZATION
 // =============================================
 (async function init() {
   await fetchTeacherProfile();
