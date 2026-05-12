@@ -742,11 +742,15 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
       return;
     }
 
+    // Determine the "done" status name based on type
+    const doneStatus = (type === 'material') ? 'finished' : 'passed';
+
     let filtered = students.map(s => ({
       ...s,
-      status: s.completed_at ? 'finished' : 'pending'
+      status: s.completed_at ? doneStatus : 'pending'
     }));
 
+    // Check for missed (only for quizzes/assignments with due dates)
     if (type !== 'material') {
       let dueDate = null;
       if (type === 'quiz') {
@@ -768,7 +772,13 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
       }
     }
 
-    filtered = filtered.filter(s => s.status === filterStatus);
+    // Handle tab mapping: "finished" tab shows "passed" items too
+    let matchStatus = filterStatus;
+    if (filterStatus === 'finished' && type !== 'material') {
+      matchStatus = 'passed';
+    }
+
+    filtered = filtered.filter(s => s.status === matchStatus);
 
     if (!filtered.length) {
       const labels = { 
@@ -777,7 +787,7 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
         passed: 'No students have passed yet.',
         missed: 'No students missed this.' 
       };
-      container.innerHTML = `<div class="empty-state">${labels[filterStatus]}</div>`;
+      container.innerHTML = `<div class="empty-state">${labels[filterStatus] || 'No students.'}</div>`;
       return;
     }
 

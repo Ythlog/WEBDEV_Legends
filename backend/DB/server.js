@@ -156,6 +156,12 @@ app.post("/api/join-section", async (req, res) => {
     let conn;
     try {
         conn = await pool.getConnection();
+
+        const user = await conn.query("SELECT role FROM users WHERE id = ?", [studentId]);
+        if (user.length === 0 || user[0].role !== 'student') {
+            return res.status(403).json({ message: "Only students can join classes." });
+        }
+
         
         // Get section info
         const sectionInfo = await conn.query(
@@ -229,6 +235,11 @@ app.get("/api/my-classes", async (req, res) => {
                 "SELECT id, title, description, link, link_label, due_date FROM quizzes WHERE section_id = ? ORDER BY id",
                 [enrollment.section_id]
             );
+
+            const assignments = await conn.query(
+                "SELECT id, title, description, link, due_date, points FROM assignments WHERE section_id = ? ORDER BY id",
+                [enrollment.section_id]
+            );
             
             classesWithData.push({
                 id: enrollment.class_id,
@@ -240,7 +251,8 @@ app.get("/api/my-classes", async (req, res) => {
                 section_name: enrollment.section_name,
                 section_code: enrollment.section_code,
                 materials: materials,
-                quizzes: quizzes
+                quizzes: quizzes,
+                assignments: assignments
             });
         }
         
@@ -1063,13 +1075,17 @@ app.get("/api/teacher/materials", async (req, res) => {
 app.post("/api/teacher/materials", async (req, res) => {
     const { sectionId, title, description, link, dueDate } = req.body;
     if (!sectionId || !title) return res.status(400).json({ message: "Missing required fields" });
+    if (isNaN(Number(sectionId))) return res.status(400).json({ message: "Invalid section ID" });
 
     let conn;
     try {
         conn = await pool.getConnection();
+        const sections = await conn.query("SELECT id FROM sections WHERE id = ?", [Number(sectionId)]);
+        if (sections.length === 0) return res.status(404).json({ message: "Section not found" });
+        
         const result = await conn.query(
             "INSERT INTO materials (section_id, title, description, pdf_url, due_date) VALUES (?, ?, ?, ?, ?)",
-            [sectionId, title, description || null, link || null, dueDate || null]
+            [Number(sectionId), title, description || null, link || null, dueDate || null]
         );
         res.json({ id: Number(result.insertId), message: "Material created" });
     } catch (err) {
@@ -1144,13 +1160,17 @@ app.get("/api/teacher/quizzes", async (req, res) => {
 app.post("/api/teacher/quizzes", async (req, res) => {
     const { sectionId, title, description, link, dueDate } = req.body;
     if (!sectionId || !title) return res.status(400).json({ message: "Missing required fields" });
+    if (isNaN(Number(sectionId))) return res.status(400).json({ message: "Invalid section ID" });
 
     let conn;
     try {
         conn = await pool.getConnection();
+        const sections = await conn.query("SELECT id FROM sections WHERE id = ?", [Number(sectionId)]);
+        if (sections.length === 0) return res.status(404).json({ message: "Section not found" });
+        
         const result = await conn.query(
             "INSERT INTO quizzes (section_id, title, description, link, link_label, due_date) VALUES (?, ?, ?, ?, ?, ?)",
-            [sectionId, title, description || null, link || null, link || 'Open Quiz', dueDate || null]
+            [Number(sectionId), title, description || null, link || null, link || 'Open Quiz', dueDate || null]
         );
         res.json({ id: Number(result.insertId), message: "Quiz created" });
     } catch (err) {
@@ -1225,13 +1245,17 @@ app.get("/api/teacher/assignments", async (req, res) => {
 app.post("/api/teacher/assignments", async (req, res) => {
     const { sectionId, title, description, link, dueDate, points } = req.body;
     if (!sectionId || !title) return res.status(400).json({ message: "Missing required fields" });
+    if (isNaN(Number(sectionId))) return res.status(400).json({ message: "Invalid section ID" });
 
     let conn;
     try {
         conn = await pool.getConnection();
+        const sections = await conn.query("SELECT id FROM sections WHERE id = ?", [Number(sectionId)]);
+        if (sections.length === 0) return res.status(404).json({ message: "Section not found" });
+        
         const result = await conn.query(
             "INSERT INTO assignments (section_id, title, description, link, due_date, points) VALUES (?, ?, ?, ?, ?, ?)",
-            [sectionId, title, description || null, link || null, dueDate || null, points || 0]
+            [Number(sectionId), title, description || null, link || null, dueDate || null, points || 0]
         );
         res.json({ id: Number(result.insertId), message: "Assignment created" });
     } catch (err) {

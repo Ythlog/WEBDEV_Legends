@@ -390,10 +390,10 @@ async function renderHome() {
   const todoSection = document.getElementById('todo-section');
   if (todoSection) {
     todoSection.innerHTML = '<h2 class="section-title">To Do List</h2>';
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7));
     monday.setHours(0, 0, 0, 0);
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
@@ -407,7 +407,7 @@ async function renderHome() {
           if (state.done.has(completionKey('material', mat.id))) return;
           const dueDate = mat.due_date ? new Date(mat.due_date) : null;
           if (!dueDate || isNaN(dueDate.getTime())) return;
-          if (dueDate >= monday && dueDate <= sunday) {
+          if (dueDate >= now && dueDate >= monday && dueDate <= sunday) {
             pendingItems.push({ title: mat.title, dueDate: mat.due_date, className: cls.title, type: 'material', item: mat, cls: cls });
           }
         });
@@ -415,8 +415,16 @@ async function renderHome() {
           if (state.done.has(completionKey('quiz', quiz.id))) return;
           const dueDate = quiz.due_date ? new Date(quiz.due_date) : null;
           if (!dueDate || isNaN(dueDate.getTime())) return;
-          if (dueDate >= monday && dueDate <= sunday) {
+          if (dueDate >= now && dueDate >= monday && dueDate <= sunday) {
             pendingItems.push({ title: quiz.title, dueDate: quiz.due_date, className: cls.title, type: 'quiz', item: quiz, cls: cls });
+          }
+        });
+        (cls.assignments || []).forEach(assign => {
+          if (state.done.has(completionKey('assignment', assign.id))) return;
+          const dueDate = assign.due_date ? new Date(assign.due_date) : null;
+          if (!dueDate || isNaN(dueDate.getTime())) return;
+          if (dueDate >= now && dueDate >= monday && dueDate <= sunday) {
+            pendingItems.push({ title: assign.title, dueDate: assign.due_date, className: cls.title, type: 'assignment', item: assign, cls: cls });
           }
         });
       });
@@ -505,14 +513,39 @@ function openClassDetail(cls) {
   const quizList = document.getElementById('quizzes-list');
   if (quizList) {
     quizList.innerHTML = '';
-    (cls.quizzes || []).forEach(quiz => {
-      const el = document.createElement('div');
-      const key = completionKey('quiz', quiz.id);
-      el.className = 'quiz-item' + (state.done.has(key) ? ' done' : '');
-      el.textContent = quiz.title;
-      el.addEventListener('click', () => openQuizDetail(quiz, cls.title));
-      quizList.appendChild(el);
-    });
+    if (!cls.quizzes || cls.quizzes.length === 0) {
+      quizList.innerHTML = '<p style="color:#888;padding:20px;">No quizzes yet.</p>';
+    } else {
+      (cls.quizzes || []).forEach(quiz => {
+        const el = document.createElement('div');
+        const key = completionKey('quiz', quiz.id);
+        el.className = 'quiz-item' + (state.done.has(key) ? ' done' : '');
+        el.textContent = quiz.title;
+        el.addEventListener('click', () => openQuizDetail(quiz, cls.title));
+        quizList.appendChild(el);
+      });
+    }
+  }
+
+  // ✅ ADD ASSIGNMENTS SECTION
+  const assignmentsLabel = document.getElementById('assignments-label');
+  if (assignmentsLabel) assignmentsLabel.textContent = cls.title + ' Assignments';
+  
+  const assignmentsList = document.getElementById('assignments-list');
+  if (assignmentsList) {
+    assignmentsList.innerHTML = '';
+    if (!cls.assignments || cls.assignments.length === 0) {
+      assignmentsList.innerHTML = '<p style="color:#888;padding:20px;">No assignments yet.</p>';
+    } else {
+      (cls.assignments || []).forEach(assign => {
+        const el = document.createElement('div');
+        const key = completionKey('assignment', assign.id);
+        el.className = 'quiz-item' + (state.done.has(key) ? ' done' : '');
+        el.innerHTML = `<span>${assign.title}</span><span style="font-size:11px;color:#888;">${assign.points || 0} pts</span>`;
+        el.addEventListener('click', () => openAssignmentDetail(assign, cls.title));
+        assignmentsList.appendChild(el);
+      });
+    }
   }
 
   showView('class-detail');
@@ -584,14 +617,82 @@ function openQuizDetail(quiz, className) {
   const btn = document.getElementById('quiz-mark-btn');
   if (btn) {
     const key = completionKey('quiz', quiz.id);
+    const dueDate = quiz.due_date ? new Date(quiz.due_date) : null;
+    const isOverdue = dueDate && new Date() > dueDate;
+    
     if (state.done.has(key)) {
       btn.textContent = 'Marked as done ✓';
       btn.className = 'mark-done-btn done-state';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.onclick = () => markDone('quiz');
+    } else if (isOverdue) {
+      btn.textContent = 'Past due date';
+      btn.className = 'mark-done-btn dark';
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      btn.style.cursor = 'not-allowed';
     } else {
       btn.textContent = 'Mark as done';
       btn.className = 'mark-done-btn yellow';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
     }
-    btn.onclick = () => markDone('quiz');
+        if (!state.done.has(key)) {
+      btn.onclick = isOverdue ? null : () => markDone('quiz');
+    }
+  }
+
+  showView('quiz-detail');
+}
+
+function openAssignmentDetail(assign, className) {
+  state.currentItem = assign;
+  state.currentType = 'assignment';
+
+  document.getElementById('quiz-class-name').textContent = className;
+  document.getElementById('quiz-banner').textContent = assign.title;
+  document.getElementById('quiz-link').href = assign.link || '#';
+  document.getElementById('quiz-link').textContent = assign.link_label || 'Open Assignment';
+  document.getElementById('quiz-description').textContent = assign.description || '';
+
+  const quizDueEl = document.getElementById('quiz-due-text');
+  if (quizDueEl) {
+    quizDueEl.textContent = assign.due_date ? 'Due ' + formatDueDate(assign.due_date) : '';
+    quizDueEl.style.display = assign.due_date ? 'block' : 'none';
+  }
+
+  const btn = document.getElementById('quiz-mark-btn');
+  if (btn) {
+    const key = completionKey('assignment', assign.id);
+    const dueDate = assign.due_date ? new Date(assign.due_date) : null;
+    const isOverdue = dueDate && new Date() > dueDate;
+    
+    if (state.done.has(key)) {
+      btn.textContent = 'Marked as done ✓';
+      btn.className = 'mark-done-btn done-state';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.onclick = () => markDone('assignment');
+    } else if (isOverdue) {
+      btn.textContent = 'Past due date';
+      btn.className = 'mark-done-btn dark';
+      btn.disabled = true;
+      btn.style.opacity = '0.5';
+      btn.style.cursor = 'not-allowed';
+    } else {
+      btn.textContent = 'Mark as done';
+      btn.className = 'mark-done-btn yellow';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+    }
+      if (!state.done.has(key)) {
+      btn.onclick = isOverdue ? null : () => markDone('assignment');
+    }
   }
 
   showView('quiz-detail');
@@ -701,13 +802,13 @@ function updateItemDisplay(type, id, isDone) {
 }
 
 function renderTodo() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const now = new Date();
 
   const allTodos = [];
 
   if (DATA.classes && DATA.classes.length > 0) {
     DATA.classes.forEach(cls => {
+      // Materials
       (cls.materials || []).forEach(mat => {
         if (state.done.has(completionKey('material', mat.id))) return;
         if (!mat.due_date) return;
@@ -716,6 +817,7 @@ function renderTodo() {
           type: 'material', item: mat, cls: cls
         });
       });
+      // Quizzes
       (cls.quizzes || []).forEach(quiz => {
         if (state.done.has(completionKey('quiz', quiz.id))) return;
         if (!quiz.due_date) return;
@@ -724,12 +826,26 @@ function renderTodo() {
           type: 'quiz', item: quiz, cls: cls
         });
       });
+      // Assignments
+      (cls.assignments || []).forEach(assign => {
+        if (state.done.has(completionKey('assignment', assign.id))) return;
+        if (!assign.due_date) return;
+        allTodos.push({
+          title: assign.title, dueDate: new Date(assign.due_date),
+          type: 'assignment', item: assign, cls: cls
+        });
+      });
     });
   }
 
-  const assigned = allTodos.filter(t => t.dueDate >= today);
-  const missing = allTodos.filter(t => t.dueDate < today);
-
+    const assigned = allTodos.filter(t => {
+    const d = t.dueDate instanceof Date ? t.dueDate : new Date(t.dueDate);
+    return d.getTime() >= now.getTime();
+  });
+  const missing = allTodos.filter(t => {
+    const d = t.dueDate instanceof Date ? t.dueDate : new Date(t.dueDate);
+    return d.getTime() < now.getTime();
+  });
   assigned.sort((a, b) => a.dueDate - b.dueDate);
   missing.sort((a, b) => a.dueDate - b.dueDate);
 
@@ -750,13 +866,10 @@ function renderTodo() {
         `;
         card.addEventListener('click', () => {
           setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
-          if (t.type === 'material') {
-            openClassDetail(t.cls);
-            openMaterialDetail(t.item, t.cls.title);
-          } else {
-            openClassDetail(t.cls);
-            openQuizDetail(t.item, t.cls.title);
-          }
+          openClassDetail(t.cls);
+          if (t.type === 'material') openMaterialDetail(t.item, t.cls.title);
+          else if (t.type === 'assignment') openAssignmentDetail(t.item, t.cls.title);
+          else openQuizDetail(t.item, t.cls.title);
         });
         assignedList.appendChild(card);
       });
@@ -780,13 +893,10 @@ function renderTodo() {
         `;
         card.addEventListener('click', () => {
           setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
-          if (t.type === 'material') {
-            openClassDetail(t.cls);
-            openMaterialDetail(t.item, t.cls.title);
-          } else {
-            openClassDetail(t.cls);
-            openQuizDetail(t.item, t.cls.title);
-          }
+          openClassDetail(t.cls);
+          if (t.type === 'material') openMaterialDetail(t.item, t.cls.title);
+          else if (t.type === 'assignment') openAssignmentDetail(t.item, t.cls.title);
+          else openQuizDetail(t.item, t.cls.title);
         });
         missingList.appendChild(card);
       });
@@ -805,8 +915,13 @@ function renderProgress() {
   DATA.classes.forEach(cls => {
     const materials = cls.materials || [];
     const quizzes = cls.quizzes || [];
-    const classTotal = materials.length + quizzes.length;
-    const classCompleted = [...materials.map(m => completionKey('material', m.id)), ...quizzes.map(q => completionKey('quiz', q.id))].filter(key => state.done.has(key)).length;
+    const assignments = cls.assignments || [];
+    const classTotal = materials.length + quizzes.length + assignments.length;
+    const classCompleted = [
+      ...materials.map(m => completionKey('material', m.id)), 
+      ...quizzes.map(q => completionKey('quiz', q.id)),
+      ...assignments.map(a => completionKey('assignment', a.id))
+    ].filter(key => state.done.has(key)).length;
     
     totalCompleted += classCompleted;
     totalItems += classTotal;

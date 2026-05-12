@@ -87,20 +87,16 @@
         </div>
         <div class="section-tabs">
           <button class="tab-btn active" data-tab="lessons">
-            <i class="fa-solid fa-book-open"></i>
-            Lessons
+            <i class="fa-solid fa-book-open"></i> Lessons
           </button>
           <button class="tab-btn" data-tab="assignments">
-            <i class="fa-solid fa-file-lines"></i>
-            Assignments
+            <i class="fa-solid fa-file-lines"></i> Assignments
           </button>
           <button class="tab-btn" data-tab="quizzes">
-            <i class="fa-solid fa-clipboard-question"></i>
-            Quizzes
+            <i class="fa-solid fa-clipboard-question"></i> Quizzes
           </button>
           <button class="tab-btn" data-tab="students">
-            <i class="fa-solid fa-users"></i>
-            Students
+            <i class="fa-solid fa-users"></i> Students
           </button>
         </div>
 
@@ -135,169 +131,171 @@
           </div>
           <div class="student-list" id="enrolled-students-list"></div>
         </div>
+      </div>
+      <!-- END view-section-detail -->
 
-        <!-- SECTION 4: MATERIAL DETAIL VIEW (split layout) -->
-        <div class="page-body hidden" id="view-material-detail">
-          <button class="back-btn" id="back-to-section-lessons"><i class="fa-solid fa-arrow-left"></i> Back to Section</button>
-          <div class="detail-split-layout">
-            <div class="detail-split-left">
-              <p class="section-label" id="mat-section-label"></p>
-              <div class="material-detail-banner" id="mat-detail-banner"></div>
-              <a href="#" class="pdf-link" id="mat-detail-link" target="_blank"></a>
-              <p class="detail-section-title">Description</p>
-              <p class="detail-description" id="mat-detail-desc"></p>
-              <div style="display:flex;gap:8px;margin-top:16px">
-                <button class="btn btn-ghost btn-sm" id="btn-edit-material"><i class="fa-solid fa-pen"></i> Edit</button>
-                <button class="btn btn-danger btn-sm" id="btn-delete-material"><i class="fa-solid fa-trash"></i> Delete</button>
-              </div>
-            </div>
-            <div class="detail-split-right">
-              <p class="section-label">Student Completion</p>
-              <div class="completion-tabs">
-                <button class="completion-tab-btn active" data-ctab="pending">Pending</button>
-                <button class="completion-tab-btn" data-ctab="finished">Finished</button>
-              </div>
-              <div class="done-students-list" id="mat-done-students"></div>
+      <!-- SECTION 4: MATERIAL DETAIL VIEW (split layout) -->
+      <div class="page-body hidden" id="view-material-detail">
+        <button class="back-btn" id="back-to-section-lessons"><i class="fa-solid fa-arrow-left"></i> Back to Section</button>
+        <div class="detail-split-layout">
+          <div class="detail-split-left">
+            <p class="section-label" id="mat-section-label"></p>
+            <div class="material-detail-banner" id="mat-detail-banner"></div>
+            <a href="#" class="pdf-link" id="mat-detail-link" target="_blank"></a>
+            <p class="detail-section-title">Description</p>
+            <p class="detail-description" id="mat-detail-desc"></p>
+            <div style="display:flex;gap:8px;margin-top:16px">
+              <button class="btn btn-ghost btn-sm" id="btn-edit-material"><i class="fa-solid fa-pen"></i> Edit</button>
+              <button class="btn btn-danger btn-sm" id="btn-delete-material"><i class="fa-solid fa-trash"></i> Delete</button>
             </div>
           </div>
-        </div>
-
-        <!-- SECTION 5: QUIZ DETAIL VIEW (split layout) -->
-        <div class="page-body hidden" id="view-quiz-detail">
-          <button class="back-btn" id="back-to-section-quizzes"><i class="fa-solid fa-arrow-left"></i> Back to Section</button>
-          <div class="detail-split-layout">
-            <div class="detail-split-left">
-              <p class="section-label" id="quiz-section-label"></p>
-              <div class="quiz-detail-banner" id="quiz-detail-banner"></div>
-              <a href="#" class="pdf-link" id="quiz-detail-link" target="_blank"></a>
-              <p class="detail-section-title">Description</p>
-              <p class="detail-description" id="quiz-detail-desc"></p>
-              <p class="detail-section-title">Due Date</p>
-              <p class="detail-description" id="quiz-detail-due"></p>
-              <div style="display:flex;gap:8px;margin-top:16px">
-                <button class="btn btn-ghost btn-sm" id="btn-edit-quiz"><i class="fa-solid fa-pen"></i> Edit</button>
-                <button class="btn btn-danger btn-sm" id="btn-delete-quiz"><i class="fa-solid fa-trash"></i> Delete</button>
-              </div>
+          <div class="detail-split-right">
+            <p class="section-label">Student Completion</p>
+            <div class="completion-tabs">
+              <button class="completion-tab-btn active" data-ctab="pending">Pending</button>
+              <button class="completion-tab-btn" data-ctab="finished">Finished</button>
             </div>
-            <div class="detail-split-right">
-              <p class="section-label">Student Completion</p>
-              <div class="completion-tabs">
-                <button class="completion-tab-btn active" data-ctab="pending">Pending</button>
-                <button class="completion-tab-btn" data-ctab="passed">Passed</button>
-                <button class="completion-tab-btn" data-ctab="missed">Missed</button>
-              </div>
-              <div class="done-students-list" id="quiz-done-students"></div>
-            </div>
+            <div class="done-students-list" id="mat-done-students"></div>
           </div>
         </div>
+      </div>
 
-        <!-- SECTION 6: ASSIGNMENT DETAIL VIEW (split layout) -->
-        <div class="page-body hidden" id="view-assignment-detail">
-          <button class="back-btn" id="back-to-section-assignments"><i class="fa-solid fa-arrow-left"></i> Back to Section</button>
-          <div class="detail-split-layout">
-            <div class="detail-split-left">
-              <p class="section-label" id="assign-section-label"></p>
-              <div class="quiz-detail-banner" id="assign-detail-banner"></div>
-              <a href="#" class="pdf-link" id="assign-detail-link" target="_blank"></a>
-              <p class="detail-section-title">Instructions</p>
-              <p class="detail-description" id="assign-detail-desc"></p>
-              <p class="detail-section-title">Due Date</p>
-              <p class="detail-description" id="assign-detail-due"></p>
-              <p class="detail-section-title">Points</p>
-              <p class="detail-description" id="assign-detail-points"></p>
-              <div style="display:flex;gap:8px;margin-top:16px">
-                <button class="btn btn-ghost btn-sm" id="btn-edit-assignment"><i class="fa-solid fa-pen"></i> Edit</button>
-                <button class="btn btn-danger btn-sm" id="btn-delete-assignment"><i class="fa-solid fa-trash"></i> Delete</button>
-              </div>
-            </div>
-            <div class="detail-split-right">
-              <p class="section-label">Student Completion</p>
-              <div class="completion-tabs">
-                <button class="completion-tab-btn active" data-ctab="pending">Pending</button>
-                <button class="completion-tab-btn" data-ctab="passed">Passed</button>
-                <button class="completion-tab-btn" data-ctab="missed">Missed</button>
-              </div>
-              <div class="done-students-list" id="assign-done-students"></div>
+      <!-- SECTION 5: QUIZ DETAIL VIEW (split layout) -->
+      <div class="page-body hidden" id="view-quiz-detail">
+        <button class="back-btn" id="back-to-section-quizzes"><i class="fa-solid fa-arrow-left"></i> Back to Section</button>
+        <div class="detail-split-layout">
+          <div class="detail-split-left">
+            <p class="section-label" id="quiz-section-label"></p>
+            <div class="quiz-detail-banner" id="quiz-detail-banner"></div>
+            <a href="#" class="pdf-link" id="quiz-detail-link" target="_blank"></a>
+            <p class="detail-section-title">Description</p>
+            <p class="detail-description" id="quiz-detail-desc"></p>
+            <p class="detail-section-title">Due Date</p>
+            <p class="detail-description" id="quiz-detail-due"></p>
+            <div style="display:flex;gap:8px;margin-top:16px">
+              <button class="btn btn-ghost btn-sm" id="btn-edit-quiz"><i class="fa-solid fa-pen"></i> Edit</button>
+              <button class="btn btn-danger btn-sm" id="btn-delete-quiz"><i class="fa-solid fa-trash"></i> Delete</button>
             </div>
           </div>
-        </div>
-
-        <!-- SECTION 7: PROGRESS VIEW -->
-        <div class="page-body hidden" id="view-progress">
-          <h1 class="page-heading">Student Progress Overview</h1>
-          <div class="progress-list" id="progress-list"></div>
-        </div>
-
-        <!-- SECTION 8: ANNOUNCEMENTS VIEW -->
-        <div class="page-body hidden" id="view-announcements">
-          <div class="announcements-header">
-            <h1 class="page-heading" style="margin-bottom:0">Announcements</h1>
-            <button class="btn btn-dark" id="btn-new-announcement"><i class="fa-solid fa-plus"></i> New Announcement</button>
+          <div class="detail-split-right">
+            <p class="section-label">Student Completion</p>
+            <div class="completion-tabs">
+              <button class="completion-tab-btn active" data-ctab="pending">Pending</button>
+              <button class="completion-tab-btn" data-ctab="passed">Passed</button>
+              <button class="completion-tab-btn" data-ctab="missed">Missed</button>
+            </div>
+            <div class="done-students-list" id="quiz-done-students"></div>
           </div>
-          <div id="announcements-list"></div>
         </div>
+      </div>
 
-        <!-- SECTION 9: PROFILE VIEW -->
-        <div class="page-body hidden" id="view-profile">
-          <h1 class="page-heading">Your Profile</h1>
-          <div class="profile-layout">
-            <div class="profile-card">
-              <div class="profile-avatar"><i class="fa-solid fa-user"></i></div>
-              <h2 id="profile-username-display">teacher</h2>
-              <p class="profile-role" id="profile-role-display">Teacher</p>
-              <div class="profile-actions">
-                <button class="profile-btn" id="btn-edit-profile"><i class="fa-solid fa-pen-to-square"></i> Edit Info</button>
-                <button class="profile-btn secondary" id="btn-change-password"><i class="fa-solid fa-key"></i> Change Password</button>
-                <button class="profile-btn" id="btn-logout" style="background:#dc2626;color:#fff;"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+      <!-- SECTION 6: ASSIGNMENT DETAIL VIEW (split layout) -->
+      <div class="page-body hidden" id="view-assignment-detail">
+        <button class="back-btn" id="back-to-section-assignments"><i class="fa-solid fa-arrow-left"></i> Back to Section</button>
+        <div class="detail-split-layout">
+          <div class="detail-split-left">
+            <p class="section-label" id="assign-section-label"></p>
+            <div class="quiz-detail-banner" id="assign-detail-banner"></div>
+            <a href="#" class="pdf-link" id="assign-detail-link" target="_blank"></a>
+            <p class="detail-section-title">Instructions</p>
+            <p class="detail-description" id="assign-detail-desc"></p>
+            <p class="detail-section-title">Due Date</p>
+            <p class="detail-description" id="assign-detail-due"></p>
+            <p class="detail-section-title">Points</p>
+            <p class="detail-description" id="assign-detail-points"></p>
+            <div style="display:flex;gap:8px;margin-top:16px">
+              <button class="btn btn-ghost btn-sm" id="btn-edit-assignment"><i class="fa-solid fa-pen"></i> Edit</button>
+              <button class="btn btn-danger btn-sm" id="btn-delete-assignment"><i class="fa-solid fa-trash"></i> Delete</button>
+            </div>
+          </div>
+          <div class="detail-split-right">
+            <p class="section-label">Student Completion</p>
+            <div class="completion-tabs">
+              <button class="completion-tab-btn active" data-ctab="pending">Pending</button>
+              <button class="completion-tab-btn" data-ctab="passed">Passed</button>
+              <button class="completion-tab-btn" data-ctab="missed">Missed</button>
+            </div>
+            <div class="done-students-list" id="assign-done-students"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 7: PROGRESS VIEW -->
+      <div class="page-body hidden" id="view-progress">
+        <h1 class="page-heading">Student Progress Overview</h1>
+        <div class="progress-list" id="progress-list"></div>
+      </div>
+
+      <!-- SECTION 8: ANNOUNCEMENTS VIEW -->
+      <div class="page-body hidden" id="view-announcements">
+        <div class="announcements-header">
+          <h1 class="page-heading" style="margin-bottom:0">Announcements</h1>
+          <button class="btn btn-dark" id="btn-new-announcement"><i class="fa-solid fa-plus"></i> New Announcement</button>
+        </div>
+        <div id="announcements-list"></div>
+      </div>
+
+      <!-- SECTION 9: PROFILE VIEW -->
+      <div class="page-body hidden" id="view-profile">
+        <h1 class="page-heading">Your Profile</h1>
+        <div class="profile-layout">
+          <div class="profile-card">
+            <div class="profile-avatar"><i class="fa-solid fa-user"></i></div>
+            <h2 id="profile-username-display">teacher</h2>
+            <p class="profile-role" id="profile-role-display">Teacher</p>
+            <div class="profile-actions">
+              <button class="profile-btn" id="btn-edit-profile"><i class="fa-solid fa-pen-to-square"></i> Edit Info</button>
+              <button class="profile-btn secondary" id="btn-change-password"><i class="fa-solid fa-key"></i> Change Password</button>
+              <button class="profile-btn" id="btn-logout" style="background:#dc2626;color:#fff;"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+            </div>
+          </div>
+          <div class="profile-panels">
+            <section id="profile-main">
+              <h3 class="panel-title">Profile Information</h3>
+              <div class="profile-info-grid">
+                <div class="info-item"><span class="label">First name</span><span class="value" id="display-firstname"></span></div>
+                <div class="info-item"><span class="label">Last name</span><span class="value" id="display-lastname"></span></div>
+                <div class="info-item"><span class="label">Username</span><span class="value" id="display-username"></span></div>
+                <div class="info-item"><span class="label">Email</span><span class="value" id="display-email"></span></div>
               </div>
-            </div>
-            <div class="profile-panels">
-              <section id="profile-main">
-                <h3 class="panel-title">Profile Information</h3>
-                <div class="profile-info-grid">
-                  <div class="info-item"><span class="label">First name</span><span class="value" id="display-firstname"></span></div>
-                  <div class="info-item"><span class="label">Last name</span><span class="value" id="display-lastname"></span></div>
-                  <div class="info-item"><span class="label">Username</span><span class="value" id="display-username"></span></div>
-                  <div class="info-item"><span class="label">Email</span><span class="value" id="display-email"></span></div>
-                </div>
-              </section>
-              <section id="profile-edit-info" style="display:none">
-                <h3 class="panel-title">Edit Information</h3>
-                <div class="form-grid">
-                  <label>First name<input id="edit-firstname" type="text"></label>
-                  <label>Last name<input id="edit-lastname" type="text"></label>
-                  <label>Username<input id="edit-username" type="text"></label>
-                  <label>Email<input id="edit-email" type="email"></label>
-                </div>
-                <div class="panel-actions">
-                  <button class="profile-btn" id="btn-save-profile">Save</button>
-                  <button class="profile-btn secondary" id="btn-cancel-edit">Cancel</button>
-                </div>
-              </section>
-              <section id="profile-change-password" style="display:none">
-                <h3 class="panel-title">Change Password</h3>
-                <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">A verification code will be sent to your email.</p>
-                <div class="form-grid">
-                  <label>Username<input id="pw-username-display" type="text" disabled autocomplete="off"></label>
-                  <label>New password<input id="pw-new" type="password" autocomplete="new-password"></label>
-                  <label>Confirm new password<input id="pw-confirm" type="password" autocomplete="new-password"></label>
-                </div>
-                <div id="verification-code-section" style="display:none; margin-top:16px;">
-                  <label style="display:grid; gap:6px; font-size:12px; color:#6b7280;">
-                    Verification code
-                    <input id="pw-verification-code" type="text" placeholder="Enter 6-digit code" maxlength="6"
-                      style="padding:10px 12px; border-radius:8px; border:1px solid #e5e7eb; font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; outline:none; width:200px;">
-                  </label>
-                </div>
-                <div class="panel-actions" style="margin-top:16px; display:flex; gap:10px;">
-                  <button class="profile-btn" id="btn-send-code">Send code</button>
-                  <button class="profile-btn" id="btn-save-password" style="display:none;">Update password</button>
-                  <button class="profile-btn secondary" id="btn-cancel-password">Cancel</button>
-                </div>
-              </section>
-            </div>
+            </section>
+            <section id="profile-edit-info" style="display:none">
+              <h3 class="panel-title">Edit Information</h3>
+              <div class="form-grid">
+                <label>First name<input id="edit-firstname" type="text"></label>
+                <label>Last name<input id="edit-lastname" type="text"></label>
+                <label>Username<input id="edit-username" type="text"></label>
+                <label>Email<input id="edit-email" type="email"></label>
+              </div>
+              <div class="panel-actions">
+                <button class="profile-btn" id="btn-save-profile">Save</button>
+                <button class="profile-btn secondary" id="btn-cancel-edit">Cancel</button>
+              </div>
+            </section>
+            <section id="profile-change-password" style="display:none">
+              <h3 class="panel-title">Change Password</h3>
+              <p style="color:#6b7280; font-size:13px; margin-bottom:16px;">A verification code will be sent to your email.</p>
+              <div class="form-grid">
+                <label>Username<input id="pw-username-display" type="text" disabled autocomplete="off"></label>
+                <label>New password<input id="pw-new" type="password" autocomplete="new-password"></label>
+                <label>Confirm new password<input id="pw-confirm" type="password" autocomplete="new-password"></label>
+              </div>
+              <div id="verification-code-section" style="display:none; margin-top:16px;">
+                <label style="display:grid; gap:6px; font-size:12px; color:#6b7280;">
+                  Verification code
+                  <input id="pw-verification-code" type="text" placeholder="Enter 6-digit code" maxlength="6"
+                    style="padding:10px 12px; border-radius:8px; border:1px solid #e5e7eb; font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; outline:none; width:200px;">
+                </label>
+              </div>
+              <div class="panel-actions" style="margin-top:16px; display:flex; gap:10px;">
+                <button class="profile-btn" id="btn-send-code">Send code</button>
+                <button class="profile-btn" id="btn-save-password" style="display:none;">Update password</button>
+                <button class="profile-btn secondary" id="btn-cancel-password">Cancel</button>
+              </div>
+            </section>
           </div>
         </div>
+      </div>
 
     </main>
   </div>
@@ -436,5 +434,4 @@
 
   <script src="/teacherdashboard/teacherdb.js"></script>
 </body>
-
 </html>
