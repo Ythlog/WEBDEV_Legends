@@ -1,5 +1,23 @@
 // =============================================
-// DATA STORE (mock)
+// TEACHER DASHBOARD - API CONNECTED
+// =============================================
+
+// =============================================
+// TEACHER DATA
+// =============================================
+const TEACHER_DATA = {
+  profile: { id: null, firstName: '', lastName: '', username: '', email: '', role: '' },
+  profileLoaded: false,
+  classes: [],
+  sections: [],
+  materials: [],
+  quizzes: [],
+  assignments: [],
+  students: []
+};
+
+// =============================================
+// STATE
 // =============================================
 let state = {
   currentView: 'classes',
@@ -16,45 +34,75 @@ let state = {
   editingAnnouncementId: null,
   activeSectionTab: 'lessons',
   activeCompletionTab: { mat: 'pending', quiz: 'pending', assign: 'pending' },
-
-  classes: [
-    { id: 1, name: 'Mathematics 101', desc: 'Basic algebra and geometry' },
-    { id: 2, name: 'Science 10', desc: 'Earth and life science' },
-  ],
-  sections: [
-    { id: 1, classId: 1, name: 'Section A', code: 'MATH-A1' },
-    { id: 2, classId: 1, name: 'Section B', code: 'MATH-B2' },
-    { id: 3, classId: 2, name: 'Section A', code: 'SCI-A1' },
-  ],
-  students: [
-    { id: 1, sectionId: 1, name: 'Ana Reyes', email: 'ana@student.edu', status: 'enrolled' },
-    { id: 2, sectionId: 1, name: 'Ben Cruz', email: 'ben@student.edu', status: 'enrolled' },
-    { id: 3, sectionId: 1, name: 'Carla Lim', email: 'carla@student.edu', status: 'pending' },
-    { id: 4, sectionId: 2, name: 'David Tan', email: 'david@student.edu', status: 'enrolled' },
-    { id: 5, sectionId: 3, name: 'Eva Santos', email: 'eva@student.edu', status: 'enrolled' },
-  ],
-  materials: [
-    { id: 1, sectionId: 1, name: 'Chapter 1 Notes', desc: 'Introduction to algebra', link: 'chapter1.pdf' },
-    { id: 2, sectionId: 1, name: 'Chapter 2 Notes', desc: 'Linear equations', link: 'chapter2.pdf' },
-  ],
-  quizzes: [
-    { id: 1, sectionId: 1, name: 'Quiz 1 - Algebra Basics', desc: 'Test on chapter 1 concepts', link: 'https://forms.google.com', due: '2025-06-10' },
-  ],
-  assignments: [
-    { id: 1, sectionId: 1, name: 'Problem Set 1', desc: 'Solve the following equations', link: '', due: '2025-06-15', points: 50 },
-  ],
-  completions: [
-    { studentId: 1, itemType: 'material', itemId: 1, status: 'passed' },
-    { studentId: 2, itemType: 'material', itemId: 1, status: 'passed' },
-    { studentId: 1, itemType: 'quiz', itemId: 1, status: 'passed' },
-    { studentId: 2, itemType: 'quiz', itemId: 1, status: 'missed' },
-    { studentId: 1, itemType: 'assignment', itemId: 1, status: 'passed' },
-  ],
-  announcements: [],
-  nextId: 100,
+  announcements: []
 };
 
-function genId() { return ++state.nextId; }
+// =============================================
+// FETCH TEACHER PROFILE
+// =============================================
+async function fetchTeacherProfile() {
+  const savedUser = localStorage.getItem('eduhub_user');
+  if (savedUser) {
+    try {
+      const user = JSON.parse(savedUser);
+      TEACHER_DATA.profile.id = user.id;
+      TEACHER_DATA.profile.firstName = user.first_name || 'Teacher';
+      TEACHER_DATA.profile.lastName = user.last_name || '';
+      TEACHER_DATA.profile.username = user.username || 'teacher';
+      TEACHER_DATA.profile.email = user.email || '';
+      TEACHER_DATA.profile.role = user.role || 'teacher';
+      TEACHER_DATA.profileLoaded = true;
+      return;
+    } catch (e) { console.error('Error parsing saved user:', e); }
+  }
+  TEACHER_DATA.profileLoaded = true;
+}
+
+// =============================================
+// API HELPERS
+// =============================================
+async function apiGet(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function apiPost(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || 'Server error');
+  }
+  return res.json();
+}
+
+async function apiPut(url, body) {
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || 'Server error');
+  }
+  return res.json();
+}
+
+async function apiDelete(url, body = null) {
+  const opts = { method: 'DELETE', headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || 'Server error');
+  }
+  return res.json();
+}
 
 // =============================================
 // NAVIGATION
@@ -72,7 +120,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
   item.addEventListener('click', e => {
     e.preventDefault();
     const view = item.dataset.view;
-    if (view === 'classes') renderClassesView();
+    if (view === 'classes') fetchAndRenderClasses();
     else if (view === 'progress') renderProgressView();
     else if (view === 'announcements') renderAnnouncementsView();
     else if (view === 'profile') showView('profile');
@@ -93,18 +141,40 @@ function dotsIconSVG() {
 // =============================================
 // CLASSES VIEW
 // =============================================
+async function fetchAndRenderClasses() {
+  try {
+    const classes = await apiGet(`/api/teacher/classes?teacherId=${TEACHER_DATA.profile.id}`);
+    TEACHER_DATA.classes = classes;
+  } catch (err) {
+    console.error('Fetch classes error:', err);
+    TEACHER_DATA.classes = [];
+  }
+  renderClassesView();
+}
+
+async function fetchSectionsForClass(classId) {
+  try {
+    const sections = await apiGet(`/api/teacher/sections?classId=${classId}`);
+    return sections;
+  } catch (err) {
+    console.error('Fetch sections error:', err);
+    return [];
+  }
+}
+
 function renderClassesView() {
   showView('classes');
   const grid = document.getElementById('classes-grid');
   grid.innerHTML = '';
 
-  if (!state.classes.length) {
+  if (!TEACHER_DATA.classes.length) {
     grid.innerHTML = '<div class="empty-state">No classes yet. Create your first class!</div>';
     return;
   }
 
-  state.classes.forEach(cls => {
-    const sections = state.sections.filter(s => s.classId === cls.id);
+  TEACHER_DATA.classes.forEach(async cls => {
+    const sections = await fetchSectionsForClass(cls.id);
+    
     const card = document.createElement('div');
     card.className = 'class-card';
     card.innerHTML = `
@@ -115,7 +185,7 @@ function renderClassesView() {
               onerror="this.style.display='none';this.parentElement.innerHTML='📚'">
           </div>
           <div>
-            <div class="class-card-name">${cls.name}</div>
+            <div class="class-card-name">${escHtml(cls.title)}</div>
             <div class="class-card-meta">${sections.length} section${sections.length !== 1 ? 's' : ''}</div>
           </div>
         </div>
@@ -127,13 +197,10 @@ function renderClassesView() {
         <button class="view-class-btn" data-classid="${cls.id}">View class</button>
       </div>`;
 
-    // dots → open centered edit modal
     card.querySelector('.three-dot-btn').addEventListener('click', e => {
       e.stopPropagation();
       openEditClassModal(cls.id);
     });
-
-    // view class
     card.querySelector('.view-class-btn').addEventListener('click', e => {
       e.stopPropagation();
       openClassDetail(cls.id);
@@ -144,71 +211,92 @@ function renderClassesView() {
 }
 
 // =============================================
-// EDIT CLASS MODAL (centered)
+// EDIT CLASS MODAL
 // =============================================
 function openEditClassModal(classId) {
   state.editingClassId = classId;
-  const cls = state.classes.find(c => c.id === classId);
-  document.getElementById('edit-class-name-input').value = cls.name;
-  document.getElementById('edit-class-desc-input').value = cls.desc || '';
+  const cls = TEACHER_DATA.classes.find(c => c.id === classId);
+  document.getElementById('edit-class-name-input').value = cls.title;
+  document.getElementById('edit-class-desc-input').value = cls.subject_code || '';
   openModal('modal-edit-class');
 }
 
 document.getElementById('cancel-edit-class-modal').addEventListener('click', () => closeModal('modal-edit-class'));
 
-document.getElementById('save-edit-class-modal').addEventListener('click', () => {
-  const name = document.getElementById('edit-class-name-input').value.trim();
+document.getElementById('save-edit-class-modal').addEventListener('click', async () => {
+  const title = document.getElementById('edit-class-name-input').value.trim();
   const desc = document.getElementById('edit-class-desc-input').value.trim();
-  if (!name) { Swal.fire('Error', 'Class name is required.', 'error'); return; }
-  const cls = state.classes.find(c => c.id === state.editingClassId);
-  cls.name = name;
-  cls.desc = desc;
-  closeModal('modal-edit-class');
-  renderClassesView();
+  if (!title) { Swal.fire('Error', 'Class name is required.', 'error'); return; }
+  
+  try {
+    await apiPut(`/api/teacher/classes/${state.editingClassId}`, { title, description: desc });
+    closeModal('modal-edit-class');
+    Swal.fire({ icon: 'success', title: 'Class updated!', timer: 1200, showConfirmButton: false });
+    fetchAndRenderClasses();
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
 });
 
-document.getElementById('delete-class-modal-btn').addEventListener('click', () => {
+document.getElementById('delete-class-modal-btn').addEventListener('click', async () => {
   closeModal('modal-edit-class');
-  Swal.fire({
+  const result = await Swal.fire({
     title: 'Delete class?',
     text: 'This will also delete all sections inside.',
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Delete',
     confirmButtonColor: '#cc0000'
-  }).then(r => {
-    if (r.isConfirmed) {
-      state.classes = state.classes.filter(c => c.id !== state.editingClassId);
-      state.sections = state.sections.filter(s => s.classId !== state.editingClassId);
-      renderClassesView();
-    }
   });
+  if (result.isConfirmed) {
+    try {
+      await apiDelete(`/api/teacher/classes/${state.editingClassId}`);
+      fetchAndRenderClasses();
+      Swal.fire('Deleted', 'Class deleted.', 'success');
+    } catch (err) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  }
 });
 
 // =============================================
 // CLASS DETAIL VIEW
 // =============================================
-function openClassDetail(classId) {
+async function openClassDetail(classId) {
   state.currentClassId = classId;
-  const cls = state.classes.find(c => c.id === classId);
-  document.getElementById('class-detail-name').textContent = cls.name;
-  document.getElementById('class-detail-meta').textContent = cls.desc || '';
-  renderSectionsList(classId);
+  const cls = TEACHER_DATA.classes.find(c => c.id === classId);
+  document.getElementById('class-detail-name').textContent = cls.title;
+  document.getElementById('class-detail-meta').textContent = cls.subject_code || '';
+  await fetchAndRenderSections(classId);
   showView('class-detail');
 }
 
-function renderSectionsList(classId) {
+async function fetchAndRenderSections(classId) {
+  try {
+    TEACHER_DATA.sections = await apiGet(`/api/teacher/sections?classId=${classId}`);
+  } catch (err) {
+    console.error('Fetch sections error:', err);
+    TEACHER_DATA.sections = [];
+  }
+  renderSectionsList();
+}
+
+function renderSectionsList() {
   const list = document.getElementById('sections-list');
   list.innerHTML = '';
-  const sections = state.sections.filter(s => s.classId === classId);
 
-  if (!sections.length) {
+  if (!TEACHER_DATA.sections.length) {
     list.innerHTML = '<div class="empty-state">No sections yet. Add your first section!</div>';
     return;
   }
 
-  sections.forEach(sec => {
-    const enrolled = state.students.filter(s => s.sectionId === sec.id && s.status === 'enrolled').length;
+  TEACHER_DATA.sections.forEach(async sec => {
+    let enrolledCount = 0;
+    try {
+      const students = await apiGet(`/api/teacher/students?sectionId=${sec.id}`);
+      enrolledCount = students.filter(s => s.status === 'enrolled').length;
+    } catch (e) {}
+
     const card = document.createElement('div');
     card.className = 'section-card';
     card.innerHTML = `
@@ -219,24 +307,23 @@ function renderSectionsList(classId) {
         </div>
         <div>
           <div class="section-card-name">${escHtml(sec.name)}</div>
-          <div class="section-card-students">${enrolled} student${enrolled !== 1 ? 's' : ''} enrolled</div>
+          <div class="section-card-students">${enrolledCount} student${enrolledCount !== 1 ? 's' : ''} enrolled</div>
         </div>
       </div>
       <div class="section-card-right">
+        <span style="font-size:12px;color:#888;margin-right:8px">Code: ${sec.code}</span>
         <button class="section-dots-btn" data-secid="${sec.id}" title="Options">
           ${dotsIconSVG()}
         </button>
       </div>`;
 
-    // dots → open centered edit modal
     card.querySelector('.section-dots-btn').addEventListener('click', e => {
       e.stopPropagation();
       openEditSectionModal(sec.id);
     });
-
     card.addEventListener('click', e => {
       if (!e.target.closest('.section-dots-btn')) {
-        openSectionDetail(sec.id);
+        openSectionDetail(sec.id, sec.name);
       }
     });
     list.appendChild(card);
@@ -244,57 +331,63 @@ function renderSectionsList(classId) {
 }
 
 // =============================================
-// EDIT SECTION MODAL (centered)
+// EDIT SECTION MODAL (code cannot be edited)
 // =============================================
 function openEditSectionModal(sectionId) {
   state.editingSectionId = sectionId;
-  const sec = state.sections.find(s => s.id === sectionId);
+  const sec = TEACHER_DATA.sections.find(s => s.id === sectionId);
   document.getElementById('edit-section-name-input').value = sec.name;
-  document.getElementById('edit-section-code-input').value = sec.code || '';
-  document.getElementById('edit-modal-code-display').textContent = sec.code || 'N/A';
+  document.getElementById('edit-modal-code-display').textContent = sec.code;
+  document.getElementById('edit-section-code-input').value = '';
+  document.getElementById('edit-section-code-input').disabled = true;
+  document.getElementById('edit-section-code-input').placeholder = 'Code cannot be changed';
   openModal('modal-edit-section');
 }
 
 document.getElementById('cancel-edit-section-modal').addEventListener('click', () => closeModal('modal-edit-section'));
 
-document.getElementById('save-edit-section-modal').addEventListener('click', () => {
+document.getElementById('save-edit-section-modal').addEventListener('click', async () => {
   const name = document.getElementById('edit-section-name-input').value.trim();
-  const code = document.getElementById('edit-section-code-input').value.trim();
   if (!name) { Swal.fire('Error', 'Section name is required.', 'error'); return; }
-  if (!code) { Swal.fire('Error', 'Class code cannot be empty.', 'error'); return; }
-  const sec = state.sections.find(s => s.id === state.editingSectionId);
-  sec.name = name;
-  sec.code = code;
-  closeModal('modal-edit-section');
-  renderSectionsList(state.currentClassId);
-  Swal.fire({ icon: 'success', title: 'Section updated!', timer: 1200, showConfirmButton: false });
+  
+  try {
+    await apiPut(`/api/teacher/sections/${state.editingSectionId}`, { name });
+    closeModal('modal-edit-section');
+    Swal.fire({ icon: 'success', title: 'Section updated!', timer: 1200, showConfirmButton: false });
+    await fetchAndRenderSections(state.currentClassId);
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
 });
 
-document.getElementById('delete-section-modal-btn').addEventListener('click', () => {
+document.getElementById('delete-section-modal-btn').addEventListener('click', async () => {
   closeModal('modal-edit-section');
-  Swal.fire({
+  const result = await Swal.fire({
     title: 'Delete section?',
     icon: 'warning',
     showCancelButton: true,
     confirmButtonText: 'Delete',
     confirmButtonColor: '#cc0000'
-  }).then(r => {
-    if (r.isConfirmed) {
-      state.sections = state.sections.filter(s => s.id !== state.editingSectionId);
-      renderSectionsList(state.currentClassId);
-    }
   });
+  if (result.isConfirmed) {
+    try {
+      await apiDelete(`/api/teacher/sections/${state.editingSectionId}`);
+      await fetchAndRenderSections(state.currentClassId);
+      Swal.fire('Deleted', 'Section deleted.', 'success');
+    } catch (err) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  }
 });
 
 // =============================================
 // SECTION DETAIL VIEW
 // =============================================
-function openSectionDetail(sectionId) {
+function openSectionDetail(sectionId, sectionName) {
   state.currentSectionId = sectionId;
-  const sec = state.sections.find(s => s.id === sectionId);
-  const cls = state.classes.find(c => c.id === sec.classId);
-  document.getElementById('section-detail-name').textContent = sec.name;
-  document.getElementById('section-detail-class').textContent = cls ? cls.name : '';
+  const cls = TEACHER_DATA.classes.find(c => c.id === state.currentClassId);
+  document.getElementById('section-detail-name').textContent = sectionName;
+  document.getElementById('section-detail-class').textContent = cls ? cls.title : '';
   switchTab('lessons');
   showView('section-detail');
 }
@@ -304,10 +397,10 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
-  if (tab === 'lessons') renderMaterialsList();
-  else if (tab === 'quizzes') renderQuizzesList();
-  else if (tab === 'assignments') renderAssignmentsList();
-  else if (tab === 'students') renderStudentsList();
+  if (tab === 'lessons') fetchAndRenderMaterials();
+  else if (tab === 'quizzes') fetchAndRenderQuizzes();
+  else if (tab === 'assignments') fetchAndRenderAssignments();
+  else if (tab === 'students') fetchAndRenderStudents();
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -317,13 +410,25 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // =============================================
 // MATERIALS
 // =============================================
+async function fetchAndRenderMaterials() {
+  try {
+    TEACHER_DATA.materials = await apiGet(`/api/teacher/materials?sectionId=${state.currentSectionId}`);
+  } catch (err) {
+    console.error('Fetch materials error:', err);
+    TEACHER_DATA.materials = [];
+  }
+  renderMaterialsList();
+}
+
 function renderMaterialsList() {
   const list = document.getElementById('materials-list');
   list.innerHTML = '';
-  const items = state.materials.filter(m => m.sectionId === state.currentSectionId);
-  if (!items.length) { list.innerHTML = '<div class="empty-state">No learning materials yet.</div>'; return; }
+  if (!TEACHER_DATA.materials.length) {
+    list.innerHTML = '<div class="empty-state">No learning materials yet.</div>';
+    return;
+  }
 
-  items.forEach(mat => {
+  TEACHER_DATA.materials.forEach(mat => {
     const card = document.createElement('div');
     card.className = 'material-card';
     card.innerHTML = `
@@ -333,57 +438,71 @@ function renderMaterialsList() {
             onerror="this.style.display='none';this.parentElement.innerHTML='📖'">
         </div>
         <div class="material-card-info">
-          <span class="material-card-name">${escHtml(mat.name)}</span>
-          <span class="material-card-desc">${escHtml(mat.desc)}</span>
+          <span class="material-card-name">${escHtml(mat.title)}</span>
+          <span class="material-card-desc">${escHtml(mat.description || '')}</span>
         </div>
       </div>
       <div class="material-card-actions" onclick="event.stopPropagation()">
         <button class="btn btn-ghost btn-sm" onclick="openMaterialModal(${mat.id})">Edit</button>
         <button class="btn btn-danger btn-sm" onclick="deleteMaterial(${mat.id})">Delete</button>
       </div>`;
-    card.addEventListener('click', () => openMaterialDetail(mat.id));
+    card.addEventListener('click', () => openMaterialDetail(mat));
     list.appendChild(card);
   });
 }
 
-function openMaterialDetail(matId) {
-  state.currentMaterialId = matId;
-  const mat = state.materials.find(m => m.id === matId);
-  const sec = state.sections.find(s => s.id === mat.sectionId);
-  document.getElementById('mat-section-label').textContent = sec ? sec.name : '';
-  document.getElementById('mat-detail-banner').textContent = mat.name;
+function openMaterialDetail(mat) {
+  state.currentMaterialId = mat.id;
+  document.getElementById('mat-section-label').textContent = document.getElementById('section-detail-name').textContent;
+  document.getElementById('mat-detail-banner').textContent = mat.title;
   const link = document.getElementById('mat-detail-link');
-  link.textContent = mat.link || 'No file attached';
-  link.href = mat.link || '#';
-  document.getElementById('mat-detail-desc').textContent = mat.desc;
+  link.textContent = mat.pdf_url || 'No file attached';
+  link.href = mat.pdf_url || '#';
+  document.getElementById('mat-detail-desc').textContent = mat.description || '';
   state.activeCompletionTab.mat = 'pending';
   renderCompletionTabs(document.querySelector('#view-material-detail .completion-tabs'), 'mat');
-  renderDoneStudents('mat-done-students', 'material', matId, 'pending');
+  renderCompletionStudents('mat-done-students', 'material', mat.id, 'pending');
   showView('material-detail');
 }
 
-function deleteMaterial(id) {
-  Swal.fire({
+async function deleteMaterial(id) {
+  const result = await Swal.fire({
     title: 'Delete material?', icon: 'warning', showCancelButton: true,
     confirmButtonText: 'Delete', confirmButtonColor: '#cc0000'
-  }).then(r => {
-    if (r.isConfirmed) {
-      state.materials = state.materials.filter(m => m.id !== id);
-      renderMaterialsList();
-    }
   });
+  if (result.isConfirmed) {
+    try {
+      await apiDelete(`/api/teacher/materials/${id}`);
+      fetchAndRenderMaterials();
+      Swal.fire('Deleted', 'Material deleted.', 'success');
+    } catch (err) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  }
 }
 
 // =============================================
 // QUIZZES
 // =============================================
+async function fetchAndRenderQuizzes() {
+  try {
+    TEACHER_DATA.quizzes = await apiGet(`/api/teacher/quizzes?sectionId=${state.currentSectionId}`);
+  } catch (err) {
+    console.error('Fetch quizzes error:', err);
+    TEACHER_DATA.quizzes = [];
+  }
+  renderQuizzesList();
+}
+
 function renderQuizzesList() {
   const list = document.getElementById('quizzes-list');
   list.innerHTML = '';
-  const items = state.quizzes.filter(q => q.sectionId === state.currentSectionId);
-  if (!items.length) { list.innerHTML = '<div class="empty-state">No quizzes yet.</div>'; return; }
+  if (!TEACHER_DATA.quizzes.length) {
+    list.innerHTML = '<div class="empty-state">No quizzes yet.</div>';
+    return;
+  }
 
-  items.forEach(quiz => {
+  TEACHER_DATA.quizzes.forEach(quiz => {
     const card = document.createElement('div');
     card.className = 'quiz-card';
     card.innerHTML = `
@@ -393,58 +512,71 @@ function renderQuizzesList() {
             onerror="this.style.display='none';this.parentElement.innerHTML='❓'">
         </div>
         <div class="quiz-card-info">
-          <span class="quiz-card-name">${escHtml(quiz.name)}</span>
-          <span class="quiz-card-meta">Due: ${quiz.due || 'N/A'}</span>
-        </div>
+          <span class="quiz-card-name">${escHtml(quiz.title)}</span>
+          <span class="quiz-card-meta">Due: ${quiz.due_date ? new Date(quiz.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}</span>       
+          </div>
       </div>
       <div class="material-card-actions" onclick="event.stopPropagation()">
         <button class="btn btn-ghost btn-sm" onclick="openQuizModal(${quiz.id})">Edit</button>
         <button class="btn btn-danger btn-sm" onclick="deleteQuiz(${quiz.id})">Delete</button>
       </div>`;
-    card.addEventListener('click', () => openQuizDetail(quiz.id));
+    card.addEventListener('click', () => openQuizDetail(quiz));
     list.appendChild(card);
   });
 }
 
-function openQuizDetail(quizId) {
-  state.currentQuizId = quizId;
-  const quiz = state.quizzes.find(q => q.id === quizId);
-  const sec = state.sections.find(s => s.id === quiz.sectionId);
-  document.getElementById('quiz-section-label').textContent = sec ? sec.name : '';
-  document.getElementById('quiz-detail-banner').textContent = quiz.name;
+function openQuizDetail(quiz) {
+  state.currentQuizId = quiz.id;
+  document.getElementById('quiz-section-label').textContent = document.getElementById('section-detail-name').textContent;
+  document.getElementById('quiz-detail-banner').textContent = quiz.title;
   const link = document.getElementById('quiz-detail-link');
   link.textContent = quiz.link || 'No link attached';
   link.href = quiz.link || '#';
-  document.getElementById('quiz-detail-desc').textContent = quiz.desc;
-  document.getElementById('quiz-detail-due').textContent = quiz.due || 'N/A';
-  state.activeCompletionTab.quiz = 'pending';
+  document.getElementById('quiz-detail-desc').textContent = quiz.description || '';
+  document.getElementById('quiz-detail-due').textContent = quiz.due_date ? new Date(quiz.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A';  state.activeCompletionTab.quiz = 'pending';
   renderCompletionTabs(document.querySelector('#view-quiz-detail .completion-tabs'), 'quiz');
-  renderDoneStudents('quiz-done-students', 'quiz', quizId, 'pending');
+  renderCompletionStudents('quiz-done-students', 'quiz', quiz.id, 'pending');
   showView('quiz-detail');
 }
 
-function deleteQuiz(id) {
-  Swal.fire({
+async function deleteQuiz(id) {
+  const result = await Swal.fire({
     title: 'Delete quiz?', icon: 'warning', showCancelButton: true,
     confirmButtonText: 'Delete', confirmButtonColor: '#cc0000'
-  }).then(r => {
-    if (r.isConfirmed) {
-      state.quizzes = state.quizzes.filter(q => q.id !== id);
-      renderQuizzesList();
-    }
   });
+  if (result.isConfirmed) {
+    try {
+      await apiDelete(`/api/teacher/quizzes/${id}`);
+      fetchAndRenderQuizzes();
+      Swal.fire('Deleted', 'Quiz deleted.', 'success');
+    } catch (err) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  }
 }
 
 // =============================================
 // ASSIGNMENTS
 // =============================================
+async function fetchAndRenderAssignments() {
+  try {
+    TEACHER_DATA.assignments = await apiGet(`/api/teacher/assignments?sectionId=${state.currentSectionId}`);
+  } catch (err) {
+    console.error('Fetch assignments error:', err);
+    TEACHER_DATA.assignments = [];
+  }
+  renderAssignmentsList();
+}
+
 function renderAssignmentsList() {
   const list = document.getElementById('assignments-list');
   list.innerHTML = '';
-  const items = state.assignments.filter(a => a.sectionId === state.currentSectionId);
-  if (!items.length) { list.innerHTML = '<div class="empty-state">No assignments yet.</div>'; return; }
+  if (!TEACHER_DATA.assignments.length) {
+    list.innerHTML = '<div class="empty-state">No assignments yet.</div>';
+    return;
+  }
 
-  items.forEach(assign => {
+  TEACHER_DATA.assignments.forEach(assign => {
     const card = document.createElement('div');
     card.className = 'quiz-card';
     card.innerHTML = `
@@ -454,51 +586,52 @@ function renderAssignmentsList() {
             onerror="this.style.display='none';this.parentElement.innerHTML='📝'">
         </div>
         <div class="quiz-card-info">
-          <span class="quiz-card-name">${escHtml(assign.name)}</span>
-          <span class="quiz-card-meta">Due: ${assign.due || 'N/A'} · ${assign.points} pts</span>
+          <span class="quiz-card-name">${escHtml(assign.title)}</span>
+          <span class="quiz-card-meta">Due: ${assign.due_date ? new Date(assign.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'} · ${assign.points || 0} pts</span>
         </div>
       </div>
       <div class="material-card-actions" onclick="event.stopPropagation()">
         <button class="btn btn-ghost btn-sm" onclick="openAssignmentModal(${assign.id})">Edit</button>
         <button class="btn btn-danger btn-sm" onclick="deleteAssignment(${assign.id})">Delete</button>
       </div>`;
-    card.addEventListener('click', () => openAssignmentDetail(assign.id));
+    card.addEventListener('click', () => openAssignmentDetail(assign));
     list.appendChild(card);
   });
 }
 
-function openAssignmentDetail(assignId) {
-  state.currentAssignmentId = assignId;
-  const assign = state.assignments.find(a => a.id === assignId);
-  const sec = state.sections.find(s => s.id === assign.sectionId);
-  document.getElementById('assign-section-label').textContent = sec ? sec.name : '';
-  document.getElementById('assign-detail-banner').textContent = assign.name;
+function openAssignmentDetail(assign) {
+  state.currentAssignmentId = assign.id;
+  document.getElementById('assign-section-label').textContent = document.getElementById('section-detail-name').textContent;
+  document.getElementById('assign-detail-banner').textContent = assign.title;
   const link = document.getElementById('assign-detail-link');
   link.textContent = assign.link || 'No file attached';
   link.href = assign.link || '#';
-  document.getElementById('assign-detail-desc').textContent = assign.desc;
-  document.getElementById('assign-detail-due').textContent = assign.due || 'N/A';
-  document.getElementById('assign-detail-points').textContent = assign.points + ' points';
+  document.getElementById('assign-detail-desc').textContent = assign.description || '';
+  document.getElementById('assign-detail-due').textContent = assign.due_date ? new Date(assign.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A';  document.getElementById('assign-detail-points').textContent = (assign.points || 0) + ' points';
   state.activeCompletionTab.assign = 'pending';
   renderCompletionTabs(document.querySelector('#view-assignment-detail .completion-tabs'), 'assign');
-  renderDoneStudents('assign-done-students', 'assignment', assignId, 'pending');
+  renderCompletionStudents('assign-done-students', 'assignment', assign.id, 'pending');
   showView('assignment-detail');
 }
 
-function deleteAssignment(id) {
-  Swal.fire({
+async function deleteAssignment(id) {
+  const result = await Swal.fire({
     title: 'Delete assignment?', icon: 'warning', showCancelButton: true,
     confirmButtonText: 'Delete', confirmButtonColor: '#cc0000'
-  }).then(r => {
-    if (r.isConfirmed) {
-      state.assignments = state.assignments.filter(a => a.id !== id);
-      renderAssignmentsList();
-    }
   });
+  if (result.isConfirmed) {
+    try {
+      await apiDelete(`/api/teacher/assignments/${id}`);
+      fetchAndRenderAssignments();
+      Swal.fire('Deleted', 'Assignment deleted.', 'success');
+    } catch (err) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  }
 }
 
 // =============================================
-// COMPLETION TABS (Pending / Passed / Missed)
+// COMPLETION TABS & STUDENTS
 // =============================================
 function renderCompletionTabs(container, key) {
   if (!container) return;
@@ -507,81 +640,117 @@ function renderCompletionTabs(container, key) {
     btn.onclick = () => {
       state.activeCompletionTab[key] = btn.dataset.ctab;
       renderCompletionTabs(container, key);
-      if (key === 'mat') renderDoneStudents('mat-done-students', 'material', state.currentMaterialId, btn.dataset.ctab);
-      else if (key === 'quiz') renderDoneStudents('quiz-done-students', 'quiz', state.currentQuizId, btn.dataset.ctab);
-      else if (key === 'assign') renderDoneStudents('assign-done-students', 'assignment', state.currentAssignmentId, btn.dataset.ctab);
+      if (key === 'mat') renderCompletionStudents('mat-done-students', 'material', state.currentMaterialId, btn.dataset.ctab);
+      else if (key === 'quiz') renderCompletionStudents('quiz-done-students', 'quiz', state.currentQuizId, btn.dataset.ctab);
+      else if (key === 'assign') renderCompletionStudents('assign-done-students', 'assignment', state.currentAssignmentId, btn.dataset.ctab);
     };
   });
 }
 
-function renderDoneStudents(containerId, type, itemId, filterStatus) {
+async function renderCompletionStudents(containerId, type, itemId, filterStatus) {
   const container = document.getElementById(containerId);
-  container.innerHTML = '';
+  container.innerHTML = '<div style="text-align:center;padding:10px;color:#888;">Loading...</div>';
 
-  const sectionId = type === 'material' ? state.materials.find(m => m.id === itemId)?.sectionId
-                  : type === 'quiz'     ? state.quizzes.find(q => q.id === itemId)?.sectionId
-                  : state.assignments.find(a => a.id === itemId)?.sectionId;
+  try {
+    const students = await apiGet(`/api/teacher/completions?itemType=${type}&itemId=${itemId}&sectionId=${state.currentSectionId}`);
+    container.innerHTML = '';
 
-  const enrolled = state.students.filter(s => s.sectionId === sectionId && s.status === 'enrolled');
+    if (!students.length) {
+      container.innerHTML = '<div class="empty-state">No students enrolled in this section.</div>';
+      return;
+    }
 
-  if (!enrolled.length) {
-    container.innerHTML = '<div class="empty-state">No students enrolled in this section.</div>';
-    return;
-  }
+    let filtered = students.map(s => ({
+      ...s,
+      status: s.completed_at ? 'finished' : 'pending'
+    }));
 
-  let filtered = [];
-  enrolled.forEach(student => {
-    const completion = state.completions.find(
-      c => c.studentId === student.id && c.itemType === type && c.itemId === itemId
-    );
-    const status = completion ? completion.status : 'pending';
-    if (status === filterStatus) filtered.push({ student, status });
-  });
+    // For materials: only pending/finished (no missed)
+    // For quizzes/assignments: also check due date for missed
+    if (type !== 'material') {
+      let dueDate = null;
+      if (type === 'quiz') {
+        const quiz = TEACHER_DATA.quizzes.find(q => q.id === itemId);
+        dueDate = quiz?.due_date;
+      } else if (type === 'assignment') {
+        const assign = TEACHER_DATA.assignments.find(a => a.id === itemId);
+        dueDate = assign?.due_date;
+      }
 
-  if (!filtered.length) {
-    const labels = { pending: 'No pending students.', passed: 'No students have passed yet.', missed: 'No students missed this.' };
-    container.innerHTML = `<div class="empty-state">${labels[filterStatus]}</div>`;
-    return;
-  }
+      if (dueDate) {
+        const now = new Date();
+        filtered = filtered.map(s => {
+          if (s.status === 'pending' && new Date(dueDate) < now) {
+            return { ...s, status: 'missed' };
+          }
+          return s;
+        });
+      }
+    }
 
-  filtered.forEach(({ student, status }) => {
-    const badgeClass = status === 'passed' ? 'badge-done' : status === 'missed' ? 'badge-missed' : 'badge-pending';
-    const badgeLabel = status === 'passed' ? '✓ Passed' : status === 'missed' ? '✗ Missed' : '⏳ Pending';
-    const card = document.createElement('div');
-    card.className = 'student-done-card';
-    card.innerHTML = `
-      <div style="display:flex;align-items:center;gap:12px">
-        <div class="item-icon-wrap" style="background:#11265c">
-          <img src="/teacherdashboard/student-icon.png" alt="student"
-            onerror="this.style.display='none';this.parentElement.innerHTML='👤'">
+    filtered = filtered.filter(s => s.status === filterStatus);
+
+    if (!filtered.length) {
+      const labels = { 
+        pending: 'No pending students.', 
+        finished: 'No students have finished yet.', 
+        passed: 'No students have passed yet.',
+        missed: 'No students missed this.' 
+      };
+      container.innerHTML = `<div class="empty-state">${labels[filterStatus]}</div>`;
+      return;
+    }
+
+    filtered.forEach(s => {
+      const badgeClass = s.status === 'finished' || s.status === 'passed' ? 'badge-done' : s.status === 'missed' ? 'badge-missed' : 'badge-pending';
+      const badgeLabel = s.status === 'finished' ? '✓ Finished' : s.status === 'passed' ? '✓ Passed' : s.status === 'missed' ? '✗ Missed' : '⏳ Pending';
+      const card = document.createElement('div');
+      card.className = 'student-done-card';
+      card.innerHTML = `
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="item-icon-wrap" style="background:#11265c">
+            <img src="/teacherdashboard/student-icon.png" alt="student"
+              onerror="this.style.display='none';this.parentElement.innerHTML='👤'">
+          </div>
+          <div>
+            <div style="font-weight:600">${escHtml(s.first_name + ' ' + s.last_name)}</div>
+            <div style="font-size:12px;color:#777">${escHtml(s.email)}</div>
+          </div>
         </div>
-        <div>
-          <div style="font-weight:600">${escHtml(student.name)}</div>
-          <div style="font-size:12px;color:#777">${escHtml(student.email)}</div>
-        </div>
-      </div>
-      <span class="student-done-badge ${badgeClass}">${badgeLabel}</span>`;
-    container.appendChild(card);
-  });
+        <span class="student-done-badge ${badgeClass}">${badgeLabel}</span>`;
+      container.appendChild(card);
+    });
+  } catch (err) {
+    container.innerHTML = '<div class="empty-state">Failed to load students.</div>';
+  }
 }
 
 // =============================================
 // STUDENTS TAB
 // =============================================
+async function fetchAndRenderStudents() {
+  try {
+    TEACHER_DATA.students = await apiGet(`/api/teacher/students?sectionId=${state.currentSectionId}`);
+  } catch (err) {
+    console.error('Fetch students error:', err);
+    TEACHER_DATA.students = [];
+  }
+  renderStudentsList();
+}
+
 function renderStudentsList() {
   const enrolledEl = document.getElementById('enrolled-students-list');
   const requestsEl = document.getElementById('join-requests-list');
   enrolledEl.innerHTML = '';
   requestsEl.innerHTML = '';
 
-  const allStudents = state.students.filter(s => s.sectionId === state.currentSectionId);
-  const enrolledStudents = allStudents.filter(s => s.status === 'enrolled');
-  const pendingStudents = allStudents.filter(s => s.status === 'pending');
+  const enrolled = TEACHER_DATA.students.filter(s => s.status === 'enrolled');
+  const pending = TEACHER_DATA.students.filter(s => s.status === 'pending');
 
-  if (!enrolledStudents.length) {
+  if (!enrolled.length) {
     enrolledEl.innerHTML = '<div class="empty-state">No enrolled students.</div>';
   } else {
-    enrolledStudents.forEach(s => {
+    enrolled.forEach(s => {
       const card = document.createElement('div');
       card.className = 'student-card';
       card.innerHTML = `
@@ -591,7 +760,7 @@ function renderStudentsList() {
               onerror="this.style.display='none';this.parentElement.innerHTML='👤'">
           </div>
           <div>
-            <div class="student-name">${escHtml(s.name)}</div>
+            <div class="student-name">${escHtml(s.first_name + ' ' + s.last_name)}</div>
             <div class="student-email">${escHtml(s.email)}</div>
           </div>
         </div>
@@ -600,10 +769,10 @@ function renderStudentsList() {
     });
   }
 
-  if (!pendingStudents.length) {
+  if (!pending.length) {
     requestsEl.innerHTML = '<div class="empty-state">No pending join requests.</div>';
   } else {
-    pendingStudents.forEach(s => {
+    pending.forEach(s => {
       const card = document.createElement('div');
       card.className = 'join-request-card';
       card.innerHTML = `
@@ -613,7 +782,7 @@ function renderStudentsList() {
               onerror="this.style.display='none';this.parentElement.innerHTML='👤'">
           </div>
           <div>
-            <div class="student-name">${escHtml(s.name)}</div>
+            <div class="student-name">${escHtml(s.first_name + ' ' + s.last_name)}</div>
             <div class="student-email">${escHtml(s.email)}</div>
           </div>
         </div>
@@ -626,74 +795,295 @@ function renderStudentsList() {
   }
 }
 
-function removeStudent(id) {
-  Swal.fire({
+async function removeStudent(studentId) {
+  const result = await Swal.fire({
     title: 'Remove student?', icon: 'warning', showCancelButton: true,
     confirmButtonText: 'Remove', confirmButtonColor: '#cc0000'
-  }).then(r => {
-    if (r.isConfirmed) {
-      state.students = state.students.filter(s => s.id !== id);
-      renderStudentsList();
+  });
+  if (result.isConfirmed) {
+    try {
+      await apiDelete('/api/teacher/students', { sectionId: state.currentSectionId, studentId });
+      fetchAndRenderStudents();
+      Swal.fire('Removed', 'Student removed.', 'success');
+    } catch (err) {
+      Swal.fire('Error', err.message, 'error');
     }
-  });
-}
-function approveStudent(id) {
-  const s = state.students.find(st => st.id === id);
-  if (s) { s.status = 'enrolled'; renderStudentsList(); }
-}
-function rejectStudent(id) {
-  state.students = state.students.filter(s => s.id !== id);
-  renderStudentsList();
+  }
 }
 
-// =============================================
-// PROGRESS VIEW
-// =============================================
-function renderProgressView() {
-  showView('progress');
-  const list = document.getElementById('progress-list');
-  list.innerHTML = '';
+async function approveStudent(studentId) {
+  try {
+    await apiPut('/api/teacher/students/approve', { sectionId: state.currentSectionId, studentId });
+    fetchAndRenderStudents();
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+}
 
-  state.sections.forEach(sec => {
-    const cls = state.classes.find(c => c.id === sec.classId);
-    const enrolled = state.students.filter(s => s.sectionId === sec.id && s.status === 'enrolled');
-    const totalItems = state.materials.filter(m => m.sectionId === sec.id).length
-                     + state.quizzes.filter(q => q.sectionId === sec.id).length
-                     + state.assignments.filter(a => a.sectionId === sec.id).length;
-    let doneCount = 0;
-    enrolled.forEach(s => { doneCount += state.completions.filter(c => c.studentId === s.id && c.status === 'passed').length; });
-    const possible = enrolled.length * totalItems;
-    const pct = possible > 0 ? Math.round((doneCount / possible) * 100) : 0;
-
-    const card = document.createElement('div');
-    card.className = 'progress-card';
-    card.innerHTML = `
-      <div class="progress-card-icon">
-        <img src="/teacherdashboard/section-icon.png" alt="section"
-          onerror="this.style.display='none';this.parentElement.innerHTML='👥'">
-      </div>
-      <div class="progress-card-body">
-        <div class="progress-card-header">
-          <span class="progress-card-name">${escHtml(sec.name)}</span>
-          <span class="progress-card-count">${pct}% completion</span>
-        </div>
-        <div class="progress-bar-track">
-          <div class="progress-bar-fill" style="width:${pct}%"></div>
-        </div>
-        <div class="progress-class-label">
-          ${cls ? escHtml(cls.name) : ''} · ${enrolled.length} student${enrolled.length !== 1 ? 's' : ''} · ${totalItems} item${totalItems !== 1 ? 's' : ''}
-        </div>
-      </div>`;
-    list.appendChild(card);
-  });
-
-  if (!state.sections.length) {
-    list.innerHTML = '<div class="empty-state">No sections to show progress for.</div>';
+async function rejectStudent(studentId) {
+  try {
+    await apiDelete('/api/teacher/students', { sectionId: state.currentSectionId, studentId });
+    fetchAndRenderStudents();
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
   }
 }
 
 // =============================================
-// ANNOUNCEMENTS VIEW
+// MODALS (Create Class, Section, Material, Quiz, Assignment)
+// =============================================
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.add('hidden');
+  });
+});
+
+// ---- Class Modal ----
+document.getElementById('btn-create-class').addEventListener('click', () => {
+  document.getElementById('modal-class-title-text').textContent = 'Create Class';
+  document.getElementById('class-name-input').value = '';
+  document.getElementById('class-desc-input').value = '';
+  openModal('modal-class');
+});
+document.getElementById('cancel-class-modal').addEventListener('click', () => closeModal('modal-class'));
+document.getElementById('save-class-modal').addEventListener('click', async () => {
+  const title = document.getElementById('class-name-input').value.trim();
+  const desc = document.getElementById('class-desc-input').value.trim();
+  if (!title) { Swal.fire('Error', 'Class name is required.', 'error'); return; }
+  try {
+    await apiPost('/api/teacher/classes', { teacherId: TEACHER_DATA.profile.id, title, description: desc });
+    closeModal('modal-class');
+    Swal.fire({ icon: 'success', title: 'Class created!', timer: 1200, showConfirmButton: false });
+    fetchAndRenderClasses();
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+});
+
+// ---- Section Modal ----
+document.getElementById('btn-add-section').addEventListener('click', () => {
+  document.getElementById('modal-section-title-text').textContent = 'Add Section';
+  document.getElementById('section-name-input').value = '';
+  openModal('modal-section');
+});
+document.getElementById('cancel-section-modal').addEventListener('click', () => closeModal('modal-section'));
+document.getElementById('save-section-modal').addEventListener('click', async () => {
+  const name = document.getElementById('section-name-input').value.trim();
+  if (!name) { Swal.fire('Error', 'Section name is required.', 'error'); return; }
+  try {
+    const result = await apiPost('/api/teacher/sections', { classId: state.currentClassId, name });
+    closeModal('modal-section');
+    Swal.fire({ icon: 'success', title: `Section created! Code: ${result.code}`, timer: 2000, showConfirmButton: false });
+    await fetchAndRenderSections(state.currentClassId);
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+});
+
+// ---- Material Modal ----
+function openMaterialModal(editId = null) {
+  state.editingMaterialId = editId;
+  const mat = editId ? TEACHER_DATA.materials.find(m => m.id === editId) : null;
+  document.getElementById('modal-material-title-text').textContent = editId ? 'Edit Material' : 'Add Learning Material';
+  document.getElementById('material-name-input').value = mat ? mat.title : '';
+  document.getElementById('material-desc-input').value = mat ? mat.description || '' : '';
+  document.getElementById('material-link-input').value = mat ? mat.pdf_url || '' : '';
+  
+  // ✅ Only clear file preview if it exists
+  const filePreview = document.getElementById('material-file-preview');
+  if (filePreview) {
+    filePreview.innerHTML = '';
+  }
+  
+  openModal('modal-material');
+}
+
+document.getElementById('btn-add-material').addEventListener('click', () => openMaterialModal());
+document.getElementById('btn-edit-material').addEventListener('click', () => openMaterialModal(state.currentMaterialId));
+document.getElementById('btn-delete-material').addEventListener('click', () => deleteMaterial(state.currentMaterialId));
+document.getElementById('cancel-material-modal').addEventListener('click', () => closeModal('modal-material'));
+document.getElementById('save-material-modal').addEventListener('click', async () => {
+  const title = document.getElementById('material-name-input').value.trim();
+  const desc = document.getElementById('material-desc-input').value.trim();
+  const link = document.getElementById('material-link-input').value.trim();
+  if (!title) { Swal.fire('Error', 'Material name is required.', 'error'); return; }
+  try {
+    if (state.editingMaterialId) {
+      await apiPut(`/api/teacher/materials/${state.editingMaterialId}`, { title, description: desc, link });
+    } else {
+      await apiPost('/api/teacher/materials', { sectionId: state.currentSectionId, title, description: desc, link });
+    }
+    closeModal('modal-material');
+    fetchAndRenderMaterials();
+    Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+});
+
+// ---- Quiz Modal ----
+function openQuizModal(editId = null) {
+  state.editingQuizId = editId;
+  const quiz = editId ? TEACHER_DATA.quizzes.find(q => q.id === editId) : null;
+  document.getElementById('modal-quiz-title-text').textContent = editId ? 'Edit Quiz' : 'Add Quiz';
+  document.getElementById('quiz-name-input').value = quiz ? quiz.title : '';
+  document.getElementById('quiz-desc-input').value = quiz ? quiz.description || '' : '';
+  document.getElementById('quiz-link-input').value = quiz ? quiz.link || '' : '';
+  document.getElementById('quiz-due-input').value = quiz && quiz.due_date ? formatDateTimeLocal(quiz.due_date) : '';
+  
+  // ✅ Only clear file preview if it exists
+  const filePreview = document.getElementById('quiz-file-preview');
+  if (filePreview) {
+    filePreview.innerHTML = '';
+  }
+  
+  openModal('modal-quiz');
+}
+document.getElementById('btn-add-quiz').addEventListener('click', () => openQuizModal());
+document.getElementById('btn-edit-quiz').addEventListener('click', () => openQuizModal(state.currentQuizId));
+document.getElementById('btn-delete-quiz').addEventListener('click', () => deleteQuiz(state.currentQuizId));
+document.getElementById('cancel-quiz-modal').addEventListener('click', () => closeModal('modal-quiz'));
+document.getElementById('save-quiz-modal').addEventListener('click', async () => {
+  const title = document.getElementById('quiz-name-input').value.trim();
+  const desc = document.getElementById('quiz-desc-input').value.trim();
+  const link = document.getElementById('quiz-link-input').value.trim();
+  const due = document.getElementById('quiz-due-input').value;
+  if (!title) { Swal.fire('Error', 'Quiz title is required.', 'error'); return; }
+  try {
+    if (state.editingQuizId) {
+      await apiPut(`/api/teacher/quizzes/${state.editingQuizId}`, { title, description: desc, link, dueDate: due });
+    } else {
+      await apiPost('/api/teacher/quizzes', { sectionId: state.currentSectionId, title, description: desc, link, dueDate: due });
+    }
+    closeModal('modal-quiz');
+    fetchAndRenderQuizzes();
+    Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+});
+
+// ---- Assignment Modal ----
+function openAssignmentModal(editId = null) {
+  state.editingAssignmentId = editId;
+  const assign = editId ? TEACHER_DATA.assignments.find(a => a.id === editId) : null;
+  document.getElementById('modal-assignment-title-text').textContent = editId ? 'Edit Assignment' : 'Add Assignment';
+  document.getElementById('assignment-name-input').value = assign ? assign.title : '';
+  document.getElementById('assignment-desc-input').value = assign ? assign.description || '' : '';
+  document.getElementById('assignment-due-input').value = assign && assign.due_date ? formatDateTimeLocal(assign.due_date) : '';  document.getElementById('assignment-points-input').value = assign ? assign.points || '' : '';
+  document.getElementById('assignment-link-input').value = assign ? assign.link || '' : '';
+  
+  // ✅ Only clear file preview if it exists
+  const filePreview = document.getElementById('assignment-file-preview');
+  if (filePreview) {
+    filePreview.innerHTML = '';
+  }
+  
+  openModal('modal-assignment');
+}
+
+document.getElementById('btn-add-assignment').addEventListener('click', () => openAssignmentModal());
+document.getElementById('btn-edit-assignment').addEventListener('click', () => openAssignmentModal(state.currentAssignmentId));
+document.getElementById('btn-delete-assignment').addEventListener('click', () => deleteAssignment(state.currentAssignmentId));
+document.getElementById('cancel-assignment-modal').addEventListener('click', () => closeModal('modal-assignment'));
+document.getElementById('save-assignment-modal').addEventListener('click', async () => {
+  const title = document.getElementById('assignment-name-input').value.trim();
+  const desc = document.getElementById('assignment-desc-input').value.trim();
+  const due = document.getElementById('assignment-due-input').value;
+  const points = document.getElementById('assignment-points-input').value;
+  const link = document.getElementById('assignment-link-input').value.trim();
+  if (!title) { Swal.fire('Error', 'Assignment title is required.', 'error'); return; }
+  try {
+    if (state.editingAssignmentId) {
+      await apiPut(`/api/teacher/assignments/${state.editingAssignmentId}`, { title, description: desc, link, dueDate: due, points });
+    } else {
+      await apiPost('/api/teacher/assignments', { sectionId: state.currentSectionId, title, description: desc, link, dueDate: due, points });
+    }
+    closeModal('modal-assignment');
+    fetchAndRenderAssignments();
+    Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
+  } catch (err) {
+    Swal.fire('Error', err.message, 'error');
+  }
+});
+
+// =============================================
+// PROGRESS VIEW
+// =============================================
+async function renderProgressView() {
+  showView('progress');
+  const list = document.getElementById('progress-list');
+  list.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">Loading progress...</div>';
+
+  try {
+    const classes = await apiGet(`/api/teacher/classes?teacherId=${TEACHER_DATA.profile.id}`);
+    
+    if (!classes.length) {
+      list.innerHTML = '<div class="empty-state">No classes to show progress for.</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+
+    for (const cls of classes) {
+      const sections = await apiGet(`/api/teacher/sections?classId=${cls.id}`);
+      
+      for (const sec of sections) {
+        const students = await apiGet(`/api/teacher/students?sectionId=${sec.id}`);
+        const enrolled = students.filter(s => s.status === 'enrolled');
+        
+        const [materials, quizzes, assignments] = await Promise.all([
+          apiGet(`/api/teacher/materials?sectionId=${sec.id}`),
+          apiGet(`/api/teacher/quizzes?sectionId=${sec.id}`),
+          apiGet(`/api/teacher/assignments?sectionId=${sec.id}`)
+        ]);
+
+        const totalItems = materials.length + quizzes.length + assignments.length;
+        let doneCount = 0;
+        const possible = enrolled.length * totalItems;
+
+        for (const item of [...materials, ...quizzes, ...assignments]) {
+          const itemType = materials.includes(item) ? 'material' : quizzes.includes(item) ? 'quiz' : 'assignment';
+          try {
+            const completions = await apiGet(`/api/teacher/completions?itemType=${itemType}&itemId=${item.id}&sectionId=${sec.id}`);
+            doneCount += completions.filter(c => c.completed_at).length;
+          } catch (e) {}
+        }
+
+        const pct = possible > 0 ? Math.round((doneCount / possible) * 100) : 0;
+
+        const card = document.createElement('div');
+        card.className = 'progress-card';
+        card.innerHTML = `
+          <div class="progress-card-icon">
+            <img src="/teacherdashboard/section-icon.png" alt="section"
+              onerror="this.style.display='none';this.parentElement.innerHTML='👥'">
+          </div>
+          <div class="progress-card-body">
+            <div class="progress-card-header">
+              <span class="progress-card-name">${escHtml(sec.name)}</span>
+              <span class="progress-card-count">${pct}% completion</span>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" style="width:${pct}%"></div>
+            </div>
+            <div class="progress-class-label">
+              ${escHtml(cls.title)} · ${enrolled.length} students · ${totalItems} items
+            </div>
+          </div>`;
+        list.appendChild(card);
+      }
+    }
+  } catch (err) {
+    list.innerHTML = '<div class="empty-state">Failed to load progress.</div>';
+  }
+}
+
+// =============================================
+// ANNOUNCEMENTS VIEW (Keep existing connected code)
 // =============================================
 function renderAnnouncementsView() {
   showView('announcements');
@@ -706,30 +1096,24 @@ async function fetchAnnouncements() {
   try {
     const response = await fetch(`/api/teacher-announcements?teacherId=${TEACHER_DATA.profile.id}`);
     if (!response.ok) throw new Error('Failed to fetch');
-    
     const data = await response.json();
     state.announcements = data;
     renderAnnouncementList();
   } catch (err) {
     console.error('Fetch announcements error:', err);
-    const list = document.getElementById('announcements-list');
-    list.innerHTML = '<div class="empty-state">Failed to load announcements.</div>';
+    document.getElementById('announcements-list').innerHTML = '<div class="empty-state">Failed to load announcements.</div>';
   }
 }
 
 function renderAnnouncementList() {
   const list = document.getElementById('announcements-list');
   list.innerHTML = '';
-
   if (!state.announcements.length) {
     list.innerHTML = '<div class="empty-state">No announcements yet.</div>';
     return;
   }
-
   state.announcements.forEach(a => {
-    const date = new Date(a.created_at).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'short', day: 'numeric'
-    });
+    const date = new Date(a.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     const card = document.createElement('div');
     card.className = 'announcement-card';
     card.innerHTML = `
@@ -759,16 +1143,11 @@ async function deleteAnnouncement(id) {
     title: 'Delete announcement?', icon: 'warning', showCancelButton: true,
     confirmButtonText: 'Delete', confirmButtonColor: '#cc0000'
   });
-  
   if (result.isConfirmed) {
     try {
-      const response = await fetch(`/api/announcements/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        Swal.fire('Deleted', 'Announcement deleted.', 'success');
-        fetchAnnouncements();
-      } else {
-        Swal.fire('Error', 'Failed to delete.', 'error');
-      }
+      await fetch(`/api/announcements/${id}`, { method: 'DELETE' });
+      Swal.fire('Deleted', 'Announcement deleted.', 'success');
+      fetchAnnouncements();
     } catch (err) {
       Swal.fire('Error', 'Could not connect to server.', 'error');
     }
@@ -785,236 +1164,7 @@ function editAnnouncement(id) {
   openModal('modal-announcement');
 }
 
-// =============================================
-// FILE UPLOAD UI
-// =============================================
-function setupFileUpload(zoneId, inputId, previewId) {
-  const zone = document.getElementById(zoneId);
-  const input = document.getElementById(inputId);
-  const preview = document.getElementById(previewId);
-  if (!zone || !input || !preview) return;
-
-  zone.addEventListener('dragover', e => {
-    e.preventDefault();
-    zone.classList.add('drag-over');
-  });
-  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-  zone.addEventListener('drop', e => {
-    e.preventDefault();
-    zone.classList.remove('drag-over');
-    handleFiles(e.dataTransfer.files, preview);
-  });
-  input.addEventListener('change', () => {
-    handleFiles(input.files, preview);
-    input.value = '';
-  });
-}
-
-function handleFiles(files, previewEl) {
-  Array.from(files).forEach(file => {
-    const item = document.createElement('div');
-    item.className = 'file-preview-item';
-    const ext = file.name.split('.').pop().toUpperCase();
-    const size = (file.size / 1024).toFixed(1) + ' KB';
-    item.innerHTML = `
-      <div class="file-preview-item-left">
-        <span class="file-preview-badge">${ext}</span>
-        <div>
-          <div class="file-preview-name">${escHtml(file.name)}</div>
-          <div class="file-preview-size">${size}</div>
-        </div>
-      </div>
-      <button class="file-preview-remove" title="Remove">×</button>`;
-    item.querySelector('.file-preview-remove').addEventListener('click', () => item.remove());
-    previewEl.appendChild(item);
-  });
-}
-
-function initFileUploads() {
-  setupFileUpload('material-upload-zone', 'material-file-input', 'material-file-preview');
-  setupFileUpload('assignment-upload-zone', 'assignment-file-input', 'assignment-file-preview');
-  setupFileUpload('quiz-upload-zone', 'quiz-file-input', 'quiz-file-preview');
-}
-initFileUploads();
-
-// =============================================
-// MODALS
-// =============================================
-function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.addEventListener('click', e => {
-    if (e.target === overlay) overlay.classList.add('hidden');
-  });
-});
-
-// ---- Class Modal (create only) ----
-document.getElementById('btn-create-class').addEventListener('click', () => {
-  document.getElementById('modal-class-title-text').textContent = 'Create Class';
-  document.getElementById('class-name-input').value = '';
-  document.getElementById('class-desc-input').value = '';
-  openModal('modal-class');
-});
-document.getElementById('cancel-class-modal').addEventListener('click', () => closeModal('modal-class'));
-document.getElementById('save-class-modal').addEventListener('click', () => {
-  const name = document.getElementById('class-name-input').value.trim();
-  const desc = document.getElementById('class-desc-input').value.trim();
-  if (!name) { Swal.fire('Error', 'Class name is required.', 'error'); return; }
-  state.classes.push({ id: genId(), name, desc });
-  closeModal('modal-class');
-  renderClassesView();
-});
-
-// ---- Section Modal (create only) ----
-document.getElementById('btn-add-section').addEventListener('click', () => {
-  document.getElementById('modal-section-title-text').textContent = 'Add Section';
-  document.getElementById('section-name-input').value = '';
-  openModal('modal-section');
-});
-document.getElementById('cancel-section-modal').addEventListener('click', () => closeModal('modal-section'));
-document.getElementById('save-section-modal').addEventListener('click', () => {
-  const name = document.getElementById('section-name-input').value.trim();
-  if (!name) { Swal.fire('Error', 'Section name is required.', 'error'); return; }
-  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-  state.sections.push({ id: genId(), classId: state.currentClassId, name, code });
-  closeModal('modal-section');
-  renderSectionsList(state.currentClassId);
-});
-
-// ---- Material Modal ----
-function openMaterialModal(editId = null) {
-  state.editingMaterialId = editId;
-  const mat = editId ? state.materials.find(m => m.id === editId) : null;
-  document.getElementById('modal-material-title-text').textContent = editId ? 'Edit Material' : 'Add Learning Material';
-  document.getElementById('material-name-input').value = mat ? mat.name : '';
-  document.getElementById('material-desc-input').value = mat ? mat.desc : '';
-  document.getElementById('material-link-input').value = mat ? mat.link : '';
-  document.getElementById('material-file-preview').innerHTML = '';
-  openModal('modal-material');
-}
-document.getElementById('btn-add-material').addEventListener('click', () => openMaterialModal());
-document.getElementById('btn-edit-material').addEventListener('click', () => openMaterialModal(state.currentMaterialId));
-document.getElementById('btn-delete-material').addEventListener('click', () => {
-  Swal.fire({
-    title: 'Delete material?', icon: 'warning', showCancelButton: true,
-    confirmButtonText: 'Delete', confirmButtonColor: '#cc0000'
-  }).then(r => {
-    if (r.isConfirmed) {
-      state.materials = state.materials.filter(m => m.id !== state.currentMaterialId);
-      openSectionDetail(state.currentSectionId);
-      switchTab('lessons');
-    }
-  });
-});
-document.getElementById('cancel-material-modal').addEventListener('click', () => closeModal('modal-material'));
-document.getElementById('save-material-modal').addEventListener('click', () => {
-  const name = document.getElementById('material-name-input').value.trim();
-  const desc = document.getElementById('material-desc-input').value.trim();
-  const link = document.getElementById('material-link-input').value.trim();
-  if (!name) { Swal.fire('Error', 'Material name is required.', 'error'); return; }
-  if (state.editingMaterialId) {
-    const mat = state.materials.find(m => m.id === state.editingMaterialId);
-    mat.name = name; mat.desc = desc; mat.link = link;
-    if (state.currentView === 'material-detail') openMaterialDetail(state.editingMaterialId);
-  } else {
-    state.materials.push({ id: genId(), sectionId: state.currentSectionId, name, desc, link });
-  }
-  closeModal('modal-material');
-  if (state.currentView === 'section-detail') renderMaterialsList();
-});
-
-// ---- Quiz Modal ----
-function openQuizModal(editId = null) {
-  state.editingQuizId = editId;
-  const quiz = editId ? state.quizzes.find(q => q.id === editId) : null;
-  document.getElementById('modal-quiz-title-text').textContent = editId ? 'Edit Quiz' : 'Add Quiz';
-  document.getElementById('quiz-name-input').value = quiz ? quiz.name : '';
-  document.getElementById('quiz-desc-input').value = quiz ? quiz.desc : '';
-  document.getElementById('quiz-link-input').value = quiz ? quiz.link : '';
-  document.getElementById('quiz-due-input').value = quiz ? quiz.due : '';
-  document.getElementById('quiz-file-preview').innerHTML = '';
-  openModal('modal-quiz');
-}
-document.getElementById('btn-add-quiz').addEventListener('click', () => openQuizModal());
-document.getElementById('btn-edit-quiz').addEventListener('click', () => openQuizModal(state.currentQuizId));
-document.getElementById('btn-delete-quiz').addEventListener('click', () => {
-  Swal.fire({
-    title: 'Delete quiz?', icon: 'warning', showCancelButton: true,
-    confirmButtonText: 'Delete', confirmButtonColor: '#cc0000'
-  }).then(r => {
-    if (r.isConfirmed) {
-      state.quizzes = state.quizzes.filter(q => q.id !== state.currentQuizId);
-      openSectionDetail(state.currentSectionId);
-      switchTab('quizzes');
-    }
-  });
-});
-document.getElementById('cancel-quiz-modal').addEventListener('click', () => closeModal('modal-quiz'));
-document.getElementById('save-quiz-modal').addEventListener('click', () => {
-  const name = document.getElementById('quiz-name-input').value.trim();
-  const desc = document.getElementById('quiz-desc-input').value.trim();
-  const link = document.getElementById('quiz-link-input').value.trim();
-  const due = document.getElementById('quiz-due-input').value;
-  if (!name) { Swal.fire('Error', 'Quiz title is required.', 'error'); return; }
-  if (state.editingQuizId) {
-    const quiz = state.quizzes.find(q => q.id === state.editingQuizId);
-    quiz.name = name; quiz.desc = desc; quiz.link = link; quiz.due = due;
-    if (state.currentView === 'quiz-detail') openQuizDetail(state.editingQuizId);
-  } else {
-    state.quizzes.push({ id: genId(), sectionId: state.currentSectionId, name, desc, link, due });
-  }
-  closeModal('modal-quiz');
-  if (state.currentView === 'section-detail') renderQuizzesList();
-});
-
-// ---- Assignment Modal ----
-function openAssignmentModal(editId = null) {
-  state.editingAssignmentId = editId;
-  const assign = editId ? state.assignments.find(a => a.id === editId) : null;
-  document.getElementById('modal-assignment-title-text').textContent = editId ? 'Edit Assignment' : 'Add Assignment';
-  document.getElementById('assignment-name-input').value = assign ? assign.name : '';
-  document.getElementById('assignment-desc-input').value = assign ? assign.desc : '';
-  document.getElementById('assignment-due-input').value = assign ? assign.due : '';
-  document.getElementById('assignment-points-input').value = assign ? assign.points : '';
-  document.getElementById('assignment-link-input').value = assign ? assign.link : '';
-  document.getElementById('assignment-file-preview').innerHTML = '';
-  openModal('modal-assignment');
-}
-document.getElementById('btn-add-assignment').addEventListener('click', () => openAssignmentModal());
-document.getElementById('btn-edit-assignment').addEventListener('click', () => openAssignmentModal(state.currentAssignmentId));
-document.getElementById('btn-delete-assignment').addEventListener('click', () => {
-  Swal.fire({
-    title: 'Delete assignment?', icon: 'warning', showCancelButton: true,
-    confirmButtonText: 'Delete', confirmButtonColor: '#cc0000'
-  }).then(r => {
-    if (r.isConfirmed) {
-      state.assignments = state.assignments.filter(a => a.id !== state.currentAssignmentId);
-      openSectionDetail(state.currentSectionId);
-      switchTab('assignments');
-    }
-  });
-});
-document.getElementById('cancel-assignment-modal').addEventListener('click', () => closeModal('modal-assignment'));
-document.getElementById('save-assignment-modal').addEventListener('click', () => {
-  const name = document.getElementById('assignment-name-input').value.trim();
-  const desc = document.getElementById('assignment-desc-input').value.trim();
-  const due = document.getElementById('assignment-due-input').value;
-  const points = document.getElementById('assignment-points-input').value;
-  const link = document.getElementById('assignment-link-input').value.trim();
-  if (!name) { Swal.fire('Error', 'Assignment title is required.', 'error'); return; }
-  if (state.editingAssignmentId) {
-    const assign = state.assignments.find(a => a.id === state.editingAssignmentId);
-    assign.name = name; assign.desc = desc; assign.due = due; assign.points = points; assign.link = link;
-    if (state.currentView === 'assignment-detail') openAssignmentDetail(state.editingAssignmentId);
-  } else {
-    state.assignments.push({ id: genId(), sectionId: state.currentSectionId, name, desc, due, points, link });
-  }
-  closeModal('modal-assignment');
-  if (state.currentView === 'section-detail') renderAssignmentsList();
-});
-
-// ---- Announcement Modal ----
+// Announcement modal handlers
 document.getElementById('btn-new-announcement').addEventListener('click', () => {
   state.editingAnnouncementId = null;
   document.getElementById('modal-announcement-title-text').textContent = 'New Announcement';
@@ -1027,35 +1177,21 @@ document.getElementById('save-announcement-modal').addEventListener('click', asy
   const title = document.getElementById('announcement-title-input').value.trim();
   const body = document.getElementById('announcement-body-input').value.trim();
   const audience = document.getElementById('announcement-audience-input').value;
-  
-  if (!title || !body) { 
-    Swal.fire('Error', 'Title and message are required.', 'error'); 
-    return; 
-  }
-
+  if (!title || !body) { Swal.fire('Error', 'Title and message are required.', 'error'); return; }
   try {
     let response;
     if (state.editingAnnouncementId) {
       response = await fetch(`/api/announcements/${state.editingAnnouncementId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, body, audience })
       });
     } else {
       response = await fetch('/api/announcements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          teacherId: TEACHER_DATA.profile.id, 
-          title, 
-          body, 
-          audience 
-        })
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teacherId: TEACHER_DATA.profile.id, title, body, audience })
       });
     }
-
     const data = await response.json();
-
     if (response.ok) {
       closeModal('modal-announcement');
       Swal.fire('Success', data.message, 'success');
@@ -1071,38 +1207,15 @@ document.getElementById('save-announcement-modal').addEventListener('click', asy
 // =============================================
 // BACK BUTTONS
 // =============================================
-document.getElementById('back-to-classes').addEventListener('click', renderClassesView);
+document.getElementById('back-to-classes').addEventListener('click', fetchAndRenderClasses);
 document.getElementById('back-to-class-detail').addEventListener('click', () => openClassDetail(state.currentClassId));
-document.getElementById('back-to-section-lessons').addEventListener('click', () => { openSectionDetail(state.currentSectionId); switchTab('lessons'); });
-document.getElementById('back-to-section-quizzes').addEventListener('click', () => { openSectionDetail(state.currentSectionId); switchTab('quizzes'); });
-document.getElementById('back-to-section-assignments').addEventListener('click', () => { openSectionDetail(state.currentSectionId); switchTab('assignments'); });
+document.getElementById('back-to-section-lessons').addEventListener('click', () => { openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name').textContent); switchTab('lessons'); });
+document.getElementById('back-to-section-quizzes').addEventListener('click', () => { openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name').textContent); switchTab('quizzes'); });
+document.getElementById('back-to-section-assignments').addEventListener('click', () => { openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name').textContent); switchTab('assignments'); });
 
 // =============================================
-// PROFILE - API CONNECTED
+// PROFILE (Keep existing connected code)
 // =============================================
-const TEACHER_DATA = {
-  profile: { id: null, firstName: '', lastName: '', username: '', email: '', role: '' },
-  profileLoaded: false
-};
-
-async function fetchTeacherProfile() {
-  const savedUser = localStorage.getItem('eduhub_user');
-  if (savedUser) {
-    try {
-      const user = JSON.parse(savedUser);
-      TEACHER_DATA.profile.id = user.id;
-      TEACHER_DATA.profile.firstName = user.first_name || 'Teacher';
-      TEACHER_DATA.profile.lastName = user.last_name || '';
-      TEACHER_DATA.profile.username = user.username || 'teacher';
-      TEACHER_DATA.profile.email = user.email || '';
-      TEACHER_DATA.profile.role = user.role || 'teacher';
-      TEACHER_DATA.profileLoaded = true;
-      return;
-    } catch (e) { console.error('Error parsing saved user:', e); }
-  }
-  TEACHER_DATA.profileLoaded = true;
-}
-
 function refreshTeacherProfileDisplay() {
   const p = TEACHER_DATA.profile;
   document.getElementById('display-firstname').textContent = p.firstName || 'Teacher';
@@ -1125,16 +1238,8 @@ function showTeacherProfilePanel(panel) {
 }
 
 // Edit profile button
-document.getElementById('btn-edit-profile').addEventListener('click', () => {
-  showTeacherProfilePanel('edit-info');
-});
-
-// Cancel edit
-document.getElementById('btn-cancel-edit').addEventListener('click', () => {
-  showTeacherProfilePanel('main');
-});
-
-// Save profile
+document.getElementById('btn-edit-profile').addEventListener('click', () => showTeacherProfilePanel('edit-info'));
+document.getElementById('btn-cancel-edit').addEventListener('click', () => showTeacherProfilePanel('main'));
 document.getElementById('btn-save-profile').addEventListener('click', async () => {
   const updated = {
     userId: TEACHER_DATA.profile.id,
@@ -1143,30 +1248,18 @@ document.getElementById('btn-save-profile').addEventListener('click', async () =
     username: document.getElementById('edit-username').value.trim(),
     email: document.getElementById('edit-email').value.trim()
   };
-
   if (!updated.firstName || !updated.lastName || !updated.username || !updated.email) {
     Swal.fire('Missing', 'All fields are required.', 'warning');
     return;
   }
-
   try {
     const response = await fetch('/api/update-profile', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updated)
     });
-
     const data = await response.json();
-
     if (response.ok) {
-      const savedUser = {
-        id: updated.userId,
-        first_name: updated.firstName,
-        last_name: updated.lastName,
-        username: updated.username,
-        email: updated.email,
-        role: TEACHER_DATA.profile.role
-      };
+      const savedUser = { id: updated.userId, first_name: updated.firstName, last_name: updated.lastName, username: updated.username, email: updated.email, role: TEACHER_DATA.profile.role };
       localStorage.setItem('eduhub_user', JSON.stringify(savedUser));
       await fetchTeacherProfile();
       refreshTeacherProfileDisplay();
@@ -1190,23 +1283,14 @@ document.getElementById('btn-change-password').addEventListener('click', () => {
   document.getElementById('btn-send-code').style.display = 'block';
   document.getElementById('btn-save-password').style.display = 'none';
 });
-
-// Cancel password
-document.getElementById('btn-cancel-password').addEventListener('click', () => {
-  showTeacherProfilePanel('main');
-});
-
-// Send code
+document.getElementById('btn-cancel-password').addEventListener('click', () => showTeacherProfilePanel('main'));
 document.getElementById('btn-send-code').addEventListener('click', async () => {
   try {
     const response = await fetch('/api/send-change-password-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: TEACHER_DATA.profile.id })
     });
-
     const data = await response.json();
-
     if (response.ok) {
       Swal.fire('Code Sent', 'A verification code has been sent to your email.', 'success');
       document.getElementById('verification-code-section').style.display = 'block';
@@ -1219,39 +1303,19 @@ document.getElementById('btn-send-code').addEventListener('click', async () => {
     Swal.fire('Error', 'Could not connect to server.', 'error');
   }
 });
-
-// Update password
 document.getElementById('btn-save-password').addEventListener('click', async () => {
   const code = document.getElementById('pw-verification-code').value.trim();
   const newPw = document.getElementById('pw-new').value.trim();
   const confirm = document.getElementById('pw-confirm').value.trim();
-
-  if (!code || !newPw || !confirm) {
-    Swal.fire('Missing', 'All fields are required.', 'warning');
-    return;
-  }
-  if (code.length !== 6) {
-    Swal.fire('Invalid', 'Please enter the 6-digit verification code.', 'warning');
-    return;
-  }
-  if (newPw !== confirm) {
-    Swal.fire('Mismatch', 'New passwords do not match.', 'error');
-    return;
-  }
-
+  if (!code || !newPw || !confirm) { Swal.fire('Missing', 'All fields are required.', 'warning'); return; }
+  if (code.length !== 6) { Swal.fire('Invalid', 'Please enter the 6-digit verification code.', 'warning'); return; }
+  if (newPw !== confirm) { Swal.fire('Mismatch', 'New passwords do not match.', 'error'); return; }
   try {
     const response = await fetch('/api/change-password', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: TEACHER_DATA.profile.id,
-        code: code,
-        newPassword: newPw
-      })
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: TEACHER_DATA.profile.id, code, newPassword: newPw })
     });
-
     const data = await response.json();
-
     if (response.ok) {
       Swal.fire('Updated', 'Password changed successfully.', 'success');
       document.getElementById('pw-new').value = '';
@@ -1269,40 +1333,41 @@ document.getElementById('btn-save-password').addEventListener('click', async () 
 // Logout
 document.getElementById('btn-logout').addEventListener('click', () => {
   Swal.fire({
-    title: 'Are you sure?',
-    text: 'You will be logged out of your account.',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Yes, logout!',
-    cancelButtonText: 'Cancel',
-    confirmButtonColor: '#dc2626'
+    title: 'Are you sure?', text: 'You will be logged out of your account.', icon: 'warning',
+    showCancelButton: true, confirmButtonText: 'Yes, logout!', cancelButtonText: 'Cancel', confirmButtonColor: '#dc2626'
   }).then((result) => {
     if (result.isConfirmed) {
       localStorage.removeItem('eduhub_user');
       sessionStorage.clear();
-      Swal.fire({
-        title: 'Logged out',
-        text: 'You have been logged out successfully.',
-        icon: 'success',
-        timer: 1500,
-        showConfirmButton: false
-      }).then(() => {
-        window.location.href = '/login/login.html';
-      });
+      Swal.fire({ title: 'Logged out', text: 'You have been logged out successfully.', icon: 'success', timer: 1500, showConfirmButton: false })
+        .then(() => { window.location.href = '/login/login.html'; });
     }
   });
 });
 
 // =============================================
+// DATE HELPERS
+// =============================================
+function formatDateTimeLocal(dateVal) {
+  if (!dateVal) return '';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return '';
+  
+  // Convert to local datetime-local format: YYYY-MM-DDTHH:MM
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+// =============================================
 // UTILITY
 // =============================================
 function escHtml(str) {
   if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // =============================================
@@ -1311,5 +1376,5 @@ function escHtml(str) {
 (async function init() {
   await fetchTeacherProfile();
   refreshTeacherProfileDisplay();
-  renderClassesView();
+  await fetchAndRenderClasses();
 })();

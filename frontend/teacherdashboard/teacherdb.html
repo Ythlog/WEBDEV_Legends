@@ -156,8 +156,7 @@
           <p class="section-label">Student Completion</p>
           <div class="completion-tabs">
             <button class="completion-tab-btn active" data-ctab="pending">Pending</button>
-            <button class="completion-tab-btn" data-ctab="passed">Passed</button>
-            <button class="completion-tab-btn" data-ctab="missed">Missed</button>
+            <button class="completion-tab-btn" data-ctab="finished">Finished</button>
           </div>
           <div class="done-students-list" id="mat-done-students"></div>
         </div>
@@ -387,7 +386,7 @@
     <div class="modal-field"><label>Title</label><input type="text" id="assignment-name-input" placeholder="Assignment title"></div>
     <div class="modal-field"><label>Instructions</label><textarea id="assignment-desc-input" placeholder="Instructions"></textarea></div>
     <div class="modal-two-col">
-      <div class="modal-field"><label>Due Date</label><input type="date" id="assignment-due-input"></div>
+      <div class="modal-field"><label>Due Date & Time</label><input type="datetime-local" id="assignment-due-input"></div>
       <div class="modal-field"><label>Points</label><input type="number" id="assignment-points-input" placeholder="100"></div>
     </div>
     <div class="modal-field"><label>Or paste a link</label><input type="text" id="assignment-link-input" placeholder="https://..."></div>
@@ -404,10 +403,10 @@
     <h3 class="modal-title"><span id="modal-quiz-title-text">Add Quiz</span></h3>
     <div class="modal-field"><label>Quiz Title</label><input type="text" id="quiz-name-input" placeholder="Quiz title"></div>
     <div class="modal-field"><label>Description</label><textarea id="quiz-desc-input" placeholder="Description"></textarea></div>
-    <div class="modal-two-col">
-      <div class="modal-field"><label>Google Form Link</label><input type="text" id="quiz-link-input" placeholder="https://forms.google.com/..."></div>
-      <div class="modal-field"><label>Due Date</label><input type="date" id="quiz-due-input"></div>
-    </div>
+      <div class="modal-two-col">
+        <div class="modal-field"><label>Google Form Link</label><input type="text" id="quiz-link-input" placeholder="https://forms.google.com/..."></div>
+        <div class="modal-field"><label>Due Date & Time</label><input type="datetime-local" id="quiz-due-input"></div>
+      </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="cancel-quiz-modal">Cancel</button>
       <button class="btn btn-dark" id="save-quiz-modal">Save</button>

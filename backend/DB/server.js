@@ -662,6 +662,553 @@ app.delete("/api/announcements/:id", async (req, res) => {
     }
 });
 
+// =====================================================
+// TEACHER: CLASSES API
+// =====================================================
+
+// Get all classes for a teacher
+app.get("/api/teacher/classes", async (req, res) => {
+    const { teacherId } = req.query;
+    if (!teacherId) return res.status(400).json({ message: "Missing teacherId" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const classes = await conn.query(
+            "SELECT id, teacher_id, title, subject_code, professor, created_at FROM classes WHERE teacher_id = ? ORDER BY id",
+            [teacherId]
+        );
+        res.json(classes);
+    } catch (err) {
+        console.error("Get teacher classes error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Create class
+app.post("/api/teacher/classes", async (req, res) => {
+    const { teacherId, title, description } = req.body;
+    if (!teacherId || !title) return res.status(400).json({ message: "Missing required fields" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        // Get teacher name for professor field
+        const users = await conn.query("SELECT first_name, last_name FROM users WHERE id = ?", [teacherId]);
+        const professor = users.length > 0 ? `${users[0].first_name} ${users[0].last_name}` : 'Unknown';
+
+        const result = await conn.query(
+            "INSERT INTO classes (teacher_id, title, professor, subject_code) VALUES (?, ?, ?, ?)",
+            [teacherId, title, professor, description || null]
+        );
+        res.json({ id: Number(result.insertId), message: "Class created" });
+    } catch (err) {
+        console.error("Create class error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Update class
+app.put("/api/teacher/classes/:id", async (req, res) => {
+    const { id } = req.params;
+    const { title, description } = req.body;
+    if (!title) return res.status(400).json({ message: "Title is required" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query(
+            "UPDATE classes SET title = ?, subject_code = ? WHERE id = ?",
+            [title, description || null, id]
+        );
+        res.json({ message: "Class updated" });
+    } catch (err) {
+        console.error("Update class error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Delete class
+app.delete("/api/teacher/classes/:id", async (req, res) => {
+    const { id } = req.params;
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        // Delete sections under this class
+        const sections = await conn.query("SELECT id FROM sections WHERE class_id = ?", [id]);
+        for (const sec of sections) {
+            await conn.query("DELETE FROM materials WHERE section_id = ?", [sec.id]);
+            await conn.query("DELETE FROM quizzes WHERE section_id = ?", [sec.id]);
+            await conn.query("DELETE FROM assignments WHERE section_id = ?", [sec.id]);
+            await conn.query("DELETE FROM section_students WHERE section_id = ?", [sec.id]);
+        }
+        await conn.query("DELETE FROM sections WHERE class_id = ?", [id]);
+        await conn.query("DELETE FROM classes WHERE id = ?", [id]);
+        res.json({ message: "Class deleted" });
+    } catch (err) {
+        console.error("Delete class error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// =====================================================
+// TEACHER: SECTIONS API
+// =====================================================
+
+// Get sections for a class
+app.get("/api/teacher/sections", async (req, res) => {
+    const { classId } = req.query;
+    if (!classId) return res.status(400).json({ message: "Missing classId" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const sections = await conn.query(
+            "SELECT id, class_id, name, code, created_at FROM sections WHERE class_id = ? ORDER BY id",
+            [classId]
+        );
+        res.json(sections);
+    } catch (err) {
+        console.error("Get sections error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Create section (auto-generate unique code)
+app.post("/api/teacher/sections", async (req, res) => {
+    const { classId, name } = req.body;
+    if (!classId || !name) return res.status(400).json({ message: "Missing required fields" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        // Generate unique code
+        let code;
+        let exists = true;
+        while (exists) {
+            code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const check = await conn.query("SELECT id FROM sections WHERE code = ?", [code]);
+            exists = check.length > 0;
+        }
+        const result = await conn.query(
+            "INSERT INTO sections (class_id, name, code) VALUES (?, ?, ?)",
+            [classId, name, code]
+        );
+        res.json({ id: Number(result.insertId), code, message: "Section created" });
+    } catch (err) {
+        console.error("Create section error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Update section (name only, code CANNOT be edited)
+app.put("/api/teacher/sections/:id", async (req, res) => {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ message: "Name is required" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query("UPDATE sections SET name = ? WHERE id = ?", [name, id]);
+        res.json({ message: "Section updated" });
+    } catch (err) {
+        console.error("Update section error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Delete section
+app.delete("/api/teacher/sections/:id", async (req, res) => {
+    const { id } = req.params;
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query("DELETE FROM materials WHERE section_id = ?", [id]);
+        await conn.query("DELETE FROM quizzes WHERE section_id = ?", [id]);
+        await conn.query("DELETE FROM assignments WHERE section_id = ?", [id]);
+        await conn.query("DELETE FROM section_students WHERE section_id = ?", [id]);
+        await conn.query("DELETE FROM sections WHERE id = ?", [id]);
+        res.json({ message: "Section deleted" });
+    } catch (err) {
+        console.error("Delete section error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// =====================================================
+// TEACHER: MATERIALS API
+// =====================================================
+
+// Get materials for a section
+app.get("/api/teacher/materials", async (req, res) => {
+    const { sectionId } = req.query;
+    if (!sectionId) return res.status(400).json({ message: "Missing sectionId" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const materials = await conn.query(
+            "SELECT id, section_id, title, description, pdf_url, due_date, created_at FROM materials WHERE section_id = ? ORDER BY id",
+            [sectionId]
+        );
+        res.json(materials);
+    } catch (err) {
+        console.error("Get materials error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Create material
+app.post("/api/teacher/materials", async (req, res) => {
+    const { sectionId, title, description, link, dueDate } = req.body;
+    if (!sectionId || !title) return res.status(400).json({ message: "Missing required fields" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const result = await conn.query(
+            "INSERT INTO materials (section_id, title, description, pdf_url, due_date) VALUES (?, ?, ?, ?, ?)",
+            [sectionId, title, description || null, link || null, dueDate || null]
+        );
+        res.json({ id: Number(result.insertId), message: "Material created" });
+    } catch (err) {
+        console.error("Create material error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Update material
+app.put("/api/teacher/materials/:id", async (req, res) => {
+    const { id } = req.params;
+    const { title, description, link, dueDate } = req.body;
+    if (!title) return res.status(400).json({ message: "Title is required" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query(
+            "UPDATE materials SET title = ?, description = ?, pdf_url = ?, due_date = ? WHERE id = ?",
+            [title, description || null, link || null, dueDate || null, id]
+        );
+        res.json({ message: "Material updated" });
+    } catch (err) {
+        console.error("Update material error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Delete material
+app.delete("/api/teacher/materials/:id", async (req, res) => {
+    const { id } = req.params;
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query("DELETE FROM task_completions WHERE item_type = 'material' AND item_id = ?", [id]);
+        await conn.query("DELETE FROM materials WHERE id = ?", [id]);
+        res.json({ message: "Material deleted" });
+    } catch (err) {
+        console.error("Delete material error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// =====================================================
+// TEACHER: QUIZZES API
+// =====================================================
+
+// Get quizzes for a section
+app.get("/api/teacher/quizzes", async (req, res) => {
+    const { sectionId } = req.query;
+    if (!sectionId) return res.status(400).json({ message: "Missing sectionId" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const quizzes = await conn.query(
+            "SELECT id, section_id, title, description, link, link_label, due_date, created_at FROM quizzes WHERE section_id = ? ORDER BY id",
+            [sectionId]
+        );
+        res.json(quizzes);
+    } catch (err) {
+        console.error("Get quizzes error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Create quiz
+app.post("/api/teacher/quizzes", async (req, res) => {
+    const { sectionId, title, description, link, dueDate } = req.body;
+    if (!sectionId || !title) return res.status(400).json({ message: "Missing required fields" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const result = await conn.query(
+            "INSERT INTO quizzes (section_id, title, description, link, link_label, due_date) VALUES (?, ?, ?, ?, ?, ?)",
+            [sectionId, title, description || null, link || null, link || 'Open Quiz', dueDate || null]
+        );
+        res.json({ id: Number(result.insertId), message: "Quiz created" });
+    } catch (err) {
+        console.error("Create quiz error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Update quiz
+app.put("/api/teacher/quizzes/:id", async (req, res) => {
+    const { id } = req.params;
+    const { title, description, link, dueDate } = req.body;
+    if (!title) return res.status(400).json({ message: "Title is required" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query(
+            "UPDATE quizzes SET title = ?, description = ?, link = ?, link_label = ?, due_date = ? WHERE id = ?",
+            [title, description || null, link || null, link || 'Open Quiz', dueDate || null, id]
+        );
+        res.json({ message: "Quiz updated" });
+    } catch (err) {
+        console.error("Update quiz error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Delete quiz
+app.delete("/api/teacher/quizzes/:id", async (req, res) => {
+    const { id } = req.params;
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query("DELETE FROM task_completions WHERE item_type = 'quiz' AND item_id = ?", [id]);
+        await conn.query("DELETE FROM quizzes WHERE id = ?", [id]);
+        res.json({ message: "Quiz deleted" });
+    } catch (err) {
+        console.error("Delete quiz error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// =====================================================
+// TEACHER: ASSIGNMENTS API
+// =====================================================
+
+// Get assignments for a section
+app.get("/api/teacher/assignments", async (req, res) => {
+    const { sectionId } = req.query;
+    if (!sectionId) return res.status(400).json({ message: "Missing sectionId" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const assignments = await conn.query(
+            "SELECT id, section_id, title, description, link, due_date, points, created_at FROM assignments WHERE section_id = ? ORDER BY id",
+            [sectionId]
+        );
+        res.json(assignments);
+    } catch (err) {
+        console.error("Get assignments error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Create assignment
+app.post("/api/teacher/assignments", async (req, res) => {
+    const { sectionId, title, description, link, dueDate, points } = req.body;
+    if (!sectionId || !title) return res.status(400).json({ message: "Missing required fields" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const result = await conn.query(
+            "INSERT INTO assignments (section_id, title, description, link, due_date, points) VALUES (?, ?, ?, ?, ?, ?)",
+            [sectionId, title, description || null, link || null, dueDate || null, points || 0]
+        );
+        res.json({ id: Number(result.insertId), message: "Assignment created" });
+    } catch (err) {
+        console.error("Create assignment error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Update assignment
+app.put("/api/teacher/assignments/:id", async (req, res) => {
+    const { id } = req.params;
+    const { title, description, link, dueDate, points } = req.body;
+    if (!title) return res.status(400).json({ message: "Title is required" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query(
+            "UPDATE assignments SET title = ?, description = ?, link = ?, due_date = ?, points = ? WHERE id = ?",
+            [title, description || null, link || null, dueDate || null, points || 0, id]
+        );
+        res.json({ message: "Assignment updated" });
+    } catch (err) {
+        console.error("Update assignment error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Delete assignment
+app.delete("/api/teacher/assignments/:id", async (req, res) => {
+    const { id } = req.params;
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query("DELETE FROM task_completions WHERE item_type = 'assignment' AND item_id = ?", [id]);
+        await conn.query("DELETE FROM assignments WHERE id = ?", [id]);
+        res.json({ message: "Assignment deleted" });
+    } catch (err) {
+        console.error("Delete assignment error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// =====================================================
+// TEACHER: STUDENTS API
+// =====================================================
+
+// Get students for a section
+app.get("/api/teacher/students", async (req, res) => {
+    const { sectionId } = req.query;
+    if (!sectionId) return res.status(400).json({ message: "Missing sectionId" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const students = await conn.query(
+            `SELECT u.id, u.first_name, u.last_name, u.email, ss.status 
+             FROM section_students ss 
+             JOIN users u ON ss.student_id = u.id 
+             WHERE ss.section_id = ? 
+             ORDER BY u.last_name`,
+            [sectionId]
+        );
+        res.json(students);
+    } catch (err) {
+        console.error("Get students error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Approve student
+app.put("/api/teacher/students/approve", async (req, res) => {
+    const { sectionId, studentId } = req.body;
+    if (!sectionId || !studentId) return res.status(400).json({ message: "Missing fields" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query(
+            "UPDATE section_students SET status = 'enrolled' WHERE section_id = ? AND student_id = ?",
+            [sectionId, studentId]
+        );
+        res.json({ message: "Student approved" });
+    } catch (err) {
+        console.error("Approve student error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// Remove student
+app.delete("/api/teacher/students", async (req, res) => {
+    const { sectionId, studentId } = req.body;
+    if (!sectionId || !studentId) return res.status(400).json({ message: "Missing fields" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query(
+            "DELETE FROM section_students WHERE section_id = ? AND student_id = ?",
+            [sectionId, studentId]
+        );
+        res.json({ message: "Student removed" });
+    } catch (err) {
+        console.error("Remove student error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// =====================================================
+// TEACHER: COMPLETIONS API
+// =====================================================
+
+// Get completions for an item
+app.get("/api/teacher/completions", async (req, res) => {
+    const { itemType, itemId, sectionId } = req.query;
+    if (!itemType || !itemId || !sectionId) return res.status(400).json({ message: "Missing fields" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        const completions = await conn.query(
+            `SELECT u.id, u.first_name, u.last_name, u.email, 
+                    CASE WHEN tc.id IS NOT NULL THEN tc.completed_at ELSE NULL END as completed_at
+             FROM section_students ss
+             JOIN users u ON ss.student_id = u.id
+             LEFT JOIN task_completions tc ON tc.user_id = u.id AND tc.item_type = ? AND tc.item_id = ?
+             WHERE ss.section_id = ? AND ss.status = 'enrolled'
+             ORDER BY u.last_name`,
+            [itemType, itemId, sectionId]
+        );
+        res.json(completions);
+    } catch (err) {
+        console.error("Get completions error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
 app.listen(3000, () => {
     console.log("Server running on http://localhost:3000");
 });
