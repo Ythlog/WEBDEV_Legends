@@ -5,9 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>Eduhub – Student Dashboard</title>
-  <!-- Google Fonts: Poppins -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <!-- Font Awesome 6 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link rel="stylesheet" href="/studentdashboard/dashboard.css" />
@@ -15,7 +13,8 @@
 
 <body>
   <div class="app-wrapper">
-    <!-- SIDEBAR -->
+
+    <!-- ===== SIDEBAR ===== -->
     <aside class="sidebar">
       <div class="sidebar-logo">
         <div class="logo-mark">
@@ -47,8 +46,10 @@
       </nav>
     </aside>
 
-    <!-- MAIN CONTENT -->
+    <!-- ===== MAIN CONTENT ===== -->
     <main class="main-content">
+
+      <!-- TOP BAR -->
       <header class="top-bar">
         <div class="search-bar">
           <i class="fa-solid fa-magnifying-glass search-icon"></i>
@@ -62,45 +63,105 @@
         </div>
       </header>
 
-      <!-- HOME VIEW -->
+      <!-- ===== HOME VIEW ===== -->
       <div class="page-body" id="view-home">
+
         <div class="welcome-section">
           <h1 class="welcome-heading">Welcome, Student!</h1>
           <p class="welcome-subheading">Stay on top of your learning journey</p>
         </div>
+
+        <!-- STATS ROW -->
+        <div class="home-stats-row" id="home-stats-row">
+          <div class="stat-card">
+            <div class="stat-icon-wrap blue">
+              <i class="fa-solid fa-book-open"></i>
+            </div>
+            <div>
+              <div class="stat-value" id="stat-classes">0</div>
+              <div class="stat-label">Classes</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap green">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div>
+              <div class="stat-value" id="stat-completed">0</div>
+              <div class="stat-label">Completed</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap orange">
+              <i class="fa-regular fa-clock"></i>
+            </div>
+            <div>
+              <div class="stat-value" id="stat-pending">0</div>
+              <div class="stat-label">Pending</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TWO-COLUMN: ANNOUNCEMENTS + TO DO -->
         <div class="content-columns">
+
+          <!-- ANNOUNCEMENTS -->
           <section class="announcements-section" id="announcements-section">
             <div class="section-header">
-              <h2 class="section-title">Announcements</h2>
-              <i class="fa-regular fa-bell"></i>
+              <div class="section-header-left">
+                <div class="section-header-icon-wrap">
+                  <i class="fa-regular fa-bell" aria-hidden="true"></i>
+                </div>
+                <h2 class="section-title">Announcements</h2>
+              </div>
             </div>
             <div class="announcements-scroll-container" id="announcements-container"></div>
+            <div class="section-footer">
+              <i class="fa-solid fa-bell" aria-hidden="true"></i>
+              <span>Stay updated with the latest announcements</span>
+            </div>
           </section>
+
+          <!-- TO DO LIST -->
           <section class="todo-section" id="todo-section">
             <div class="section-header">
-              <h2 class="section-title">To Do List</h2>
-              <i class="fa-regular fa-calendar-check"></i>
+              <div class="section-header-left">
+                <div class="section-header-icon-wrap green">
+                  <i class="fa-regular fa-calendar-check" aria-hidden="true"></i>
+                </div>
+                <h2 class="section-title">To Do List</h2>
+              </div>
+              <a class="section-view-all" data-view="todo" href="#">View all</a>
             </div>
             <div class="todo-scroll-container" id="home-todo-container"></div>
+            <div class="section-footer" style="justify-content: center;">
+              <i class="fa-regular fa-calendar-check" aria-hidden="true"></i>
+              <span>You're all caught up for now</span>
+            </div>
           </section>
-        </div>
-      </div>
 
-      <!-- CLASSES VIEW -->
+        </div>
+      </div><!-- /view-home -->
+
+      <!-- ===== CLASSES VIEW ===== -->
       <div class="page-body hidden" id="view-classes">
         <div class="classes-header">
           <div>
             <h1 class="page-heading">Continue learning with your courses!</h1>
             <p class="page-subheading">Access all your enrolled classes and materials</p>
           </div>
-          <button class="join-class-btn" id="join-class-btn"><i class="fa-solid fa-plus"></i> Join Class</button>
+          <button class="join-class-btn" id="join-class-btn">
+            <i class="fa-solid fa-plus"></i> Join Class
+          </button>
         </div>
         <div class="classes-grid" id="classes-grid"></div>
       </div>
 
-      <!-- CLASS DETAIL VIEW -->
+      <!-- ===== CLASS DETAIL VIEW ===== -->
       <div class="page-body hidden" id="view-class-detail">
-        <button class="back-btn" id="back-to-classes"><i class="fa-solid fa-arrow-left"></i> Back to Classes</button>
+        <button class="back-btn" id="back-to-classes">
+          <i class="fa-solid fa-arrow-left"></i> Back to Classes
+        </button>
         <div class="detail-header">
           <div>
             <h1 class="page-heading" id="detail-class-name"></h1>
@@ -112,16 +173,16 @@
           <div id="materials-list"></div>
           <div class="section-label quizzes-label" id="quizzes-label"><i class="fa-solid fa-clipboard-question"></i> Quizzes</div>
           <div id="quizzes-list"></div>
-          <div class="section-label quizzes-label" id="quizzes-label"><i class="fa-solid fa-clipboard-question"></i> Quizzes</div>
-          <div id="quizzes-list"></div>
           <div class="section-label quizzes-label" id="assignments-label"><i class="fa-solid fa-file-lines"></i> Assignments</div>
           <div id="assignments-list"></div>
         </div>
       </div>
 
-      <!-- MATERIAL DETAIL VIEW -->
+      <!-- ===== MATERIAL DETAIL VIEW ===== -->
       <div class="page-body hidden" id="view-material-detail">
-        <button class="back-btn" id="back-to-class-from-material"><i class="fa-solid fa-arrow-left"></i> Back to Class</button>
+        <button class="back-btn" id="back-to-class-from-material">
+          <i class="fa-solid fa-arrow-left"></i> Back to Class
+        </button>
         <div class="detail-header">
           <div>
             <h1 class="page-heading" id="mat-title"></h1>
@@ -133,18 +194,24 @@
           <i class="fa-regular fa-file-pdf"></i> Learning Material
         </div>
         <div class="item-scroll-area">
-          <a href="#" class="pdf-link" id="mat-pdf-link" target="_blank"><i class="fa-regular fa-eye"></i> Open Material</a>
+          <a href="#" class="pdf-link" id="mat-pdf-link" target="_blank">
+            <i class="fa-regular fa-eye"></i> Open Material
+          </a>
           <p class="item-section-title">Description</p>
           <p class="item-description" id="mat-description"></p>
         </div>
         <div class="mark-done-row">
-          <button class="mark-done-btn dark" id="mat-mark-btn"><i class="fa-regular fa-circle-check"></i> Mark as done</button>
+          <button class="mark-done-btn dark" id="mat-mark-btn">
+            <i class="fa-regular fa-circle-check"></i> Mark as done
+          </button>
         </div>
       </div>
 
-      <!-- QUIZ DETAIL VIEW -->
+      <!-- ===== QUIZ DETAIL VIEW ===== -->
       <div class="page-body hidden" id="view-quiz-detail">
-        <button class="back-btn" id="back-to-class-from-quiz"><i class="fa-solid fa-arrow-left"></i> Back to Class</button>
+        <button class="back-btn" id="back-to-class-from-quiz">
+          <i class="fa-solid fa-arrow-left"></i> Back to Class
+        </button>
         <div class="detail-header">
           <div>
             <h1 class="page-heading" id="quiz-title"></h1>
@@ -156,7 +223,9 @@
           <i class="fa-regular fa-clipboard"></i> Quiz
         </div>
         <div class="item-scroll-area">
-          <a href="#" class="quiz-link" target="_blank" id="quiz-link"><i class="fa-regular fa-pen-to-square"></i> Open Quiz</a>
+          <a href="#" class="quiz-link" target="_blank" id="quiz-link">
+            <i class="fa-regular fa-pen-to-square"></i> Open Quiz
+          </a>
           <p class="item-section-title">Description</p>
           <p class="item-description" id="quiz-description"></p>
           <p class="item-section-title">Instructions:</p>
@@ -167,11 +236,13 @@
           </ul>
         </div>
         <div class="mark-done-row">
-          <button class="mark-done-btn yellow" id="quiz-mark-btn"><i class="fa-regular fa-circle-check"></i> Mark as done</button>
+          <button class="mark-done-btn yellow" id="quiz-mark-btn">
+            <i class="fa-regular fa-circle-check"></i> Mark as done
+          </button>
         </div>
       </div>
 
-      <!-- PROGRESS VIEW -->
+      <!-- ===== PROGRESS VIEW ===== -->
       <div class="page-body hidden" id="view-progress">
         <div class="progress-header">
           <h1 class="page-heading">Keep track of your progress</h1>
@@ -181,7 +252,7 @@
         <div class="progress-list" id="progress-list"></div>
       </div>
 
-      <!-- TO DO LIST VIEW -->
+      <!-- ===== TO DO LIST VIEW ===== -->
       <div class="page-body hidden" id="view-todo">
         <h1 class="page-heading">See your tasks!</h1>
         <p class="page-subheading">Stay organized with pending and upcoming assignments</p>
@@ -203,7 +274,7 @@
         </div>
       </div>
 
-      <!-- PROFILE VIEW -->
+      <!-- ===== PROFILE VIEW ===== -->
       <div class="page-body hidden" id="view-profile">
         <h1 class="page-heading">Your profile</h1>
         <div class="profile-layout">
@@ -271,11 +342,12 @@
             </section>
           </div>
         </div>
-      </div>
-    </main>
-  </div>
+      </div><!-- /view-profile -->
 
-  <!-- JOIN CLASS MODAL -->
+    </main>
+  </div><!-- /app-wrapper -->
+
+  <!-- ===== JOIN CLASS MODAL ===== -->
   <div id="join-modal" class="modal-overlay">
     <div class="modal-container">
       <div class="modal-header">

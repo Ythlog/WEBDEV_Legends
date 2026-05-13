@@ -1,8 +1,8 @@
 /* =============================================================
-  Student Dashboard - Complete Working Version
+   Student Dashboard - Complete Working Version
 ============================================================= */
 
-// DATA OBJECT
+// ── DATA OBJECT ──────────────────────────────────────────────────
 const DATA = {
   profileLoaded: false,
   announcements: [],
@@ -20,7 +20,7 @@ const DATA = {
   }
 };
 
-// STATE
+// ── STATE ────────────────────────────────────────────────────────
 const state = {
   currentView: 'home',
   currentClass: null,
@@ -29,7 +29,8 @@ const state = {
   done: new Set()
 };
 
-// Helper Functions
+// ── HELPER FUNCTIONS ─────────────────────────────────────────────
+
 function completionKey(type, id) {
   return `${type}:${id}`;
 }
@@ -40,13 +41,13 @@ function formatAnnouncementTime(dateVal) {
   if (isNaN(d.getTime())) return null;
   const now = new Date();
   const diffMs = now - d;
-  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffMins  = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+  const diffDays  = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffMins < 1)   return 'Just now';
+  if (diffMins < 60)  return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
   if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
-  if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+  if (diffDays < 7)   return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
@@ -60,19 +61,75 @@ function formatDueDate(dateVal) {
   });
 }
 
-// Fetch Functions
+// ── HOME VIEW CARD BUILDERS ──────────────────────────────────────
+
+function buildAnnouncementCard(title, body, timeAgo, isUnread = false) {
+  const d = document.createElement('div');
+  d.className = 'announcement-card';
+  d.innerHTML = `
+    <div class="announcement-avatar">
+      <i class="fa-regular fa-message" aria-hidden="true"></i>
+    </div>
+    <div class="announcement-body">
+      <p class="announcement-main">${title}</p>
+      <p class="announcement-sub">${body}</p>
+      ${timeAgo ? `<p class="announcement-time">${timeAgo}</p>` : ''}
+    </div>
+    ${isUnread ? '<div class="announcement-unread-dot"></div>' : ''}
+  `;
+  return d;
+}
+
+function buildHomeTodoCard(item) {
+  const d = document.createElement('div');
+  d.className = 'todo-card';
+  d.innerHTML = `
+    <div class="todo-avatar">
+      <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+    </div>
+    <div class="todo-body">
+      <p class="todo-title">${item.title}</p>
+      <p class="todo-due">Due: ${formatDueDate(item.dueDate) || 'No due date'}</p>
+      <p class="todo-class">${item.className}</p>
+    </div>
+  `;
+  d.addEventListener('click', () => {
+    setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
+    openClassDetail(item.cls);
+    if (item.type === 'material')        openMaterialDetail(item.item, item.cls.title);
+    else if (item.type === 'assignment') openAssignmentDetail(item.item, item.cls.title);
+    else                                 openQuizDetail(item.item, item.cls.title);
+  });
+  return d;
+}
+
+function buildEmptyState(icon, title, sub) {
+  const d = document.createElement('div');
+  d.className = 'empty-state';
+  d.innerHTML = `
+    <div class="empty-state-icon-wrap">
+      <i class="${icon}" aria-hidden="true"></i>
+    </div>
+    <p class="empty-state-title">${title}</p>
+    <p class="empty-state-sub">${sub}</p>
+  `;
+  return d;
+}
+
+// ── FETCH FUNCTIONS ──────────────────────────────────────────────
+
 async function fetchProfile() {
   const savedUser = localStorage.getItem('eduhub_user');
   if (savedUser) {
     try {
       const user = JSON.parse(savedUser);
-      DATA.profile.id = user.id || null;
-      DATA.profile.firstName = user.first_name || user.username || 'Student';
-      DATA.profile.lastName = user.last_name || '';
-      DATA.profile.username = user.username || 'student';
-      DATA.profile.email = user.email || '';
-      DATA.profile.role = user.role || 'student';
-      DATA.profileLoaded = true;
+      DATA.profile.id          = user.id || null;
+      DATA.profile.firstName   = user.first_name || user.username || 'Student';
+      DATA.profile.lastName    = user.last_name || '';
+      DATA.profile.username    = user.username || 'student';
+      DATA.profile.email       = user.email || '';
+      DATA.profile.role        = user.role || 'student';
+      DATA.profileLoaded       = true;
       await fetchProfilePicture();
       return;
     } catch (e) {
@@ -97,23 +154,23 @@ async function fetchProfilePicture() {
 }
 
 function updateProfilePictureDisplay() {
-  const profileImg = document.getElementById('profile-picture-img');
+  const profileImg    = document.getElementById('profile-picture-img');
   const sidebarAvatar = document.querySelector('.avatar');
-  
+
   if (DATA.profile.profilePicture) {
     const imgUrl = `/uploads/profile-pictures/${DATA.profile.profilePicture}`;
     if (profileImg) profileImg.src = imgUrl;
     if (sidebarAvatar) {
-      sidebarAvatar.style.backgroundImage = `url(${imgUrl})`;
-      sidebarAvatar.style.backgroundSize = 'cover';
+      sidebarAvatar.style.backgroundImage    = `url(${imgUrl})`;
+      sidebarAvatar.style.backgroundSize     = 'cover';
       sidebarAvatar.style.backgroundPosition = 'center';
     }
   } else {
     const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(DATA.profile.firstName + ' ' + DATA.profile.lastName)}&background=6366f1&color=fff`;
     if (profileImg) profileImg.src = defaultAvatar;
     if (sidebarAvatar) {
-      sidebarAvatar.style.backgroundImage = `url(${defaultAvatar})`;
-      sidebarAvatar.style.backgroundSize = 'cover';
+      sidebarAvatar.style.backgroundImage    = `url(${defaultAvatar})`;
+      sidebarAvatar.style.backgroundSize     = 'cover';
       sidebarAvatar.style.backgroundPosition = 'center';
     }
   }
@@ -124,8 +181,8 @@ async function fetchAnnouncements() {
     const res = await fetch('/api/announcements');
     if (!res.ok) return;
     const data = await res.json();
-    DATA.announcements = data;
-    DATA.announcementsLoaded = true;
+    DATA.announcements        = data;
+    DATA.announcementsLoaded  = true;
   } catch (err) {
     console.error('fetchAnnouncements error:', err);
   }
@@ -136,12 +193,12 @@ async function fetchClasses() {
   try {
     const response = await fetch(`/api/my-classes?studentId=${DATA.profile.id}`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const json = await response.json();
-    DATA.classes = json;
+    const json        = await response.json();
+    DATA.classes      = json;
     DATA.classesLoaded = true;
   } catch (error) {
     console.error('[fetchClasses] Error:', error);
-    DATA.classes = [];
+    DATA.classes       = [];
     DATA.classesLoaded = false;
   }
 }
@@ -153,15 +210,14 @@ async function fetchCompletions() {
     if (!res.ok) return;
     const items = await res.json();
     state.done.clear();
-    items.forEach(item => {
-      state.done.add(completionKey(item.item_type, item.item_id));
-    });
+    items.forEach(item => state.done.add(completionKey(item.item_type, item.item_id)));
   } catch (err) {
     console.error('fetchCompletions error:', err);
   }
 }
 
-// Join Section Functions
+// ── JOIN SECTION ─────────────────────────────────────────────────
+
 function showJoinModal() {
   const modal = document.getElementById('join-modal');
   if (modal) {
@@ -174,19 +230,14 @@ function showJoinModal() {
 
 function closeJoinModal() {
   const modal = document.getElementById('join-modal');
-  if (modal) {
-    modal.style.display = 'none';
-  }
+  if (modal) modal.style.display = 'none';
 }
 
 async function checkEnrollmentCode(code) {
   try {
     const response = await fetch(`/api/section-by-code?code=${code}`);
     if (!response.ok) {
-      if (response.status === 404) {
-        return { error: 'Invalid enrollment code' };
-      }
-      return { error: 'Could not verify code' };
+      return { error: response.status === 404 ? 'Invalid enrollment code' : 'Could not verify code' };
     }
     return await response.json();
   } catch (error) {
@@ -202,13 +253,10 @@ async function joinSection(code) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ enrollmentCode: code, studentId: DATA.profile.id })
     });
-    
     const data = await response.json();
-    if (response.ok) {
-      return { success: true, message: data.message };
-    } else {
-      return { success: false, message: data.message };
-    }
+    return response.ok
+      ? { success: true,  message: data.message }
+      : { success: false, message: data.message };
   } catch (error) {
     console.error('Join section error:', error);
     return { success: false, message: 'Could not connect to server' };
@@ -220,65 +268,32 @@ function setupJoinButton() {
   if (joinBtn) {
     const newJoinBtn = joinBtn.cloneNode(true);
     joinBtn.parentNode.replaceChild(newJoinBtn, joinBtn);
-    
-    newJoinBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      showJoinModal();
-    });
+    newJoinBtn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); showJoinModal(); });
   }
-  
+
   const closeModalBtn = document.querySelector('#join-modal .close-modal');
-  if (closeModalBtn) {
-    closeModalBtn.onclick = closeJoinModal;
-  }
-  
+  if (closeModalBtn) closeModalBtn.onclick = closeJoinModal;
+
   const cancelBtn = document.getElementById('cancel-join');
-  if (cancelBtn) {
-    cancelBtn.onclick = closeJoinModal;
-  }
-  
+  if (cancelBtn) cancelBtn.onclick = closeJoinModal;
+
   const modalOverlay = document.getElementById('join-modal');
-  if (modalOverlay) {
-    modalOverlay.onclick = (e) => {
-      if (e.target === modalOverlay) {
-        closeJoinModal();
-      }
-    };
-  }
-  
+  if (modalOverlay) modalOverlay.onclick = e => { if (e.target === modalOverlay) closeJoinModal(); };
+
   const confirmBtn = document.getElementById('confirm-join');
   if (confirmBtn) {
     confirmBtn.onclick = async () => {
       const code = document.getElementById('enrollment-code-input').value.trim().toUpperCase();
-      if (!code) {
-        Swal.fire('Error', 'Please enter an enrollment code', 'error');
-        return;
-      }
-      
+      if (!code) { Swal.fire('Error', 'Please enter an enrollment code', 'error'); return; }
       closeJoinModal();
-      
       const result = await Swal.fire({
-        title: 'Join Class?',
-        text: 'Are you sure you want to join this class?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, join!',
-        cancelButtonText: 'Cancel'
+        title: 'Join Class?', text: 'Are you sure you want to join this class?',
+        icon: 'question', showCancelButton: true,
+        confirmButtonText: 'Yes, join!', cancelButtonText: 'Cancel'
       });
-      
       if (result.isConfirmed) {
-        Swal.fire({
-          title: 'Joining...',
-          text: 'Please wait',
-          allowOutsideClick: false,
-          didOpen: () => {
-            Swal.showLoading();
-          }
-        });
-        
+        Swal.fire({ title: 'Joining...', text: 'Please wait', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         const joinResult = await joinSection(code);
-        
         if (joinResult.success) {
           Swal.fire('Success!', joinResult.message, 'success');
           await fetchClasses();
@@ -289,21 +304,20 @@ function setupJoinButton() {
       }
     };
   }
-  
+
   const codeInput = document.getElementById('enrollment-code-input');
   if (codeInput) {
     codeInput.oninput = async () => {
-      const code = codeInput.value.trim().toUpperCase();
+      const code            = codeInput.value.trim().toUpperCase();
       const previewContainer = document.getElementById('preview-container');
-      const confirmBtn = document.getElementById('confirm-join');
-      
+      const confirmBtn      = document.getElementById('confirm-join');
       if (code.length >= 6) {
         const result = await checkEnrollmentCode(code);
         if (result && !result.error) {
-          document.getElementById('preview-class-title').textContent = result.class_title;
-          document.getElementById('preview-section-name').textContent = result.section_name;
-          document.getElementById('preview-professor').textContent = result.professor;
-          document.getElementById('preview-subject').textContent = result.subject_code || 'N/A';
+          document.getElementById('preview-class-title').textContent   = result.class_title;
+          document.getElementById('preview-section-name').textContent  = result.section_name;
+          document.getElementById('preview-professor').textContent     = result.professor;
+          document.getElementById('preview-subject').textContent       = result.subject_code || 'N/A';
           previewContainer.style.display = 'block';
           confirmBtn.disabled = false;
         } else {
@@ -318,7 +332,8 @@ function setupJoinButton() {
   }
 }
 
-// View Switching
+// ── VIEW SWITCHING ───────────────────────────────────────────────
+
 const allViews = document.querySelectorAll('.page-body');
 
 function showView(viewId) {
@@ -332,67 +347,88 @@ function showView(viewId) {
 
 function goBackToClasses() {
   state.currentClass = null;
-  state.currentItem = null;
-  state.currentType = null;
+  state.currentItem  = null;
+  state.currentType  = null;
   renderClasses();
   showView('classes');
 }
 
 function goBackToClassDetail() {
-  if (state.currentClass) {
-    showView('class-detail');
-  } else {
-    renderClasses();
-    showView('classes');
-  }
+  if (state.currentClass) showView('class-detail');
+  else { renderClasses(); showView('classes'); }
 }
 
 function setActiveNav(el) {
+  if (!el) return;
   document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
   el.classList.add('active');
 }
 
-// Render Functions
+// ── RENDER HOME ──────────────────────────────────────────────────
+
 async function renderHome() {
-  if (!DATA.profileLoaded) await fetchProfile();
-  if (!DATA.classesLoaded) await fetchClasses();
+  if (!DATA.profileLoaded)      await fetchProfile();
+  if (!DATA.classesLoaded)      await fetchClasses();
   if (!DATA.announcementsLoaded) await fetchAnnouncements();
 
+  // Welcome heading
   const welcomeHeading = document.querySelector('#view-home .welcome-heading');
   if (welcomeHeading) {
     welcomeHeading.textContent = `Welcome, ${DATA.profile.firstName || DATA.profile.username || 'Student'}!`;
   }
 
-  const annSection = document.getElementById('announcements-section');
-  if (annSection) {
-    annSection.innerHTML = '<h2 class="section-title">Announcements</h2>';
-    const annScrollContainer = document.createElement('div');
-    annScrollContainer.className = 'announcements-scroll-container';
+  // ── Stats row ────────────────────────────────────────────────
+  const now = new Date();
+  let completedCount = 0;
+  let pendingCount   = 0;
 
+  DATA.classes.forEach(cls => {
+    const allItems = [
+      ...(cls.materials   || []).map(m => ({ item: m, type: 'material' })),
+      ...(cls.quizzes     || []).map(q => ({ item: q, type: 'quiz' })),
+      ...(cls.assignments || []).map(a => ({ item: a, type: 'assignment' }))
+    ];
+    allItems.forEach(({ item, type }) => {
+      if (state.done.has(completionKey(type, item.id))) {
+        completedCount++;
+      } else {
+        const due = item.due_date ? new Date(item.due_date) : null;
+        if (!due || due >= now) pendingCount++;
+      }
+    });
+  });
+
+  const statClasses   = document.getElementById('stat-classes');
+  const statCompleted = document.getElementById('stat-completed');
+  const statPending   = document.getElementById('stat-pending');
+  if (statClasses)   statClasses.textContent   = DATA.classes.length;
+  if (statCompleted) statCompleted.textContent = completedCount;
+  if (statPending)   statPending.textContent   = pendingCount;
+
+  // ── Announcements ────────────────────────────────────────────
+  const annContainer = document.getElementById('announcements-container');
+  if (annContainer) {
+    annContainer.innerHTML = '';
     if (!DATA.announcements || DATA.announcements.length === 0) {
-      annScrollContainer.innerHTML = '<div class="announcement-empty">No announcements yet</div>';
+      annContainer.appendChild(
+        buildEmptyState('fa-regular fa-bell', 'No announcements',
+          'Nothing new from your teachers yet. Check back later.')
+      );
     } else {
       DATA.announcements.forEach(a => {
-        const card = document.createElement('div');
-        card.className = 'announcement-card';
-        const timestamp = a.created_at ? formatAnnouncementTime(new Date(a.created_at)) : '';
-        card.innerHTML = `
-          <p class="announcement-main">${a.title}</p>
-          <p class="announcement-sub">${a.body}</p>
-          ${timestamp ? `<p class="announcement-time">${timestamp}</p>` : ''}
-        `;
-        annScrollContainer.appendChild(card);
+        const timeAgo = a.created_at ? formatAnnouncementTime(new Date(a.created_at)) : '';
+        annContainer.appendChild(buildAnnouncementCard(a.title, a.body, timeAgo, a.unread));
       });
     }
-    annSection.appendChild(annScrollContainer);
   }
 
-  const todoSection = document.getElementById('todo-section');
-  if (todoSection) {
-    todoSection.innerHTML = '<h2 class="section-title">To Do List</h2>';
-    const now = new Date();
+  // ── To Do List (this week's pending) ─────────────────────────
+  const todoContainer = document.getElementById('home-todo-container');
+  if (todoContainer) {
+    todoContainer.innerHTML = '';
+
     const dayOfWeek = now.getDay();
-    const monday = new Date(now);
+    const monday    = new Date(now);
     monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7));
     monday.setHours(0, 0, 0, 0);
     const sunday = new Date(monday);
@@ -401,84 +437,73 @@ async function renderHome() {
 
     const pendingItems = [];
 
-    if (DATA.classes && DATA.classes.length > 0) {
-      DATA.classes.forEach(cls => {
-        (cls.materials || []).forEach(mat => {
-          if (state.done.has(completionKey('material', mat.id))) return;
-          const dueDate = mat.due_date ? new Date(mat.due_date) : null;
-          if (!dueDate || isNaN(dueDate.getTime())) return;
-          if (dueDate >= now && dueDate >= monday && dueDate <= sunday) {
-            pendingItems.push({ title: mat.title, dueDate: mat.due_date, className: cls.title, type: 'material', item: mat, cls: cls });
-          }
-        });
-        (cls.quizzes || []).forEach(quiz => {
-          if (state.done.has(completionKey('quiz', quiz.id))) return;
-          const dueDate = quiz.due_date ? new Date(quiz.due_date) : null;
-          if (!dueDate || isNaN(dueDate.getTime())) return;
-          if (dueDate >= now && dueDate >= monday && dueDate <= sunday) {
-            pendingItems.push({ title: quiz.title, dueDate: quiz.due_date, className: cls.title, type: 'quiz', item: quiz, cls: cls });
-          }
-        });
-        (cls.assignments || []).forEach(assign => {
-          if (state.done.has(completionKey('assignment', assign.id))) return;
-          const dueDate = assign.due_date ? new Date(assign.due_date) : null;
-          if (!dueDate || isNaN(dueDate.getTime())) return;
-          if (dueDate >= now && dueDate >= monday && dueDate <= sunday) {
-            pendingItems.push({ title: assign.title, dueDate: assign.due_date, className: cls.title, type: 'assignment', item: assign, cls: cls });
-          }
-        });
+    DATA.classes.forEach(cls => {
+      [
+        ...(cls.materials   || []).map(m => ({ ...m, type: 'material',   cls })),
+        ...(cls.quizzes     || []).map(q => ({ ...q, type: 'quiz',       cls })),
+        ...(cls.assignments || []).map(a => ({ ...a, type: 'assignment', cls }))
+      ].forEach(entry => {
+        if (state.done.has(completionKey(entry.type, entry.id))) return;
+        const due = entry.due_date ? new Date(entry.due_date) : null;
+        if (!due || isNaN(due)) return;
+        if (due >= now && due >= monday && due <= sunday) {
+          pendingItems.push({
+            title:     entry.title,
+            dueDate:   due,
+            className: entry.cls.title,
+            type:      entry.type,
+            item:      entry,
+            cls:       entry.cls
+          });
+        }
       });
-    }
+    });
 
-    pendingItems.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-
-    const scrollContainer = document.createElement('div');
-    scrollContainer.className = 'todo-scroll-container';
+    pendingItems.sort((a, b) => a.dueDate - b.dueDate);
 
     if (pendingItems.length === 0) {
-      scrollContainer.innerHTML = '<div class="todo-empty">No pending tasks this week</div>';
+      todoContainer.appendChild(
+        buildEmptyState('fa-regular fa-calendar-check', 'All caught up!',
+          'No pending tasks this week. Enjoy your free time!')
+      );
     } else {
-      pendingItems.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'todo-card';
-        card.style.cursor = 'pointer';
-        card.innerHTML = `
-          <p class="todo-title">${item.title}</p>
-          <p class="todo-class">${item.className}</p>
-          <p class="todo-due">Due: ${formatDueDate(item.dueDate) || 'No due date'}</p>
-        `;
-        card.addEventListener('click', () => {
-          setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
-          if (item.type === 'material') {
-            openClassDetail(item.cls);
-            openMaterialDetail(item.item, item.cls.title);
-          } else {
-            openClassDetail(item.cls);
-            openQuizDetail(item.item, item.cls.title);
-          }
-        });
-        scrollContainer.appendChild(card);
-      });
+      pendingItems.forEach(item => todoContainer.appendChild(buildHomeTodoCard(item)));
     }
-    todoSection.appendChild(scrollContainer);
   }
+
+  // ── Wire "View all" link (safe to call multiple times) ───────
+  document.querySelectorAll('[data-view]').forEach(el => {
+    if (el.classList.contains('nav-item')) return;
+    // remove previous listener by cloning (lightweight — only a few elements)
+    const clone = el.cloneNode(true);
+    el.parentNode.replaceChild(clone, el);
+    clone.addEventListener('click', e => {
+      e.preventDefault();
+      const view = clone.dataset.view;
+      setActiveNav(document.querySelector(`.nav-item[data-view="${view}"]`));
+      if (view === 'todo') renderTodo();
+      showView(view);
+    });
+  });
 }
+
+// ── RENDER CLASSES ───────────────────────────────────────────────
 
 async function renderClasses() {
   const grid = document.getElementById('classes-grid');
   if (!grid) return;
-  
+
   if (!DATA.classesLoaded) {
-    grid.innerHTML = '<p class="classes-loading">Loading classes...</p>';
+    grid.innerHTML = '<p style="color:var(--text-muted);padding:20px;">Loading classes...</p>';
     await fetchClasses();
   }
-  
+
   grid.innerHTML = '';
   if (DATA.classes.length === 0) {
-    grid.innerHTML = '<p class="classes-empty">No classes yet. Click "Join Class" to add your first class!</p>';
+    grid.innerHTML = '<p style="color:var(--text-muted);padding:20px;">No classes yet. Click "Join Class" to add your first class!</p>';
     return;
   }
-  
+
   DATA.classes.forEach(cls => {
     const card = document.createElement('div');
     card.className = 'class-card';
@@ -488,17 +513,20 @@ async function renderClasses() {
   });
 }
 
+// ── CLASS DETAIL ─────────────────────────────────────────────────
+
 function openClassDetail(cls) {
   state.currentClass = cls;
-  
+
   const detailClassName = document.getElementById('detail-class-name');
   if (detailClassName) detailClassName.textContent = cls.title;
 
+  // Materials
   const matList = document.getElementById('materials-list');
   if (matList) {
     matList.innerHTML = '';
     (cls.materials || []).forEach(mat => {
-      const el = document.createElement('div');
+      const el  = document.createElement('div');
       const key = completionKey('material', mat.id);
       el.className = 'material-item' + (state.done.has(key) ? ' done' : '');
       el.textContent = mat.title;
@@ -507,9 +535,10 @@ function openClassDetail(cls) {
     });
   }
 
+  // Quizzes
   const quizzesLabel = document.getElementById('quizzes-label');
-  if (quizzesLabel) quizzesLabel.textContent = cls.title + ' Quizzes';
-  
+  if (quizzesLabel) quizzesLabel.innerHTML = `<i class="fa-solid fa-clipboard-question"></i> ${cls.title} Quizzes`;
+
   const quizList = document.getElementById('quizzes-list');
   if (quizList) {
     quizList.innerHTML = '';
@@ -517,7 +546,7 @@ function openClassDetail(cls) {
       quizList.innerHTML = '<p style="color:#888;padding:20px;">No quizzes yet.</p>';
     } else {
       (cls.quizzes || []).forEach(quiz => {
-        const el = document.createElement('div');
+        const el  = document.createElement('div');
         const key = completionKey('quiz', quiz.id);
         el.className = 'quiz-item' + (state.done.has(key) ? ' done' : '');
         el.textContent = quiz.title;
@@ -527,10 +556,10 @@ function openClassDetail(cls) {
     }
   }
 
-  // ✅ ADD ASSIGNMENTS SECTION
+  // Assignments
   const assignmentsLabel = document.getElementById('assignments-label');
-  if (assignmentsLabel) assignmentsLabel.textContent = cls.title + ' Assignments';
-  
+  if (assignmentsLabel) assignmentsLabel.innerHTML = `<i class="fa-solid fa-file-lines"></i> ${cls.title} Assignments`;
+
   const assignmentsList = document.getElementById('assignments-list');
   if (assignmentsList) {
     assignmentsList.innerHTML = '';
@@ -538,7 +567,7 @@ function openClassDetail(cls) {
       assignmentsList.innerHTML = '<p style="color:#888;padding:20px;">No assignments yet.</p>';
     } else {
       (cls.assignments || []).forEach(assign => {
-        const el = document.createElement('div');
+        const el  = document.createElement('div');
         const key = completionKey('assignment', assign.id);
         el.className = 'quiz-item' + (state.done.has(key) ? ' done' : '');
         el.innerHTML = `<span>${assign.title}</span><span style="font-size:11px;color:#888;">${assign.points || 0} pts</span>`;
@@ -551,19 +580,21 @@ function openClassDetail(cls) {
   showView('class-detail');
 }
 
+// ── MATERIAL DETAIL ──────────────────────────────────────────────
+
 function openMaterialDetail(mat, className) {
   state.currentItem = mat;
   state.currentType = 'material';
 
   const matClassName = document.getElementById('mat-class-name');
   if (matClassName) matClassName.textContent = className;
-  
+
   const matBanner = document.getElementById('mat-banner');
   if (matBanner) matBanner.textContent = mat.title;
-  
+
   const matPdfLink = document.getElementById('mat-pdf-link');
   if (matPdfLink) matPdfLink.href = mat.pdf_url || '#';
-  
+
   const matDescription = document.getElementById('mat-description');
   if (matDescription) matDescription.textContent = mat.description || 'No description available.';
 
@@ -577,11 +608,11 @@ function openMaterialDetail(mat, className) {
   if (btn) {
     const key = completionKey('material', mat.id);
     if (state.done.has(key)) {
-      btn.textContent = 'Marked as done ✓';
-      btn.className = 'mark-done-btn done-state';
+      btn.textContent = '✓ Marked as done';
+      btn.className   = 'mark-done-btn done-state';
     } else {
       btn.textContent = 'Mark as done';
-      btn.className = 'mark-done-btn dark';
+      btn.className   = 'mark-done-btn dark';
     }
     btn.onclick = () => markDone('material');
   }
@@ -589,171 +620,183 @@ function openMaterialDetail(mat, className) {
   showView('material-detail');
 }
 
+// ── QUIZ DETAIL ──────────────────────────────────────────────────
+
 function openQuizDetail(quiz, className) {
   state.currentItem = quiz;
   state.currentType = 'quiz';
 
   const quizClassName = document.getElementById('quiz-class-name');
   if (quizClassName) quizClassName.textContent = className;
-  
+
   const quizBanner = document.getElementById('quiz-banner');
   if (quizBanner) quizBanner.textContent = quiz.title;
-  
+
   const quizLink = document.getElementById('quiz-link');
   if (quizLink) {
-    quizLink.href = quiz.link || '#';
+    quizLink.href      = quiz.link || '#';
     quizLink.textContent = quiz.link_label || 'Open Quiz';
   }
-  
+
   const quizDescription = document.getElementById('quiz-description');
   if (quizDescription) quizDescription.textContent = quiz.description || 'No description available.';
 
   const quizDueEl = document.getElementById('quiz-due-text');
   if (quizDueEl) {
-    quizDueEl.textContent = quiz.due_date ? 'Due ' + formatDueDate(quiz.due_date) : '';
+    quizDueEl.textContent  = quiz.due_date ? 'Due ' + formatDueDate(quiz.due_date) : '';
     quizDueEl.style.display = quiz.due_date ? 'block' : 'none';
   }
 
   const btn = document.getElementById('quiz-mark-btn');
   if (btn) {
-    const key = completionKey('quiz', quiz.id);
-    const dueDate = quiz.due_date ? new Date(quiz.due_date) : null;
+    const key      = completionKey('quiz', quiz.id);
+    const dueDate  = quiz.due_date ? new Date(quiz.due_date) : null;
     const isOverdue = dueDate && new Date() > dueDate;
-    
+
     if (state.done.has(key)) {
-      btn.textContent = 'Marked as done ✓';
-      btn.className = 'mark-done-btn done-state';
-      btn.disabled = false;
+      btn.textContent  = '✓ Marked as done';
+      btn.className    = 'mark-done-btn done-state';
+      btn.disabled     = false;
       btn.style.opacity = '1';
-      btn.style.cursor = 'pointer';
-      btn.onclick = () => markDone('quiz');
+      btn.style.cursor  = 'pointer';
+      btn.onclick       = () => markDone('quiz');
     } else if (isOverdue) {
-      btn.textContent = 'Past due date';
-      btn.className = 'mark-done-btn dark';
-      btn.disabled = true;
+      btn.textContent  = 'Past due date';
+      btn.className    = 'mark-done-btn dark';
+      btn.disabled     = true;
       btn.style.opacity = '0.5';
-      btn.style.cursor = 'not-allowed';
+      btn.style.cursor  = 'not-allowed';
+      btn.onclick       = null;
     } else {
-      btn.textContent = 'Mark as done';
-      btn.className = 'mark-done-btn yellow';
-      btn.disabled = false;
+      btn.textContent  = 'Mark as done';
+      btn.className    = 'mark-done-btn yellow';
+      btn.disabled     = false;
       btn.style.opacity = '1';
-      btn.style.cursor = 'pointer';
-    }
-        if (!state.done.has(key)) {
-      btn.onclick = isOverdue ? null : () => markDone('quiz');
+      btn.style.cursor  = 'pointer';
+      btn.onclick       = () => markDone('quiz');
     }
   }
 
   showView('quiz-detail');
 }
+
+// ── ASSIGNMENT DETAIL ────────────────────────────────────────────
 
 function openAssignmentDetail(assign, className) {
   state.currentItem = assign;
   state.currentType = 'assignment';
 
-  document.getElementById('quiz-class-name').textContent = className;
-  document.getElementById('quiz-banner').textContent = assign.title;
-  document.getElementById('quiz-link').href = assign.link || '#';
-  document.getElementById('quiz-link').textContent = assign.link_label || 'Open Assignment';
-  document.getElementById('quiz-description').textContent = assign.description || '';
+  const quizClassName = document.getElementById('quiz-class-name');
+  if (quizClassName) quizClassName.textContent = className;
+
+  const quizBanner = document.getElementById('quiz-banner');
+  if (quizBanner) quizBanner.textContent = assign.title;
+
+  const quizLink = document.getElementById('quiz-link');
+  if (quizLink) {
+    quizLink.href        = assign.link || '#';
+    quizLink.textContent = assign.link_label || 'Open Assignment';
+  }
+
+  const quizDescription = document.getElementById('quiz-description');
+  if (quizDescription) quizDescription.textContent = assign.description || '';
 
   const quizDueEl = document.getElementById('quiz-due-text');
   if (quizDueEl) {
-    quizDueEl.textContent = assign.due_date ? 'Due ' + formatDueDate(assign.due_date) : '';
+    quizDueEl.textContent  = assign.due_date ? 'Due ' + formatDueDate(assign.due_date) : '';
     quizDueEl.style.display = assign.due_date ? 'block' : 'none';
   }
 
   const btn = document.getElementById('quiz-mark-btn');
   if (btn) {
-    const key = completionKey('assignment', assign.id);
-    const dueDate = assign.due_date ? new Date(assign.due_date) : null;
+    const key       = completionKey('assignment', assign.id);
+    const dueDate   = assign.due_date ? new Date(assign.due_date) : null;
     const isOverdue = dueDate && new Date() > dueDate;
-    
+
     if (state.done.has(key)) {
-      btn.textContent = 'Marked as done ✓';
-      btn.className = 'mark-done-btn done-state';
-      btn.disabled = false;
+      btn.textContent  = '✓ Marked as done';
+      btn.className    = 'mark-done-btn done-state';
+      btn.disabled     = false;
       btn.style.opacity = '1';
-      btn.style.cursor = 'pointer';
-      btn.onclick = () => markDone('assignment');
+      btn.style.cursor  = 'pointer';
+      btn.onclick       = () => markDone('assignment');
     } else if (isOverdue) {
-      btn.textContent = 'Past due date';
-      btn.className = 'mark-done-btn dark';
-      btn.disabled = true;
+      btn.textContent  = 'Past due date';
+      btn.className    = 'mark-done-btn dark';
+      btn.disabled     = true;
       btn.style.opacity = '0.5';
-      btn.style.cursor = 'not-allowed';
+      btn.style.cursor  = 'not-allowed';
+      btn.onclick       = null;
     } else {
-      btn.textContent = 'Mark as done';
-      btn.className = 'mark-done-btn yellow';
-      btn.disabled = false;
+      btn.textContent  = 'Mark as done';
+      btn.className    = 'mark-done-btn yellow';
+      btn.disabled     = false;
       btn.style.opacity = '1';
-      btn.style.cursor = 'pointer';
-    }
-      if (!state.done.has(key)) {
-      btn.onclick = isOverdue ? null : () => markDone('assignment');
+      btn.style.cursor  = 'pointer';
+      btn.onclick       = () => markDone('assignment');
     }
   }
 
   showView('quiz-detail');
 }
 
-// Updated markDone function with proper check mark display
+// ── MARK DONE / UNDO ─────────────────────────────────────────────
+
 async function markDone(type) {
   if (!state.currentItem) return;
-  const id = state.currentItem.id;
+  const id  = state.currentItem.id;
   const key = completionKey(type, id);
-
   const btn = document.getElementById(type === 'material' ? 'mat-mark-btn' : 'quiz-mark-btn');
   if (btn) btn.disabled = true;
 
   if (state.done.has(key)) {
+    // Undo
     const result = await Swal.fire({
-      title: 'Are you sure?',
-      text: 'Do you want to undo marking this as done?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, undo it!',
-      cancelButtonText: 'Cancel'
+      title: 'Are you sure?', text: 'Do you want to undo marking this as done?',
+      icon: 'warning', showCancelButton: true,
+      confirmButtonText: 'Yes, undo it!', cancelButtonText: 'Cancel'
     });
-    
     if (result.isConfirmed) {
       try {
-        await fetch(`/api/mark-undone`, {
+        await fetch('/api/mark-undone', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: DATA.profile.id, itemType: type, itemId: id })
         });
         state.done.delete(key);
         if (btn) {
-          btn.textContent = 'Mark as done';
-          btn.className = type === 'material' ? 'mark-done-btn dark' : 'mark-done-btn yellow';
+          btn.textContent = type === 'material' ? 'Mark as done' : 'Mark as done';
+          btn.className   = type === 'material' ? 'mark-done-btn dark' : 'mark-done-btn yellow';
+          btn.disabled    = false;
         }
-        // Update the display in class detail view
         updateItemDisplay(type, id, false);
         if (state.currentView === 'progress') renderProgress();
-        if (state.currentView === 'home') renderHome();
+        if (state.currentView === 'home')     renderHome();
       } catch (error) {
         Swal.fire('Error', 'Could not update the database.', 'error');
+        if (btn) btn.disabled = false;
       }
+    } else {
+      if (btn) btn.disabled = false;
     }
-    if (btn) btn.disabled = false;
   } else {
+    // Mark done
     try {
-      await fetch(`/api/mark-done`, {
+      await fetch('/api/mark-done', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: DATA.profile.id, itemType: type, itemId: id })
       });
       state.done.add(key);
       if (btn) {
-        btn.textContent = '✓ Marked as done';
-        btn.className = 'mark-done-btn done-state';
+        btn.textContent  = '✓ Marked as done';
+        btn.className    = 'mark-done-btn done-state';
+        btn.disabled     = false;
+        btn.onclick       = () => markDone(type);
       }
-      // Update the display in class detail view
       updateItemDisplay(type, id, true);
       if (state.currentView === 'progress') renderProgress();
-      if (state.currentView === 'home') renderHome();
+      if (state.currentView === 'home')     renderHome();
     } catch (error) {
       Swal.fire('Error', 'Could not save to the database.', 'error');
     } finally {
@@ -762,93 +805,50 @@ async function markDone(type) {
   }
 }
 
-// New function to update item display with check mark
 function updateItemDisplay(type, id, isDone) {
-  // Update in materials list
-  if (type === 'material') {
-    const materialItems = document.querySelectorAll('#materials-list .material-item');
-    materialItems.forEach(item => {
-      if (item._id === id || item.textContent.includes(id)) {
-        if (isDone) {
-          item.classList.add('done');
-          item.style.textDecoration = 'line-through';
-          item.style.opacity = '0.7';
-        } else {
-          item.classList.remove('done');
-          item.style.textDecoration = 'none';
-          item.style.opacity = '1';
-        }
-      }
-    });
-  }
-  
-  // Update in quizzes list
-  if (type === 'quiz') {
-    const quizItems = document.querySelectorAll('#quizzes-list .quiz-item');
-    quizItems.forEach(item => {
-      if (item._id === id || item.textContent.includes(id)) {
-        if (isDone) {
-          item.classList.add('done');
-          item.style.textDecoration = 'line-through';
-          item.style.opacity = '0.7';
-        } else {
-          item.classList.remove('done');
-          item.style.textDecoration = 'none';
-          item.style.opacity = '1';
-        }
-      }
-    });
-  }
+  const selector = type === 'material'
+    ? '#materials-list .material-item'
+    : type === 'quiz'
+      ? '#quizzes-list .quiz-item'
+      : '#assignments-list .quiz-item';
+
+  document.querySelectorAll(selector).forEach(item => {
+    if (item._itemId === id) {
+      isDone ? item.classList.add('done') : item.classList.remove('done');
+    }
+  });
 }
+
+// ── RENDER TODO PAGE ─────────────────────────────────────────────
 
 function renderTodo() {
   const now = new Date();
-
   const allTodos = [];
 
   if (DATA.classes && DATA.classes.length > 0) {
     DATA.classes.forEach(cls => {
-      // Materials
-      (cls.materials || []).forEach(mat => {
-        if (state.done.has(completionKey('material', mat.id))) return;
-        if (!mat.due_date) return;
+      [
+        ...(cls.materials   || []).map(m => ({ ...m, type: 'material',   cls })),
+        ...(cls.quizzes     || []).map(q => ({ ...q, type: 'quiz',       cls })),
+        ...(cls.assignments || []).map(a => ({ ...a, type: 'assignment', cls }))
+      ].forEach(entry => {
+        if (state.done.has(completionKey(entry.type, entry.id))) return;
+        if (!entry.due_date) return;
         allTodos.push({
-          title: mat.title, dueDate: new Date(mat.due_date),
-          type: 'material', item: mat, cls: cls
-        });
-      });
-      // Quizzes
-      (cls.quizzes || []).forEach(quiz => {
-        if (state.done.has(completionKey('quiz', quiz.id))) return;
-        if (!quiz.due_date) return;
-        allTodos.push({
-          title: quiz.title, dueDate: new Date(quiz.due_date),
-          type: 'quiz', item: quiz, cls: cls
-        });
-      });
-      // Assignments
-      (cls.assignments || []).forEach(assign => {
-        if (state.done.has(completionKey('assignment', assign.id))) return;
-        if (!assign.due_date) return;
-        allTodos.push({
-          title: assign.title, dueDate: new Date(assign.due_date),
-          type: 'assignment', item: assign, cls: cls
+          title:   entry.title,
+          dueDate: new Date(entry.due_date),
+          type:    entry.type,
+          item:    entry,
+          cls:     entry.cls
         });
       });
     });
   }
 
-    const assigned = allTodos.filter(t => {
-    const d = t.dueDate instanceof Date ? t.dueDate : new Date(t.dueDate);
-    return d.getTime() >= now.getTime();
-  });
-  const missing = allTodos.filter(t => {
-    const d = t.dueDate instanceof Date ? t.dueDate : new Date(t.dueDate);
-    return d.getTime() < now.getTime();
-  });
-  assigned.sort((a, b) => a.dueDate - b.dueDate);
-  missing.sort((a, b) => a.dueDate - b.dueDate);
+  const assigned = allTodos.filter(t => t.dueDate >= now).sort((a, b) => a.dueDate - b.dueDate);
+  const missing  = allTodos.filter(t => t.dueDate <  now).sort((a, b) => a.dueDate - b.dueDate);
 
+  // Assigned list
   const assignedList = document.getElementById('todo-assigned-list');
   if (assignedList) {
     assignedList.innerHTML = '';
@@ -858,7 +858,6 @@ function renderTodo() {
       assigned.forEach(t => {
         const card = document.createElement('div');
         card.className = 'todo-page-card';
-        card.style.cursor = 'pointer';
         card.innerHTML = `
           <p class="todo-title">${t.title}</p>
           <p class="todo-class-name">${t.cls.title}</p>
@@ -867,15 +866,16 @@ function renderTodo() {
         card.addEventListener('click', () => {
           setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
           openClassDetail(t.cls);
-          if (t.type === 'material') openMaterialDetail(t.item, t.cls.title);
+          if (t.type === 'material')        openMaterialDetail(t.item, t.cls.title);
           else if (t.type === 'assignment') openAssignmentDetail(t.item, t.cls.title);
-          else openQuizDetail(t.item, t.cls.title);
+          else                              openQuizDetail(t.item, t.cls.title);
         });
         assignedList.appendChild(card);
       });
     }
   }
 
+  // Missing list
   const missingList = document.getElementById('todo-missing-list');
   if (missingList) {
     missingList.innerHTML = '';
@@ -885,7 +885,6 @@ function renderTodo() {
       missing.forEach(t => {
         const card = document.createElement('div');
         card.className = 'todo-missing-card';
-        card.style.cursor = 'pointer';
         card.innerHTML = `
           <p class="todo-title">${t.title}</p>
           <p class="todo-class-name">${t.cls.title}</p>
@@ -894,9 +893,9 @@ function renderTodo() {
         card.addEventListener('click', () => {
           setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
           openClassDetail(t.cls);
-          if (t.type === 'material') openMaterialDetail(t.item, t.cls.title);
+          if (t.type === 'material')        openMaterialDetail(t.item, t.cls.title);
           else if (t.type === 'assignment') openAssignmentDetail(t.item, t.cls.title);
-          else openQuizDetail(t.item, t.cls.title);
+          else                              openQuizDetail(t.item, t.cls.title);
         });
         missingList.appendChild(card);
       });
@@ -904,29 +903,31 @@ function renderTodo() {
   }
 }
 
+// ── RENDER PROGRESS ──────────────────────────────────────────────
+
 function renderProgress() {
-  const list = document.getElementById('progress-list');
+  const list    = document.getElementById('progress-list');
   const summary = document.getElementById('progress-summary');
   if (list) list.innerHTML = '';
-  
+
   let totalCompleted = 0;
-  let totalItems = 0;
-  
+  let totalItems     = 0;
+
   DATA.classes.forEach(cls => {
-    const materials = cls.materials || [];
-    const quizzes = cls.quizzes || [];
-    const assignments = cls.assignments || [];
-    const classTotal = materials.length + quizzes.length + assignments.length;
+    const materials    = cls.materials    || [];
+    const quizzes      = cls.quizzes      || [];
+    const assignments  = cls.assignments  || [];
+    const classTotal   = materials.length + quizzes.length + assignments.length;
     const classCompleted = [
-      ...materials.map(m => completionKey('material', m.id)), 
-      ...quizzes.map(q => completionKey('quiz', q.id)),
-      ...assignments.map(a => completionKey('assignment', a.id))
+      ...materials.map(m   => completionKey('material',   m.id)),
+      ...quizzes.map(q     => completionKey('quiz',        q.id)),
+      ...assignments.map(a => completionKey('assignment',  a.id))
     ].filter(key => state.done.has(key)).length;
-    
+
     totalCompleted += classCompleted;
-    totalItems += classTotal;
-    
-    const pct = classTotal > 0 ? Math.round((classCompleted / classTotal) * 100) : 0;
+    totalItems     += classTotal;
+
+    const pct  = classTotal > 0 ? Math.round((classCompleted / classTotal) * 100) : 0;
     const card = document.createElement('div');
     card.className = 'progress-card';
     card.innerHTML = `
@@ -938,9 +939,9 @@ function renderProgress() {
         <div class="progress-bar-fill" style="width: ${pct}%"></div>
       </div>
     `;
-    list.appendChild(card);
+    if (list) list.appendChild(card);
   });
-  
+
   const overallPct = totalItems > 0 ? Math.round((totalCompleted / totalItems) * 100) : 0;
   if (summary) {
     summary.innerHTML = `
@@ -957,7 +958,8 @@ function renderProgress() {
   }
 }
 
-// Profile Functions
+// ── PROFILE ──────────────────────────────────────────────────────
+
 function renderProfile() {
   refreshProfileDisplay();
   showProfilePanel('main');
@@ -965,44 +967,39 @@ function renderProfile() {
 
 function refreshProfileDisplay() {
   const p = DATA.profile;
-  const displayFirstname = document.getElementById('display-firstname');
-  const displayLastname = document.getElementById('display-lastname');
-  const displayUsername = document.getElementById('display-username');
-  const displayEmail = document.getElementById('display-email');
-  const profileUsernameDisplay = document.getElementById('profile-username-display');
-  const profileRoleDisplay = document.getElementById('profile-role-display');
-  const pwUsernameDisplay = document.getElementById('pw-username-display');
-  const editFirstname = document.getElementById('edit-firstname');
-  const editLastname = document.getElementById('edit-lastname');
-  const editUsername = document.getElementById('edit-username');
-  const editEmail = document.getElementById('edit-email');
-  
-  if (displayFirstname) displayFirstname.textContent = p.firstName;
-  if (displayLastname) displayLastname.textContent = p.lastName;
-  if (displayUsername) displayUsername.textContent = p.username;
-  if (displayEmail) displayEmail.textContent = p.email;
-  if (profileUsernameDisplay) profileUsernameDisplay.textContent = p.username;
-  if (profileRoleDisplay) profileRoleDisplay.textContent = p.role || 'student';
-  if (pwUsernameDisplay) pwUsernameDisplay.value = p.username || 'student';
-  if (editFirstname) editFirstname.value = p.firstName || '';
-  if (editLastname) editLastname.value = p.lastName || '';
-  if (editUsername) editUsername.value = p.username || '';
-  if (editEmail) editEmail.value = p.email || '';
-  
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+
+  set('display-firstname', p.firstName);
+  set('display-lastname',  p.lastName);
+  set('display-username',  p.username);
+  set('display-email',     p.email);
+  set('profile-username-display', p.username);
+  set('profile-role-display',     p.role || 'student');
+  setVal('pw-username-display', p.username || 'student');
+  setVal('edit-firstname', p.firstName || '');
+  setVal('edit-lastname',  p.lastName  || '');
+  setVal('edit-username',  p.username  || '');
+  setVal('edit-email',     p.email     || '');
+
   updateProfilePictureDisplay();
 }
 
 function showProfilePanel(panel) {
-  const profileMain = document.getElementById('profile-main');
-  const profileEditInfo = document.getElementById('profile-edit-info');
-  const profileChangePassword = document.getElementById('profile-change-password');
-  
-  if (profileMain) profileMain.style.display = panel === 'main' ? 'block' : 'none';
-  if (profileEditInfo) profileEditInfo.style.display = panel === 'edit-info' ? 'block' : 'none';
-  if (profileChangePassword) profileChangePassword.style.display = panel === 'change-password' ? 'block' : 'none';
+  ['profile-main', 'profile-edit-info', 'profile-change-password'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  const active = document.getElementById(
+    panel === 'main'            ? 'profile-main'            :
+    panel === 'edit-info'       ? 'profile-edit-info'       :
+                                  'profile-change-password'
+  );
+  if (active) active.style.display = 'block';
 }
 
-// Navigation
+// ── NAVIGATION ───────────────────────────────────────────────────
+
 document.querySelectorAll('.nav-item').forEach(link => {
   link.addEventListener('click', async function (e) {
     e.preventDefault();
@@ -1019,44 +1016,30 @@ document.querySelectorAll('.nav-item').forEach(link => {
   });
 });
 
-// Back button handlers
-document.addEventListener('click', async (e) => {
-  if (e.target.closest('#view-class-detail .back-btn')) {
-    goBackToClasses();
-    return;
-  }
-  if (e.target.closest('#view-material-detail .back-btn')) {
-    goBackToClassDetail();
-    return;
-  }
-  if (e.target.closest('#view-quiz-detail .back-btn')) {
-    goBackToClassDetail();
-    return;
-  }
+// ── BACK BUTTONS ─────────────────────────────────────────────────
+
+document.addEventListener('click', async e => {
+  if (e.target.closest('#view-class-detail .back-btn'))           { goBackToClasses();    return; }
+  if (e.target.closest('#view-material-detail .back-btn'))        { goBackToClassDetail(); return; }
+  if (e.target.closest('#view-quiz-detail .back-btn'))            { goBackToClassDetail(); return; }
 });
 
-// File upload
-document.addEventListener('change', (e) => {
-  if (e.target.id === 'profile-picture-input' && e.target.files && e.target.files[0]) {
-    const file = e.target.files[0];
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-    if (!allowedTypes.includes(file.type)) {
-      Swal.fire('Error', 'Only JPG, PNG, GIF allowed', 'error');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      Swal.fire('Error', 'File size must be less than 5MB', 'error');
-      return;
-    }
-    
-    const formData = new FormData();
-    formData.append('profilePicture', file);
-    formData.append('userId', DATA.profile.id);
-    
-    fetch('/api/upload-profile-picture', {
-      method: 'POST',
-      body: formData
-    })
+// ── FILE UPLOAD ──────────────────────────────────────────────────
+
+document.addEventListener('change', e => {
+  if (e.target.id !== 'profile-picture-input' || !e.target.files?.[0]) return;
+  const file = e.target.files[0];
+  if (!['image/jpeg', 'image/jpg', 'image/png', 'image/gif'].includes(file.type)) {
+    Swal.fire('Error', 'Only JPG, PNG, GIF allowed', 'error'); return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    Swal.fire('Error', 'File size must be less than 5MB', 'error'); return;
+  }
+  const formData = new FormData();
+  formData.append('profilePicture', file);
+  formData.append('userId', DATA.profile.id);
+
+  fetch('/api/upload-profile-picture', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(data => {
       if (data.filename) {
@@ -1067,44 +1050,44 @@ document.addEventListener('change', (e) => {
         Swal.fire('Error', 'Upload failed', 'error');
       }
     })
-    .catch(error => {
-      Swal.fire('Error', 'Could not upload picture', 'error');
-    });
-  }
+    .catch(() => Swal.fire('Error', 'Could not upload picture', 'error'));
 });
 
-// Profile button handlers
-document.addEventListener('click', async (e) => {
+// ── PROFILE BUTTON HANDLERS ──────────────────────────────────────
+
+document.addEventListener('click', async e => {
   if (e.target.id === 'upload-picture-btn') {
     document.getElementById('profile-picture-input').click();
   }
-  
-  if (e.target.id === 'btn-edit-profile') showProfilePanel('edit-info');
-  if (e.target.id === 'btn-cancel-edit') showProfilePanel('main');
-  if (e.target.id === 'btn-cancel-password') showProfilePanel('main');
-  
+
+  if (e.target.id === 'btn-edit-profile')     showProfilePanel('edit-info');
+  if (e.target.id === 'btn-cancel-edit')      showProfilePanel('main');
+  if (e.target.id === 'btn-cancel-password')  showProfilePanel('main');
+
   if (e.target.id === 'btn-change-password') {
     showProfilePanel('change-password');
-    document.getElementById('pw-new').value = '';
-    document.getElementById('pw-confirm').value = '';
-    document.getElementById('pw-verification-code').value = '';
-    document.getElementById('verification-code-section').style.display = 'none';
-    document.getElementById('btn-send-code').style.display = 'block';
-    document.getElementById('btn-save-password').style.display = 'none';
+    ['pw-new', 'pw-confirm', 'pw-verification-code'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    const vcSection = document.getElementById('verification-code-section');
+    const sendBtn   = document.getElementById('btn-send-code');
+    const saveBtn   = document.getElementById('btn-save-password');
+    if (vcSection) vcSection.style.display = 'none';
+    if (sendBtn)   sendBtn.style.display   = 'block';
+    if (saveBtn)   saveBtn.style.display   = 'none';
   }
-  
+
   if (e.target.id === 'btn-send-code') {
     try {
       const response = await fetch('/api/send-change-password-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: DATA.profile.id })
       });
       const data = await response.json();
       if (response.ok) {
         Swal.fire('Code Sent', 'Verification code sent to your email', 'success');
         document.getElementById('verification-code-section').style.display = 'block';
-        document.getElementById('btn-send-code').style.display = 'none';
+        document.getElementById('btn-send-code').style.display   = 'none';
         document.getElementById('btn-save-password').style.display = 'block';
       } else {
         Swal.fire('Error', data.message, 'error');
@@ -1113,23 +1096,21 @@ document.addEventListener('click', async (e) => {
       Swal.fire('Error', 'Could not connect to server', 'error');
     }
   }
-  
+
   if (e.target.id === 'btn-save-profile') {
     const updated = {
-      userId: DATA.profile.id,
+      userId:    DATA.profile.id,
       firstName: document.getElementById('edit-firstname').value.trim(),
-      lastName: document.getElementById('edit-lastname').value.trim(),
-      username: document.getElementById('edit-username').value.trim(),
-      email: document.getElementById('edit-email').value.trim()
+      lastName:  document.getElementById('edit-lastname').value.trim(),
+      username:  document.getElementById('edit-username').value.trim(),
+      email:     document.getElementById('edit-email').value.trim()
     };
     if (!updated.firstName || !updated.lastName || !updated.username || !updated.email) {
-      Swal.fire('Missing', 'All fields are required', 'warning');
-      return;
+      Swal.fire('Missing', 'All fields are required', 'warning'); return;
     }
     try {
       const response = await fetch('/api/update-profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated)
       });
       const data = await response.json();
@@ -1149,27 +1130,17 @@ document.addEventListener('click', async (e) => {
       Swal.fire('Error', 'Could not connect to server', 'error');
     }
   }
-  
+
   if (e.target.id === 'btn-save-password') {
-    const code = document.getElementById('pw-verification-code').value.trim();
-    const newPw = document.getElementById('pw-new').value.trim();
+    const code    = document.getElementById('pw-verification-code').value.trim();
+    const newPw   = document.getElementById('pw-new').value.trim();
     const confirm = document.getElementById('pw-confirm').value.trim();
-    if (!code || !newPw || !confirm) {
-      Swal.fire('Missing', 'All fields are required', 'warning');
-      return;
-    }
-    if (code.length !== 6) {
-      Swal.fire('Invalid', 'Enter 6-digit code', 'warning');
-      return;
-    }
-    if (newPw !== confirm) {
-      Swal.fire('Mismatch', 'Passwords do not match', 'error');
-      return;
-    }
+    if (!code || !newPw || !confirm) { Swal.fire('Missing', 'All fields are required', 'warning'); return; }
+    if (code.length !== 6)           { Swal.fire('Invalid', 'Enter 6-digit code', 'warning'); return; }
+    if (newPw !== confirm)           { Swal.fire('Mismatch', 'Passwords do not match', 'error'); return; }
     try {
       const response = await fetch('/api/change-password', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: DATA.profile.id, code, newPassword: newPw })
       });
       const data = await response.json();
@@ -1183,15 +1154,12 @@ document.addEventListener('click', async (e) => {
       Swal.fire('Error', 'Could not connect to server', 'error');
     }
   }
-  
+
   if (e.target.id === 'btn-logout') {
     Swal.fire({
-      title: 'Logout?',
-      text: 'You will be logged out of your account',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, logout!',
-      cancelButtonText: 'Cancel'
+      title: 'Logout?', text: 'You will be logged out of your account',
+      icon: 'warning', showCancelButton: true,
+      confirmButtonText: 'Yes, logout!', cancelButtonText: 'Cancel'
     }).then(result => {
       if (result.isConfirmed) {
         localStorage.removeItem('eduhub_user');
@@ -1203,17 +1171,19 @@ document.addEventListener('click', async (e) => {
   }
 });
 
-// Initialization
+// ── INIT ─────────────────────────────────────────────────────────
+
 (async function init() {
   await fetchProfile();
   await fetchClasses();
   await fetchAnnouncements();
   await fetchCompletions();
-  
+
   setupJoinButton();
-  
+
   const homeNav = document.querySelector('.nav-item[data-view="home"]');
   if (homeNav) setActiveNav(homeNav);
+
   await renderHome();
   showView('home');
 })();
