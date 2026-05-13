@@ -34,7 +34,14 @@ let state = {
   editingAnnouncementId: null,
   activeSectionTab: 'lessons',
   activeCompletionTab: { mat: 'pending', quiz: 'pending', assign: 'pending' },
-  announcements: []
+  announcements: [],
+  // File upload state
+  materialFile: null,
+  assignmentFile: null,
+  quizFile: null,
+  materialUploadType: 'file',
+  assignmentUploadType: 'file',
+  quizUploadType: 'file'
 };
 
 // =============================================
@@ -80,11 +87,35 @@ async function apiPost(url, body) {
   return res.json();
 }
 
+async function apiPostFormData(url, formData) {
+  const res = await fetch(url, {
+    method: 'POST',
+    body: formData
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || 'Server error');
+  }
+  return res.json();
+}
+
 async function apiPut(url, body) {
   const res = await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.message || 'Server error');
+  }
+  return res.json();
+}
+
+async function apiPutFormData(url, formData) {
+  const res = await fetch(url, {
+    method: 'PUT',
+    body: formData
   });
   if (!res.ok) {
     const err = await res.json();
@@ -181,8 +212,7 @@ function renderClassesView() {
       <div class="class-card-top">
         <div class="class-card-left" data-classid="${cls.id}">
           <div class="class-icon-wrap">
-            <img src="/teacherdashboard/class-icon.png" alt="class icon"
-              onerror="this.style.display='none';this.parentElement.innerHTML='📚'">
+            <i class="fa-solid fa-book"></i>
           </div>
           <div>
             <div class="class-card-name">${escHtml(cls.title)}</div>
@@ -194,7 +224,7 @@ function renderClassesView() {
         </button>
       </div>
       <div class="class-card-bottom">
-        <button class="view-class-btn" data-classid="${cls.id}">View class</button>
+        <button class="view-class-btn" data-classid="${cls.id}"><i class="fa-solid fa-eye"></i> View class</button>
       </div>`;
 
     card.querySelector('.three-dot-btn').addEventListener('click', e => {
@@ -222,6 +252,7 @@ function openEditClassModal(classId) {
 }
 
 document.getElementById('cancel-edit-class-modal').addEventListener('click', () => closeModal('modal-edit-class'));
+document.getElementById('cancel-edit-class-modal-2').addEventListener('click', () => closeModal('modal-edit-class'));
 
 document.getElementById('save-edit-class-modal').addEventListener('click', async () => {
   const title = document.getElementById('edit-class-name-input').value.trim();
@@ -282,11 +313,10 @@ async function fetchAndRenderSections(classId) {
 }
 
 // =============================================
-// OPEN SECTION DETAIL - DEFINED BEFORE renderSectionsList
+// OPEN SECTION DETAIL
 // =============================================
 function openSectionDetail(sectionId, sectionName) {
   console.log("Opening section detail. Section ID:", sectionId);
-  console.log("Section ID type:", typeof sectionId);
   
   state.currentSectionId = sectionId;
   
@@ -321,16 +351,15 @@ function renderSectionsList() {
     card.innerHTML = `
       <div class="section-card-left">
         <div class="section-icon-wrap">
-          <img src="/teacherdashboard/section-icon.png" alt="section"
-            onerror="this.style.display='none';this.parentElement.innerHTML='👥'">
+          <i class="fa-solid fa-layer-group"></i>
         </div>
         <div>
           <div class="section-card-name">${escHtml(sec.name)}</div>
           <div class="section-card-students">${enrolledCount} student${enrolledCount !== 1 ? 's' : ''} enrolled</div>
           <div class="section-card-code" style="margin-top: 8px;">
-            <span style="font-size: 12px; color: #666;">🔑 Enrollment Code: </span>
+            <span style="font-size: 12px; color: #666;"><i class="fa-solid fa-key"></i> Enrollment Code: </span>
             <span style="font-size: 14px; font-weight: 600; background: #f0fdf4; padding: 2px 8px; border-radius: 4px; font-family: monospace;">${sec.enrollment_code || 'N/A'}</span>
-            <button class="copy-code-btn" data-code="${sec.enrollment_code}" style="margin-left: 8px; padding: 2px 8px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Copy</button>
+            <button class="copy-code-btn" data-code="${sec.enrollment_code}" style="margin-left: 8px; padding: 2px 8px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fa-solid fa-copy"></i> Copy</button>
           </div>
           <div style="font-size: 11px; color: #999; margin-top: 4px;">Display Code: ${sec.code}</div>
         </div>
@@ -384,9 +413,9 @@ function openEditSectionModal(sectionId) {
       <span style="font-family: monospace;">${sec.code}</span>
     </div>
     <div>
-      <strong style="color: #666;">🔑 Enrollment Code (share with students):</strong><br/>
+      <strong style="color: #666;"><i class="fa-solid fa-key"></i> Enrollment Code (share with students):</strong><br/>
       <span style="font-family: monospace; font-size: 18px; font-weight: bold; background: #f0fdf4; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px;">${sec.enrollment_code || 'N/A'}</span>
-      <button class="copy-code-modal-btn" data-code="${sec.enrollment_code}" style="margin-left: 10px; padding: 4px 12px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer;">Copy</button>
+      <button class="copy-code-modal-btn" data-code="${sec.enrollment_code}" style="margin-left: 10px; padding: 4px 12px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-copy"></i> Copy</button>
     </div>
   `;
   
@@ -414,6 +443,7 @@ function openEditSectionModal(sectionId) {
 }
 
 document.getElementById('cancel-edit-section-modal').addEventListener('click', () => closeModal('modal-edit-section'));
+document.getElementById('cancel-edit-section-modal-2').addEventListener('click', () => closeModal('modal-edit-section'));
 
 document.getElementById('save-edit-section-modal').addEventListener('click', async () => {
   const name = document.getElementById('edit-section-name-input').value.trim();
@@ -450,17 +480,17 @@ document.getElementById('delete-section-modal-btn').addEventListener('click', as
 });
 
 // =============================================
-// SWITCH TAB - FIXED
+// SWITCH TAB
 // =============================================
 function switchTab(tab) {
   console.log("Switching to tab:", tab);
   state.activeSectionTab = tab;
   
-  document.querySelectorAll('.tab-btn').forEach(b => {
+  document.querySelectorAll('.detail-tab').forEach(b => {
     b.classList.toggle('active', b.dataset.tab === tab);
   });
   
-  document.querySelectorAll('.tab-content').forEach(c => {
+  document.querySelectorAll('.detail-tab-panel').forEach(c => {
     c.classList.remove('active');
   });
   
@@ -468,7 +498,7 @@ function switchTab(tab) {
   if (activeTab) {
     activeTab.classList.add('active');
   } else {
-    console.error("Tab content not found: tab-" + tab);
+    console.error("Tab panel not found: tab-" + tab);
   }
   
   if (tab === 'lessons') {
@@ -478,12 +508,11 @@ function switchTab(tab) {
   } else if (tab === 'assignments') {
     fetchAndRenderAssignments();
   } else if (tab === 'students') {
-    console.log('Students tab clicked, section ID:', state.currentSectionId);
     fetchAndRenderStudents();
   }
 }
 
-document.querySelectorAll('.tab-btn').forEach(btn => {
+document.querySelectorAll('.detail-tab').forEach(btn => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
 
@@ -514,8 +543,7 @@ function renderMaterialsList() {
     card.innerHTML = `
       <div class="material-card-left">
         <div class="item-icon-wrap">
-          <img src="/teacherdashboard/lesson-icon.png" alt="lesson"
-            onerror="this.style.display='none';this.parentElement.innerHTML='📖'">
+          <i class="fa-solid fa-book-open"></i>
         </div>
         <div class="material-card-info">
           <span class="material-card-name">${escHtml(mat.title)}</span>
@@ -523,8 +551,8 @@ function renderMaterialsList() {
         </div>
       </div>
       <div class="material-card-actions" onclick="event.stopPropagation()">
-        <button class="btn btn-ghost btn-sm" onclick="openMaterialModal(${mat.id})">Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteMaterial(${mat.id})">Delete</button>
+        <button class="btn btn-ghost btn-sm" onclick="openMaterialModal(${mat.id})"><i class="fa-solid fa-pen"></i> Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteMaterial(${mat.id})"><i class="fa-solid fa-trash"></i> Delete</button>
       </div>`;
     card.addEventListener('click', () => openMaterialDetail(mat));
     list.appendChild(card);
@@ -533,12 +561,29 @@ function renderMaterialsList() {
 
 function openMaterialDetail(mat) {
   state.currentMaterialId = mat.id;
+  
+  // Update header
+  document.getElementById('mat-title-display').textContent = mat.title;
   document.getElementById('mat-section-label').textContent = document.getElementById('section-detail-name').textContent;
-  document.getElementById('mat-detail-banner').textContent = mat.title;
+  
+  // Update description
+  document.getElementById('mat-detail-desc').textContent = mat.description || 'No description provided.';
+  
+  // Update link
   const link = document.getElementById('mat-detail-link');
-  link.textContent = mat.pdf_url || 'No file attached';
-  link.href = mat.pdf_url || '#';
-  document.getElementById('mat-detail-desc').textContent = mat.description || '';
+  if (mat.pdf_url) {
+    link.href = mat.pdf_url;
+    link.querySelector('span').textContent = 'Open Lesson';
+    document.getElementById('mat-link-card').style.display = 'flex';
+    document.querySelector('.material-link-text-wrapper').style.display = 'block';
+  } else {
+    link.href = '#';
+    link.querySelector('span').textContent = 'No file attached';
+    document.getElementById('mat-link-card').style.display = 'none';
+    document.querySelector('.material-link-text-wrapper').style.display = 'none';
+  }
+  
+  // Update completion tabs
   state.activeCompletionTab.mat = 'pending';
   renderCompletionTabs(document.querySelector('#view-material-detail .completion-tabs'), 'mat');
   renderCompletionStudents('mat-done-students', 'material', mat.id, 'pending');
@@ -588,8 +633,7 @@ function renderQuizzesList() {
     card.innerHTML = `
       <div class="quiz-card-left">
         <div class="item-icon-wrap">
-          <img src="/teacherdashboard/quiz-icon.png" alt="quiz"
-            onerror="this.style.display='none';this.parentElement.innerHTML='❓'">
+          <i class="fa-solid fa-clipboard-question"></i>
         </div>
         <div class="quiz-card-info">
           <span class="quiz-card-name">${escHtml(quiz.title)}</span>
@@ -597,8 +641,8 @@ function renderQuizzesList() {
         </div>
       </div>
       <div class="material-card-actions" onclick="event.stopPropagation()">
-        <button class="btn btn-ghost btn-sm" onclick="openQuizModal(${quiz.id})">Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteQuiz(${quiz.id})">Delete</button>
+        <button class="btn btn-ghost btn-sm" onclick="openQuizModal(${quiz.id})"><i class="fa-solid fa-pen"></i> Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteQuiz(${quiz.id})"><i class="fa-solid fa-trash"></i> Delete</button>
       </div>`;
     card.addEventListener('click', () => openQuizDetail(quiz));
     list.appendChild(card);
@@ -607,13 +651,32 @@ function renderQuizzesList() {
 
 function openQuizDetail(quiz) {
   state.currentQuizId = quiz.id;
+  
+  // Update header
+  document.getElementById('quiz-title-display').textContent = quiz.title;
   document.getElementById('quiz-section-label').textContent = document.getElementById('section-detail-name').textContent;
-  document.getElementById('quiz-detail-banner').textContent = quiz.title;
+  
+  // Update due date
+  document.getElementById('quiz-detail-due').textContent = quiz.due_date ? new Date(quiz.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'No due date';
+  
+  // Update description
+  document.getElementById('quiz-detail-desc').textContent = quiz.description || 'No description provided.';
+  
+  // Update link
   const link = document.getElementById('quiz-detail-link');
-  link.textContent = quiz.link || 'No link attached';
-  link.href = quiz.link || '#';
-  document.getElementById('quiz-detail-desc').textContent = quiz.description || '';
-  document.getElementById('quiz-detail-due').textContent = quiz.due_date ? new Date(quiz.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A';
+  if (quiz.link) {
+    link.href = quiz.link;
+    link.querySelector('span').textContent = 'Open Quiz';
+    document.getElementById('quiz-link-card').style.display = 'flex';
+    document.querySelector('.quiz-link-text-wrapper').style.display = 'block';
+  } else {
+    link.href = '#';
+    link.querySelector('span').textContent = 'No link attached';
+    document.getElementById('quiz-link-card').style.display = 'none';
+    document.querySelector('.quiz-link-text-wrapper').style.display = 'none';
+  }
+  
+  // Update completion tabs
   state.activeCompletionTab.quiz = 'pending';
   renderCompletionTabs(document.querySelector('#view-quiz-detail .completion-tabs'), 'quiz');
   renderCompletionStudents('quiz-done-students', 'quiz', quiz.id, 'pending');
@@ -663,8 +726,7 @@ function renderAssignmentsList() {
     card.innerHTML = `
       <div class="quiz-card-left">
         <div class="item-icon-wrap">
-          <img src="/teacherdashboard/assignment-icon.png" alt="assignment"
-            onerror="this.style.display='none';this.parentElement.innerHTML='📝'">
+          <i class="fa-solid fa-file-lines"></i>
         </div>
         <div class="quiz-card-info">
           <span class="quiz-card-name">${escHtml(assign.title)}</span>
@@ -672,8 +734,8 @@ function renderAssignmentsList() {
         </div>
       </div>
       <div class="material-card-actions" onclick="event.stopPropagation()">
-        <button class="btn btn-ghost btn-sm" onclick="openAssignmentModal(${assign.id})">Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteAssignment(${assign.id})">Delete</button>
+        <button class="btn btn-ghost btn-sm" onclick="openAssignmentModal(${assign.id})"><i class="fa-solid fa-pen"></i> Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteAssignment(${assign.id})"><i class="fa-solid fa-trash"></i> Delete</button>
       </div>`;
     card.addEventListener('click', () => openAssignmentDetail(assign));
     list.appendChild(card);
@@ -682,14 +744,29 @@ function renderAssignmentsList() {
 
 function openAssignmentDetail(assign) {
   state.currentAssignmentId = assign.id;
+  
+  // Update header
+  document.getElementById('assign-title-display').textContent = assign.title;
   document.getElementById('assign-section-label').textContent = document.getElementById('section-detail-name').textContent;
-  document.getElementById('assign-detail-banner').textContent = assign.title;
-  const link = document.getElementById('assign-detail-link');
-  link.textContent = assign.link || 'No file attached';
-  link.href = assign.link || '#';
-  document.getElementById('assign-detail-desc').textContent = assign.description || '';
-  document.getElementById('assign-detail-due').textContent = assign.due_date ? new Date(assign.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A';
+  
+  // Update due date and points
+  document.getElementById('assign-detail-due').textContent = assign.due_date ? new Date(assign.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'No due date';
   document.getElementById('assign-detail-points').textContent = (assign.points || 0) + ' points';
+  
+  // Update description
+  document.getElementById('assign-detail-desc').textContent = assign.description || 'No instructions provided.';
+  
+  // Update link
+  const link = document.getElementById('assign-detail-link');
+  if (assign.link) {
+    link.href = assign.link;
+    document.getElementById('assign-link-card').style.display = 'flex';
+  } else {
+    link.href = '#';
+    document.getElementById('assign-link-card').style.display = 'none';
+  }
+  
+  // Update completion tabs
   state.activeCompletionTab.assign = 'pending';
   renderCompletionTabs(document.querySelector('#view-assignment-detail .completion-tabs'), 'assign');
   renderCompletionStudents('assign-done-students', 'assignment', assign.id, 'pending');
@@ -742,7 +819,6 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
       return;
     }
 
-    // Determine the "done" status name based on type
     const doneStatus = (type === 'material') ? 'finished' : 'passed';
 
     let filtered = students.map(s => ({
@@ -750,7 +826,6 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
       status: s.completed_at ? doneStatus : 'pending'
     }));
 
-    // Check for missed (only for quizzes/assignments with due dates)
     if (type !== 'material') {
       let dueDate = null;
       if (type === 'quiz') {
@@ -772,7 +847,6 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
       }
     }
 
-    // Handle tab mapping: "finished" tab shows "passed" items too
     let matchStatus = filterStatus;
     if (filterStatus === 'finished' && type !== 'material') {
       matchStatus = 'passed';
@@ -799,8 +873,7 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
       card.innerHTML = `
         <div style="display:flex;align-items:center;gap:12px">
           <div class="item-icon-wrap" style="background:#11265c">
-            <img src="/teacherdashboard/student-icon.png" alt="student"
-              onerror="this.style.display='none';this.parentElement.innerHTML='👤'">
+            <i class="fa-solid fa-user"></i>
           </div>
           <div>
             <div style="font-weight:600">${escHtml(s.first_name + ' ' + s.last_name)}</div>
@@ -828,9 +901,6 @@ async function fetchAndRenderStudents() {
     return;
   }
   
-  console.log('=== FETCHING STUDENTS ===');
-  console.log('Current Section ID:', state.currentSectionId);
-  
   try {
     const enrolledEl = document.getElementById('enrolled-students-list');
     if (enrolledEl) {
@@ -838,18 +908,13 @@ async function fetchAndRenderStudents() {
     }
     
     const response = await fetch(`/api/teacher/students?sectionId=${state.currentSectionId}`);
-    console.log('Response status:', response.status);
     
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('Error response:', errorData);
       throw new Error(errorData.message || 'Failed to fetch');
     }
     
     const students = await response.json();
-    console.log('Students received:', students);
-    console.log('Number of students:', students.length);
-    
     TEACHER_DATA.students = students;
     renderStudentsList();
   } catch (err) {
@@ -868,9 +933,6 @@ function renderStudentsList() {
     return;
   }
   
-  console.log('Rendering students list. Students:', TEACHER_DATA.students);
-  console.log('Number of students:', TEACHER_DATA.students.length);
-  
   enrolledEl.innerHTML = '';
 
   if (!TEACHER_DATA.students || TEACHER_DATA.students.length === 0) {
@@ -881,7 +943,6 @@ function renderStudentsList() {
   TEACHER_DATA.students.forEach(student => {
     const card = document.createElement('div');
     card.className = 'student-card';
-    card.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #e5e7eb; background: white; border-radius: 8px; margin-bottom: 10px;';
     
     const enrollmentDate = student.enrolled_at ? new Date(student.enrolled_at).toLocaleDateString() : 'Recently';
     const firstName = student.first_name || '';
@@ -889,17 +950,17 @@ function renderStudentsList() {
     const fullName = (firstName + ' ' + lastName).trim() || 'Unknown';
     
     card.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 12px;">
+      <div class="student-card-left">
         <div style="background: #11265c; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-          <span style="color: white; font-size: 18px;">👤</span>
+          <i class="fa-solid fa-user" style="color: white; font-size: 18px;"></i>
         </div>
         <div>
-          <div style="font-weight: 600; color: #1f2937;">${escHtml(fullName)}</div>
-          <div style="font-size: 12px; color: #6b7280;">${escHtml(student.email)}</div>
-          <div style="font-size: 11px; color: #22c55e; margin-top: 4px;">✅ Enrolled: ${enrollmentDate}</div>
+          <div class="student-name">${escHtml(fullName)}</div>
+          <div class="student-email">${escHtml(student.email)}</div>
+          <div style="font-size: 11px; color: #22c55e; margin-top: 4px;"><i class="fa-solid fa-circle-check"></i> Enrolled: ${enrollmentDate}</div>
         </div>
       </div>
-      <button class="remove-student-btn" data-student-id="${student.id}" style="padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;">Remove</button>`;
+      <button class="btn btn-danger btn-sm remove-student-btn" data-student-id="${student.id}"><i class="fa-solid fa-user-minus"></i> Remove</button>`;
     
     const removeBtn = card.querySelector('.remove-student-btn');
     removeBtn.addEventListener('click', async (e) => {
@@ -909,8 +970,6 @@ function renderStudentsList() {
     
     enrolledEl.appendChild(card);
   });
-  
-  console.log('Rendered', TEACHER_DATA.students.length, 'students successfully');
 }
 
 async function removeStudent(studentId) {
@@ -954,9 +1013,17 @@ async function removeStudent(studentId) {
 function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
+// Close modals when clicking overlay
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => {
     if (e.target === overlay) overlay.classList.add('hidden');
+  });
+});
+
+// Close modals when clicking X button
+document.querySelectorAll('.close-modal').forEach(btn => {
+  btn.addEventListener('click', function() {
+    this.closest('.modal-overlay').classList.add('hidden');
   });
 });
 
@@ -968,6 +1035,7 @@ document.getElementById('btn-create-class').addEventListener('click', () => {
   openModal('modal-class');
 });
 document.getElementById('cancel-class-modal').addEventListener('click', () => closeModal('modal-class'));
+document.getElementById('cancel-class-modal-2').addEventListener('click', () => closeModal('modal-class'));
 document.getElementById('save-class-modal').addEventListener('click', async () => {
   const title = document.getElementById('class-name-input').value.trim();
   const desc = document.getElementById('class-desc-input').value.trim();
@@ -989,6 +1057,7 @@ document.getElementById('btn-add-section').addEventListener('click', () => {
   openModal('modal-section');
 });
 document.getElementById('cancel-section-modal').addEventListener('click', () => closeModal('modal-section'));
+document.getElementById('cancel-section-modal-2').addEventListener('click', () => closeModal('modal-section'));
 document.getElementById('save-section-modal').addEventListener('click', async () => {
   const name = document.getElementById('section-name-input').value.trim();
   if (!name) { Swal.fire('Error', 'Section name is required.', 'error'); return; }
@@ -1003,9 +1072,9 @@ document.getElementById('save-section-modal').addEventListener('click', async ()
         <div style="text-align: left;">
           <p><strong>Section Name:</strong> ${escHtml(name)}</p>
           <p><strong>Display Code:</strong> <code>${result.code}</code></p>
-          <p><strong>🔑 Enrollment Code (SHARE THIS WITH STUDENTS):</strong><br/>
+          <p><strong><i class="fa-solid fa-key"></i> Enrollment Code (SHARE THIS WITH STUDENTS):</strong><br/>
           <span style="background: #f0fdf4; padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 18px; font-weight: bold; display: inline-block; margin-top: 5px;">${result.enrollment_code}</span></p>
-          <button id="copy-enrollment-code" style="margin-top: 10px; padding: 5px 12px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer;">Copy Enrollment Code</button>
+          <button id="copy-enrollment-code" style="margin-top: 10px; padding: 5px 12px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-copy"></i> Copy Enrollment Code</button>
         </div>
       `,
       showConfirmButton: true,
@@ -1034,14 +1103,177 @@ document.getElementById('save-section-modal').addEventListener('click', async ()
   }
 });
 
+// =============================================
+// FILE UPLOAD HANDLERS
+// =============================================
+
+// Generic function to setup file upload zone
+function setupFileUploadZone(zoneId, inputId, previewId, browseBtnId, stateKey) {
+  const zone = document.getElementById(zoneId);
+  const input = document.getElementById(inputId);
+  const preview = document.getElementById(previewId);
+  const browseBtn = document.getElementById(browseBtnId);
+  
+  if (!zone || !input || !preview) return;
+  
+  // Click to browse
+  zone.addEventListener('click', (e) => {
+    if (e.target === browseBtn || browseBtn.contains(e.target)) return;
+    input.click();
+  });
+  
+  if (browseBtn) {
+    browseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      input.click();
+    });
+  }
+  
+  // File selection
+  input.addEventListener('change', (e) => {
+    handleFileSelect(e.target.files[0], preview, stateKey);
+  });
+  
+  // Drag and drop
+  zone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    zone.classList.add('drag-over');
+  });
+  
+  zone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    zone.classList.remove('drag-over');
+  });
+  
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      input.files = e.dataTransfer.files;
+      handleFileSelect(file, preview, stateKey);
+    }
+  });
+}
+
+// Handle file selection
+function handleFileSelect(file, previewContainer, stateKey) {
+  if (!file) return;
+  
+  // Update state
+  state[stateKey] = file;
+  
+  // Update preview
+  const fileSize = formatFileSize(file.size);
+  previewContainer.innerHTML = `
+    <div class="file-preview-item">
+      <div class="file-preview-item-left">
+        <i class="fa-solid fa-file" style="color: var(--accent);"></i>
+        <div>
+          <div class="file-preview-name">${escHtml(file.name)}</div>
+          <div class="file-preview-size">${fileSize}</div>
+        </div>
+      </div>
+      <button class="file-preview-remove" onclick="removeFile('${stateKey}', '${previewContainer.id}')">&times;</button>
+    </div>
+  `;
+}
+
+// Remove file
+function removeFile(stateKey, previewId) {
+  state[stateKey] = null;
+  
+  // Reset file input
+  const inputMap = {
+    'materialFile': 'material-file-input',
+    'assignmentFile': 'assignment-file-input',
+    'quizFile': 'quiz-file-input'
+  };
+  
+  const inputId = inputMap[stateKey];
+  if (inputId) {
+    document.getElementById(inputId).value = '';
+  }
+  
+  // Clear preview
+  document.getElementById(previewId).innerHTML = '';
+}
+
+// Format file size
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Setup upload type toggles
+function setupUploadTypeToggle(fileTypeBtnId, linkTypeBtnId, fileUploadZoneId, linkInputGroupId, stateKey) {
+  const fileBtn = document.getElementById(fileTypeBtnId);
+  const linkBtn = document.getElementById(linkTypeBtnId);
+  const fileZone = document.getElementById(fileUploadZoneId);
+  const linkGroup = document.getElementById(linkInputGroupId);
+  
+  if (!fileBtn || !linkBtn) return;
+  
+  fileBtn.addEventListener('click', () => {
+    fileBtn.classList.add('active');
+    linkBtn.classList.remove('active');
+    if (fileZone) fileZone.classList.remove('hidden');
+    if (linkGroup) linkGroup.classList.add('hidden');
+    state[stateKey] = 'file';
+  });
+  
+  linkBtn.addEventListener('click', () => {
+    linkBtn.classList.add('active');
+    fileBtn.classList.remove('active');
+    if (fileZone) fileZone.classList.add('hidden');
+    if (linkGroup) linkGroup.classList.remove('hidden');
+    state[stateKey] = 'link';
+  });
+}
+
+// Initialize all file upload zones
+function initFileUploads() {
+  // Material
+  setupFileUploadZone('material-file-upload-zone', 'material-file-input', 'material-file-preview', 'material-browse-btn', 'materialFile');
+  setupUploadTypeToggle('material-file-type-btn', 'material-link-type-btn', 'material-file-upload-zone', 'material-link-input-group', 'materialUploadType');
+  
+  // Assignment
+  setupFileUploadZone('assignment-file-upload-zone', 'assignment-file-input', 'assignment-file-preview', 'assignment-browse-btn', 'assignmentFile');
+  setupUploadTypeToggle('assignment-file-type-btn', 'assignment-link-type-btn', 'assignment-file-upload-zone', 'assignment-link-input-group', 'assignmentUploadType');
+  
+  // Quiz
+  setupFileUploadZone('quiz-file-upload-zone', 'quiz-file-input', 'quiz-file-preview', 'quiz-browse-btn', 'quizFile');
+  setupUploadTypeToggle('quiz-file-type-btn', 'quiz-link-type-btn', 'quiz-file-upload-zone', 'quiz-link-input-group', 'quizUploadType');
+}
+
 // ---- Material Modal ----
 function openMaterialModal(editId = null) {
   state.editingMaterialId = editId;
   const mat = editId ? TEACHER_DATA.materials.find(m => m.id === editId) : null;
+  
   document.getElementById('modal-material-title-text').textContent = editId ? 'Edit Material' : 'Add Learning Material';
   document.getElementById('material-name-input').value = mat ? mat.title : '';
   document.getElementById('material-desc-input').value = mat ? mat.description || '' : '';
   document.getElementById('material-link-input').value = mat ? mat.pdf_url || '' : '';
+  
+  // Reset file upload state
+  state.materialFile = null;
+  document.getElementById('material-file-preview').innerHTML = '';
+  document.getElementById('material-file-input').value = '';
+  
+  // Reset to file upload mode
+  state.materialUploadType = 'file';
+  document.getElementById('material-file-type-btn').classList.add('active');
+  document.getElementById('material-link-type-btn').classList.remove('active');
+  document.getElementById('material-file-upload-zone').classList.remove('hidden');
+  document.getElementById('material-link-input-group').classList.add('hidden');
+  
   openModal('modal-material');
 }
 
@@ -1049,17 +1281,39 @@ document.getElementById('btn-add-material').addEventListener('click', () => open
 document.getElementById('btn-edit-material').addEventListener('click', () => openMaterialModal(state.currentMaterialId));
 document.getElementById('btn-delete-material').addEventListener('click', () => deleteMaterial(state.currentMaterialId));
 document.getElementById('cancel-material-modal').addEventListener('click', () => closeModal('modal-material'));
+document.getElementById('cancel-material-modal-2').addEventListener('click', () => closeModal('modal-material'));
+
 document.getElementById('save-material-modal').addEventListener('click', async () => {
   const title = document.getElementById('material-name-input').value.trim();
   const desc = document.getElementById('material-desc-input').value.trim();
-  const link = document.getElementById('material-link-input').value.trim();
+  
   if (!title) { Swal.fire('Error', 'Material name is required.', 'error'); return; }
+  
   try {
-    if (state.editingMaterialId) {
-      await apiPut(`/api/teacher/materials/${state.editingMaterialId}`, { title, description: desc, link });
+    if (state.materialUploadType === 'file' && state.materialFile) {
+      // Upload with file
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('description', desc);
+      formData.append('sectionId', state.currentSectionId);
+      formData.append('file', state.materialFile);
+      
+      if (state.editingMaterialId) {
+        await apiPutFormData(`/api/teacher/materials/${state.editingMaterialId}`, formData);
+      } else {
+        await apiPostFormData('/api/teacher/materials', formData);
+      }
     } else {
-      await apiPost('/api/teacher/materials', { sectionId: state.currentSectionId, title, description: desc, link });
+      // Upload with link or no file
+      const link = document.getElementById('material-link-input').value.trim();
+      
+      if (state.editingMaterialId) {
+        await apiPut(`/api/teacher/materials/${state.editingMaterialId}`, { title, description: desc, link });
+      } else {
+        await apiPost('/api/teacher/materials', { sectionId: state.currentSectionId, title, description: desc, link });
+      }
     }
+    
     closeModal('modal-material');
     fetchAndRenderMaterials();
     Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
@@ -1072,11 +1326,26 @@ document.getElementById('save-material-modal').addEventListener('click', async (
 function openQuizModal(editId = null) {
   state.editingQuizId = editId;
   const quiz = editId ? TEACHER_DATA.quizzes.find(q => q.id === editId) : null;
+  
   document.getElementById('modal-quiz-title-text').textContent = editId ? 'Edit Quiz' : 'Add Quiz';
   document.getElementById('quiz-name-input').value = quiz ? quiz.title : '';
   document.getElementById('quiz-desc-input').value = quiz ? quiz.description || '' : '';
   document.getElementById('quiz-link-input').value = quiz ? quiz.link || '' : '';
   document.getElementById('quiz-due-input').value = quiz && quiz.due_date ? formatDateTimeLocal(quiz.due_date) : '';
+  document.getElementById('quiz-points-input').value = quiz ? quiz.points || '' : '';
+  
+  // Reset file upload state
+  state.quizFile = null;
+  document.getElementById('quiz-file-preview').innerHTML = '';
+  document.getElementById('quiz-file-input').value = '';
+  
+  // Reset to file upload mode
+  state.quizUploadType = 'file';
+  document.getElementById('quiz-file-type-btn').classList.add('active');
+  document.getElementById('quiz-link-type-btn').classList.remove('active');
+  document.getElementById('quiz-file-upload-zone').classList.remove('hidden');
+  document.getElementById('quiz-link-input-group').classList.add('hidden');
+  
   openModal('modal-quiz');
 }
 
@@ -1084,18 +1353,43 @@ document.getElementById('btn-add-quiz').addEventListener('click', () => openQuiz
 document.getElementById('btn-edit-quiz').addEventListener('click', () => openQuizModal(state.currentQuizId));
 document.getElementById('btn-delete-quiz').addEventListener('click', () => deleteQuiz(state.currentQuizId));
 document.getElementById('cancel-quiz-modal').addEventListener('click', () => closeModal('modal-quiz'));
+document.getElementById('cancel-quiz-modal-2').addEventListener('click', () => closeModal('modal-quiz'));
+
 document.getElementById('save-quiz-modal').addEventListener('click', async () => {
   const title = document.getElementById('quiz-name-input').value.trim();
   const desc = document.getElementById('quiz-desc-input').value.trim();
-  const link = document.getElementById('quiz-link-input').value.trim();
   const due = document.getElementById('quiz-due-input').value;
+  const points = document.getElementById('quiz-points-input').value;
+  
   if (!title) { Swal.fire('Error', 'Quiz title is required.', 'error'); return; }
+  
   try {
-    if (state.editingQuizId) {
-      await apiPut(`/api/teacher/quizzes/${state.editingQuizId}`, { title, description: desc, link, dueDate: due });
+    if (state.quizUploadType === 'file' && state.quizFile) {
+      // Upload with file
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('description', desc);
+      formData.append('sectionId', state.currentSectionId);
+      formData.append('dueDate', due);
+      formData.append('points', points);
+      formData.append('file', state.quizFile);
+      
+      if (state.editingQuizId) {
+        await apiPutFormData(`/api/teacher/quizzes/${state.editingQuizId}`, formData);
+      } else {
+        await apiPostFormData('/api/teacher/quizzes', formData);
+      }
     } else {
-      await apiPost('/api/teacher/quizzes', { sectionId: state.currentSectionId, title, description: desc, link, dueDate: due });
+      // Upload with link
+      const link = document.getElementById('quiz-link-input').value.trim();
+      
+      if (state.editingQuizId) {
+        await apiPut(`/api/teacher/quizzes/${state.editingQuizId}`, { title, description: desc, link, dueDate: due, points });
+      } else {
+        await apiPost('/api/teacher/quizzes', { sectionId: state.currentSectionId, title, description: desc, link, dueDate: due, points });
+      }
     }
+    
     closeModal('modal-quiz');
     fetchAndRenderQuizzes();
     Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
@@ -1108,12 +1402,26 @@ document.getElementById('save-quiz-modal').addEventListener('click', async () =>
 function openAssignmentModal(editId = null) {
   state.editingAssignmentId = editId;
   const assign = editId ? TEACHER_DATA.assignments.find(a => a.id === editId) : null;
+  
   document.getElementById('modal-assignment-title-text').textContent = editId ? 'Edit Assignment' : 'Add Assignment';
   document.getElementById('assignment-name-input').value = assign ? assign.title : '';
   document.getElementById('assignment-desc-input').value = assign ? assign.description || '' : '';
   document.getElementById('assignment-due-input').value = assign && assign.due_date ? formatDateTimeLocal(assign.due_date) : '';
   document.getElementById('assignment-points-input').value = assign ? assign.points || '' : '';
   document.getElementById('assignment-link-input').value = assign ? assign.link || '' : '';
+  
+  // Reset file upload state
+  state.assignmentFile = null;
+  document.getElementById('assignment-file-preview').innerHTML = '';
+  document.getElementById('assignment-file-input').value = '';
+  
+  // Reset to file upload mode
+  state.assignmentUploadType = 'file';
+  document.getElementById('assignment-file-type-btn').classList.add('active');
+  document.getElementById('assignment-link-type-btn').classList.remove('active');
+  document.getElementById('assignment-file-upload-zone').classList.remove('hidden');
+  document.getElementById('assignment-link-input-group').classList.add('hidden');
+  
   openModal('modal-assignment');
 }
 
@@ -1121,19 +1429,43 @@ document.getElementById('btn-add-assignment').addEventListener('click', () => op
 document.getElementById('btn-edit-assignment').addEventListener('click', () => openAssignmentModal(state.currentAssignmentId));
 document.getElementById('btn-delete-assignment').addEventListener('click', () => deleteAssignment(state.currentAssignmentId));
 document.getElementById('cancel-assignment-modal').addEventListener('click', () => closeModal('modal-assignment'));
+document.getElementById('cancel-assignment-modal-2').addEventListener('click', () => closeModal('modal-assignment'));
+
 document.getElementById('save-assignment-modal').addEventListener('click', async () => {
   const title = document.getElementById('assignment-name-input').value.trim();
   const desc = document.getElementById('assignment-desc-input').value.trim();
   const due = document.getElementById('assignment-due-input').value;
   const points = document.getElementById('assignment-points-input').value;
-  const link = document.getElementById('assignment-link-input').value.trim();
+  
   if (!title) { Swal.fire('Error', 'Assignment title is required.', 'error'); return; }
+  
   try {
-    if (state.editingAssignmentId) {
-      await apiPut(`/api/teacher/assignments/${state.editingAssignmentId}`, { title, description: desc, link, dueDate: due, points });
+    if (state.assignmentUploadType === 'file' && state.assignmentFile) {
+      // Upload with file
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('description', desc);
+      formData.append('sectionId', state.currentSectionId);
+      formData.append('dueDate', due);
+      formData.append('points', points);
+      formData.append('file', state.assignmentFile);
+      
+      if (state.editingAssignmentId) {
+        await apiPutFormData(`/api/teacher/assignments/${state.editingAssignmentId}`, formData);
+      } else {
+        await apiPostFormData('/api/teacher/assignments', formData);
+      }
     } else {
-      await apiPost('/api/teacher/assignments', { sectionId: state.currentSectionId, title, description: desc, link, dueDate: due, points });
+      // Upload with link
+      const link = document.getElementById('assignment-link-input').value.trim();
+      
+      if (state.editingAssignmentId) {
+        await apiPut(`/api/teacher/assignments/${state.editingAssignmentId}`, { title, description: desc, link, dueDate: due, points });
+      } else {
+        await apiPost('/api/teacher/assignments', { sectionId: state.currentSectionId, title, description: desc, link, dueDate: due, points });
+      }
     }
+    
     closeModal('modal-assignment');
     fetchAndRenderAssignments();
     Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
@@ -1152,6 +1484,7 @@ document.getElementById('btn-new-announcement').addEventListener('click', () => 
 });
 
 document.getElementById('cancel-announcement-modal').addEventListener('click', () => closeModal('modal-announcement'));
+document.getElementById('cancel-announcement-modal-2').addEventListener('click', () => closeModal('modal-announcement'));
 
 document.getElementById('save-announcement-modal').addEventListener('click', async () => {
   const title = document.getElementById('announcement-title-input').value.trim();
@@ -1233,8 +1566,7 @@ async function renderProgressView() {
         card.className = 'progress-card';
         card.innerHTML = `
           <div class="progress-card-icon">
-            <img src="/teacherdashboard/section-icon.png" alt="section"
-              onerror="this.style.display='none';this.parentElement.innerHTML='👥'">
+            <i class="fa-solid fa-layer-group"></i>
           </div>
           <div class="progress-card-body">
             <div class="progress-card-header">
@@ -1292,8 +1624,7 @@ function renderAnnouncementList() {
     card.className = 'announcement-card';
     card.innerHTML = `
       <div class="announcement-icon-wrap">
-        <img src="/teacherdashboard/announcement-icon.png" alt="announcement"
-          onerror="this.style.display='none';this.parentElement.innerHTML='📢'">
+        <i class="fa-solid fa-bullhorn"></i>
       </div>
       <div class="announcement-body-wrap">
         <div class="announcement-footer">
@@ -1302,8 +1633,8 @@ function renderAnnouncementList() {
             <div class="announcement-meta">${escHtml(a.audience)} · ${date}</div>
           </div>
           <div style="display:flex;gap:6px">
-            <button class="btn btn-ghost btn-sm" onclick="editAnnouncement(${a.id})">Edit</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(${a.id})">Delete</button>
+            <button class="btn btn-ghost btn-sm" onclick="editAnnouncement(${a.id})"><i class="fa-solid fa-pen"></i> Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(${a.id})"><i class="fa-solid fa-trash"></i> Delete</button>
           </div>
         </div>
         <div class="announcement-body" style="margin-top:10px">${escHtml(a.body)}</div>
@@ -1385,6 +1716,30 @@ function showTeacherProfilePanel(panel) {
   document.getElementById('profile-edit-info').style.display = (panel === 'edit-info') ? 'block' : 'none';
   document.getElementById('profile-change-password').style.display = (panel === 'change-password') ? 'block' : 'none';
 }
+
+// Profile picture upload
+document.getElementById('upload-picture-btn').addEventListener('click', () => {
+  document.getElementById('profile-picture-input').click();
+});
+
+document.getElementById('profile-picture-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      document.getElementById('profile-picture-img').src = event.target.result;
+      document.getElementById('profile-picture-img').style.display = 'block';
+      document.getElementById('profile-picture-icon').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+document.getElementById('remove-picture-btn').addEventListener('click', () => {
+  document.getElementById('profile-picture-img').style.display = 'none';
+  document.getElementById('profile-picture-icon').style.display = 'block';
+  document.getElementById('profile-picture-input').value = '';
+});
 
 document.getElementById('btn-edit-profile').addEventListener('click', () => showTeacherProfilePanel('edit-info'));
 document.getElementById('btn-cancel-edit').addEventListener('click', () => showTeacherProfilePanel('main'));
@@ -1554,5 +1909,6 @@ function escHtml(str) {
 (async function init() {
   await fetchTeacherProfile();
   refreshTeacherProfileDisplay();
+  initFileUploads();
   await fetchAndRenderClasses();
 })();

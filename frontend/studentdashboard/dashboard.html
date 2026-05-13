@@ -56,22 +56,14 @@
           <input type="text" placeholder="Search classes, materials, quizzes..." id="search-input" autocomplete="off" />
           <div id="search-dropdown" class="search-dropdown hidden"></div>
         </div>
-        <div class="user-avatar">
-          <div class="avatar">
-            <i class="fa-solid fa-user-astronaut"></i>
-          </div>
-        </div>
       </header>
 
       <!-- ===== HOME VIEW ===== -->
       <div class="page-body" id="view-home">
-
         <div class="welcome-section">
           <h1 class="welcome-heading">Welcome, Student!</h1>
           <p class="welcome-subheading">Stay on top of your learning journey</p>
         </div>
-
-        <!-- STATS ROW -->
         <div class="home-stats-row" id="home-stats-row">
           <div class="stat-card">
             <div class="stat-icon-wrap blue">
@@ -101,11 +93,7 @@
             </div>
           </div>
         </div>
-
-        <!-- TWO-COLUMN: ANNOUNCEMENTS + TO DO -->
         <div class="content-columns">
-
-          <!-- ANNOUNCEMENTS -->
           <section class="announcements-section" id="announcements-section">
             <div class="section-header">
               <div class="section-header-left">
@@ -121,8 +109,6 @@
               <span>Stay updated with the latest announcements</span>
             </div>
           </section>
-
-          <!-- TO DO LIST -->
           <section class="todo-section" id="todo-section">
             <div class="section-header">
               <div class="section-header-left">
@@ -139,9 +125,8 @@
               <span>You're all caught up for now</span>
             </div>
           </section>
-
         </div>
-      </div><!-- /view-home -->
+      </div>
 
       <!-- ===== CLASSES VIEW ===== -->
       <div class="page-body hidden" id="view-classes">
@@ -154,6 +139,7 @@
             <i class="fa-solid fa-plus"></i> Join Class
           </button>
         </div>
+        <p class="classes-section-label">Enrolled Classes</p>
         <div class="classes-grid" id="classes-grid"></div>
       </div>
 
@@ -168,42 +154,186 @@
             <p class="class-meta-text" id="detail-class-meta"></p>
           </div>
         </div>
-        <div class="detail-scroll-area">
-          <div class="section-label"><i class="fa-solid fa-book-open"></i> Learning Materials</div>
-          <div id="materials-list"></div>
-          <div class="section-label quizzes-label" id="quizzes-label"><i class="fa-solid fa-clipboard-question"></i> Quizzes</div>
-          <div id="quizzes-list"></div>
-          <div class="section-label quizzes-label" id="assignments-label"><i class="fa-solid fa-file-lines"></i> Assignments</div>
-          <div id="assignments-list"></div>
+        <div class="detail-tab-bar">
+          <button class="detail-tab active" data-tab="materials">
+            <i class="fa-solid fa-book-open"></i> Lessons
+          </button>
+          <button class="detail-tab" data-tab="assignments">
+            <i class="fa-solid fa-file-lines"></i> Assignments
+          </button>
+          <button class="detail-tab" data-tab="quizzes">
+            <i class="fa-solid fa-clipboard-question"></i> Quizzes
+          </button>
+        </div>
+        <div class="detail-tab-content">
+          <div class="detail-tab-panel active" id="tab-panel-materials">
+            <div id="materials-list"></div>
+          </div>
+          <div class="detail-tab-panel" id="tab-panel-assignments">
+            <span id="assignments-label" style="display:none;"></span>
+            <div id="assignments-list"></div>
+          </div>
+          <div class="detail-tab-panel" id="tab-panel-quizzes">
+            <span id="quizzes-label" style="display:none;"></span>
+            <div id="quizzes-list"></div>
+          </div>
         </div>
       </div>
 
-      <!-- ===== MATERIAL DETAIL VIEW ===== -->
+      <!-- ===== MATERIAL DETAIL VIEW (LESSON) ===== -->
       <div class="page-body hidden" id="view-material-detail">
         <button class="back-btn" id="back-to-class-from-material">
           <i class="fa-solid fa-arrow-left"></i> Back to Class
         </button>
-        <div class="detail-header">
-          <div>
+
+        <!-- Header card -->
+        <div class="detail-header detail-header-card">
+          <div class="detail-header-icon-wrap blue">
+            <i class="fa-solid fa-book-open"></i>
+          </div>
+          <div class="detail-header-content">
             <h1 class="page-heading" id="mat-title"></h1>
             <p class="class-meta-text" id="mat-class-name"></p>
           </div>
         </div>
-        <div class="due-date-text" id="mat-due-text"></div>
-        <div class="item-banner yellow" id="mat-banner">
-          <i class="fa-regular fa-file-pdf"></i> Learning Material
+
+        <!-- Due date badge row -->
+        <div class="detail-info-row">
+          <div class="detail-info-badge due-badge" id="mat-due-container">
+            <i class="fa-regular fa-clock"></i>
+            <span class="due-date-text" id="mat-due-text"></span>
+          </div>
+          <div class="detail-info-badge status-badge" id="mat-status-badge">
+            <i class="fa-regular fa-circle"></i>
+            <span id="mat-status-text">Pending</span>
+          </div>
         </div>
-        <div class="item-scroll-area">
-          <a href="#" class="pdf-link" id="mat-pdf-link" target="_blank">
-            <i class="fa-regular fa-eye"></i> Open Material
-          </a>
-          <p class="item-section-title">Description</p>
+
+        <!-- Description card -->
+        <div class="item-content-card">
+          <div class="item-content-section-header">
+            <div class="section-header-icon-wrap">
+              <i class="fa-solid fa-align-left"></i>
+            </div>
+            <p class="item-section-title">Description</p>
+          </div>
           <p class="item-description" id="mat-description"></p>
         </div>
+
+        <!-- Material link card with text link at bottom -->
+        <div class="item-link-card blue-link-card" id="mat-link-card">
+          <div class="item-link-icon-wrap blue-material-icon">
+            <i class="fa-solid fa-book-open"></i>
+          </div>
+          <div class="item-link-content">
+            <p class="item-link-label">Lesson Material</p>
+            <p class="item-link-sub">Click below to open and view the lesson</p>
+          </div>
+        </div>
+
+        <!-- Clickable text link at bottom of the material card -->
+        <div class="material-link-text-wrapper">
+          <a href="#" class="material-link-text" id="mat-pdf-link" target="_blank">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <span>Open Lesson</span>
+          </a>
+        </div>
+
+        <!-- Mark as done -->
         <div class="mark-done-row">
           <button class="mark-done-btn dark" id="mat-mark-btn">
             <i class="fa-regular fa-circle-check"></i> Mark as done
           </button>
+        </div>
+
+        <!-- Hidden elements preserved for JS compatibility -->
+        <div style="display:none;">
+          <div id="mat-banner"></div>
+          <div id="mat-class-tag"></div>
+        </div>
+      </div>
+
+      <!-- ===== ASSIGNMENT DETAIL VIEW ===== -->
+      <div class="page-body hidden" id="view-assignment-detail">
+        <button class="back-btn" id="back-to-class-from-assignment">
+          <i class="fa-solid fa-arrow-left"></i> Back to Class
+        </button>
+
+        <!-- Header card -->
+        <div class="detail-header detail-header-card">
+          <div class="detail-header-icon-wrap orange">
+            <i class="fa-solid fa-file-pen"></i>
+          </div>
+          <div class="detail-header-content">
+            <h1 class="page-heading" id="assignment-title"></h1>
+            <p class="class-meta-text" id="assignment-class-name"></p>
+          </div>
+        </div>
+
+        <!-- Due date badge row -->
+        <div class="detail-info-row">
+          <div class="detail-info-badge due-badge" id="assignment-due-container">
+            <i class="fa-regular fa-clock"></i>
+            <span class="due-date-text" id="assignment-due-text"></span>
+          </div>
+          <div class="detail-info-badge status-badge" id="assignment-status-badge">
+            <i class="fa-regular fa-circle"></i>
+            <span id="assignment-status-text">Pending</span>
+          </div>
+        </div>
+
+        <!-- Description + Instructions card -->
+        <div class="item-content-card">
+          <div class="item-content-section-header">
+            <div class="section-header-icon-wrap">
+              <i class="fa-solid fa-align-left"></i>
+            </div>
+            <p class="item-section-title">Description</p>
+          </div>
+          <p class="item-description" id="assignment-description"></p>
+
+          <div class="item-content-divider"></div>
+
+          <div class="item-content-section-header">
+            <div class="section-header-icon-wrap orange-icon-wrap">
+              <i class="fa-solid fa-list-ol"></i>
+            </div>
+            <p class="item-section-title">Instructions</p>
+          </div>
+          <ul class="item-instructions" id="assignment-instructions">
+            <li>Read the assignment carefully before starting</li>
+            <li>Submit your work before the due date</li>
+            <li>Follow the format specified by your teacher</li>
+          </ul>
+        </div>
+
+        <!-- File / Link card -->
+        <div class="item-link-card orange-link-card" id="assignment-link-card">
+          <div class="item-link-icon-wrap orange-icon">
+            <i class="fa-solid fa-file-pen"></i>
+          </div>
+          <div class="item-link-content">
+            <p class="item-link-label">Assignment File</p>
+            <p class="item-link-sub">Click to open and submit your work</p>
+          </div>
+          <a href="#" class="item-link-btn orange-btn" id="assignment-link" target="_blank">
+            <i class="fa-regular fa-eye"></i>
+            <span>Open</span>
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+          </a>
+        </div>
+
+        <!-- Mark as done -->
+        <div class="mark-done-row">
+          <button class="mark-done-btn dark" id="assignment-mark-btn">
+            <i class="fa-regular fa-circle-check"></i> Mark as done
+          </button>
+        </div>
+
+        <!-- Hidden elements preserved for JS compatibility -->
+        <div style="display:none;">
+          <div id="assignment-banner"></div>
+          <div id="assignment-class-tag"></div>
         </div>
       </div>
 
@@ -212,62 +342,155 @@
         <button class="back-btn" id="back-to-class-from-quiz">
           <i class="fa-solid fa-arrow-left"></i> Back to Class
         </button>
-        <div class="detail-header">
-          <div>
+
+        <!-- Header card -->
+        <div class="detail-header detail-header-card">
+          <div class="detail-header-icon-wrap purple">
+            <i class="fa-solid fa-clipboard-question"></i>
+          </div>
+          <div class="detail-header-content">
             <h1 class="page-heading" id="quiz-title"></h1>
             <p class="class-meta-text" id="quiz-class-name"></p>
           </div>
         </div>
-        <div class="due-date-text" id="quiz-due-text"></div>
-        <div class="item-banner grey" id="quiz-banner">
-          <i class="fa-regular fa-clipboard"></i> Quiz
+
+        <!-- Due date badge row -->
+        <div class="detail-info-row">
+          <div class="detail-info-badge due-badge" id="quiz-due-container">
+            <i class="fa-regular fa-clock"></i>
+            <span class="due-date-text" id="quiz-due-text"></span>
+          </div>
+          <div class="detail-info-badge status-badge" id="quiz-status-badge">
+            <i class="fa-regular fa-circle"></i>
+            <span id="quiz-status-text">Pending</span>
+          </div>
         </div>
-        <div class="item-scroll-area">
-          <a href="#" class="quiz-link" target="_blank" id="quiz-link">
-            <i class="fa-regular fa-pen-to-square"></i> Open Quiz
-          </a>
-          <p class="item-section-title">Description</p>
+
+        <!-- Description card -->
+        <div class="item-content-card">
+          <div class="item-content-section-header">
+            <div class="section-header-icon-wrap">
+              <i class="fa-solid fa-align-left"></i>
+            </div>
+            <p class="item-section-title">Description</p>
+          </div>
           <p class="item-description" id="quiz-description"></p>
-          <p class="item-section-title">Instructions:</p>
-          <ul class="quiz-instructions" id="quiz-instructions">
-            <li>Read each question carefully</li>
-            <li>Submit before the due date</li>
-            <li>You can only take the quiz once</li>
-          </ul>
         </div>
+
+        <!-- Quiz link card with text link at bottom -->
+        <div class="item-link-card purple-link-card" id="quiz-link-card">
+          <div class="item-link-icon-wrap purple-icon">
+            <i class="fa-solid fa-clipboard-question"></i>
+          </div>
+          <div class="item-link-content">
+            <p class="item-link-label">Quiz Link</p>
+            <p class="item-link-sub">Click below to open and take the quiz</p>
+          </div>
+        </div>
+
+        <!-- Clickable text link at bottom of the quiz card -->
+        <div class="quiz-link-text-wrapper">
+          <a href="#" class="quiz-link-text" id="quiz-link" target="_blank">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <span>Open Quiz</span>
+          </a>
+        </div>
+
+        <!-- Mark as done -->
         <div class="mark-done-row">
           <button class="mark-done-btn yellow" id="quiz-mark-btn">
             <i class="fa-regular fa-circle-check"></i> Mark as done
           </button>
+        </div>
+
+        <!-- Hidden elements preserved for JS compatibility -->
+        <div style="display:none;">
+          <div id="quiz-banner"></div>
+          <div id="quiz-class-tag"></div>
+          <ul id="quiz-instructions">
+            <li>Read each question carefully</li>
+            <li>Submit before the due date</li>
+            <li>You can only take the quiz once</li>
+          </ul>
         </div>
       </div>
 
       <!-- ===== PROGRESS VIEW ===== -->
       <div class="page-body hidden" id="view-progress">
         <div class="progress-header">
-          <h1 class="page-heading">Keep track of your progress</h1>
-          <p class="page-subheading">Monitor your learning achievements across all classes</p>
+          <div class="progress-header-text">
+            <h1 class="page-heading">Keep track of your progress</h1>
+            <p class="page-subheading">Monitor your learning achievements across all classes</p>
+          </div>
         </div>
+
+        <!-- Overall summary card -->
         <div class="progress-summary" id="progress-summary"></div>
+
+        <!-- Per-class progress cards -->
+        <div class="progress-section-label-row">
+          <div class="section-header-icon-wrap">
+            <i class="fa-solid fa-chart-simple"></i>
+          </div>
+          <p class="progress-section-label-text">Progress by Class</p>
+        </div>
         <div class="progress-list" id="progress-list"></div>
       </div>
 
       <!-- ===== TO DO LIST VIEW ===== -->
       <div class="page-body hidden" id="view-todo">
-        <h1 class="page-heading">See your tasks!</h1>
-        <p class="page-subheading">Stay organized with pending and upcoming assignments</p>
-        <div class="todo-page-scroll">
-          <div class="todo-group">
-            <div class="todo-group-header">
+        <div class="todo-page-header">
+          <h1 class="page-heading">See your tasks!</h1>
+          <p class="page-subheading">Stay organized with pending and upcoming assignments</p>
+        </div>
+
+        <!-- Quick todo stats -->
+        <div class="todo-stats-row">
+          <div class="todo-stat-card yellow-stat">
+            <div class="todo-stat-icon">
               <i class="fa-regular fa-clock"></i>
-              <p class="todo-group-label">Assigned tasks</p>
+            </div>
+            <div class="todo-stat-info">
+              <span class="todo-stat-value" id="todo-stat-assigned">0</span>
+              <span class="todo-stat-label">Assigned</span>
+            </div>
+          </div>
+          <div class="todo-stat-card red-stat">
+            <div class="todo-stat-icon">
+              <i class="fa-regular fa-calendar-xmark"></i>
+            </div>
+            <div class="todo-stat-info">
+              <span class="todo-stat-value" id="todo-stat-missing">0</span>
+              <span class="todo-stat-label">Missing</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="todo-page-scroll">
+          <!-- Assigned tasks -->
+          <div class="todo-group">
+            <div class="todo-group-header-fancy yellow-group">
+              <div class="todo-group-icon-wrap yellow-icon-wrap">
+                <i class="fa-regular fa-clock"></i>
+              </div>
+              <div>
+                <p class="todo-group-label">Assigned tasks</p>
+                <p class="todo-group-sub">Upcoming tasks with due dates</p>
+              </div>
             </div>
             <div id="todo-assigned-list"></div>
           </div>
+
+          <!-- Missing tasks -->
           <div class="todo-group">
-            <div class="todo-group-header">
-              <i class="fa-regular fa-calendar-xmark"></i>
-              <p class="todo-group-label">Missing tasks</p>
+            <div class="todo-group-header-fancy red-group">
+              <div class="todo-group-icon-wrap red-icon-wrap">
+                <i class="fa-regular fa-calendar-xmark"></i>
+              </div>
+              <div>
+                <p class="todo-group-label">Missing tasks</p>
+                <p class="todo-group-sub">Past due date — submit as soon as possible</p>
+              </div>
             </div>
             <div id="todo-missing-list"></div>
           </div>
@@ -276,8 +499,12 @@
 
       <!-- ===== PROFILE VIEW ===== -->
       <div class="page-body hidden" id="view-profile">
-        <h1 class="page-heading">Your profile</h1>
+        <div class="profile-page-header">
+          <h1 class="page-heading">Your profile</h1>
+          <p class="page-subheading">Manage your account information and settings</p>
+        </div>
         <div class="profile-layout">
+          <!-- Left card -->
           <div class="profile-card">
             <div class="profile-picture-section">
               <div class="profile-avatar" id="profile-avatar-container">
@@ -292,24 +519,81 @@
             </div>
             <h2 id="profile-username-display">student</h2>
             <p class="profile-role" id="profile-role-display">Student</p>
+
+            <!-- Profile quick info badges -->
+            <div class="profile-quick-badges">
+              <div class="profile-quick-badge">
+                <i class="fa-solid fa-graduation-cap"></i>
+                <span id="profile-badge-classes">0 Classes</span>
+              </div>
+            </div>
+
             <div class="profile-actions">
               <button class="profile-btn" id="btn-edit-profile"><i class="fa-solid fa-pen-to-square"></i> Edit info</button>
               <button class="profile-btn secondary" id="btn-change-password"><i class="fa-solid fa-key"></i> Change password</button>
               <button class="profile-btn logout-btn" id="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
             </div>
           </div>
+
+          <!-- Right panels -->
           <div class="profile-panels">
+
+            <!-- Main info panel -->
             <section id="profile-main">
-              <h3 class="panel-title">Profile Information</h3>
+              <div class="profile-panel-header">
+                <div class="profile-panel-icon-wrap blue-icon-wrap">
+                  <i class="fa-solid fa-id-card"></i>
+                </div>
+                <h3 class="panel-title">Profile Information</h3>
+              </div>
               <div class="profile-info-grid">
-                <div class="info-item"><span class="label">First name</span><span class="value" id="display-firstname"></span></div>
-                <div class="info-item"><span class="label">Last name</span><span class="value" id="display-lastname"></span></div>
-                <div class="info-item"><span class="label">Username</span><span class="value" id="display-username"></span></div>
-                <div class="info-item"><span class="label">Email</span><span class="value" id="display-email"></span></div>
+                <div class="info-item">
+                  <div class="info-item-icon blue-icon-wrap">
+                    <i class="fa-solid fa-user"></i>
+                  </div>
+                  <div>
+                    <span class="label">First name</span>
+                    <span class="value" id="display-firstname"></span>
+                  </div>
+                </div>
+                <div class="info-item">
+                  <div class="info-item-icon blue-icon-wrap">
+                    <i class="fa-solid fa-user"></i>
+                  </div>
+                  <div>
+                    <span class="label">Last name</span>
+                    <span class="value" id="display-lastname"></span>
+                  </div>
+                </div>
+                <div class="info-item">
+                  <div class="info-item-icon green-icon-wrap">
+                    <i class="fa-solid fa-at"></i>
+                  </div>
+                  <div>
+                    <span class="label">Username</span>
+                    <span class="value" id="display-username"></span>
+                  </div>
+                </div>
+                <div class="info-item">
+                  <div class="info-item-icon orange-icon-wrap">
+                    <i class="fa-solid fa-envelope"></i>
+                  </div>
+                  <div>
+                    <span class="label">Email</span>
+                    <span class="value" id="display-email"></span>
+                  </div>
+                </div>
               </div>
             </section>
+
+            <!-- Edit info panel -->
             <section id="profile-edit-info" style="display:none;">
-              <h3 class="panel-title">Edit Information</h3>
+              <div class="profile-panel-header">
+                <div class="profile-panel-icon-wrap orange-icon-wrap">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </div>
+                <h3 class="panel-title">Edit Information</h3>
+              </div>
               <div class="form-grid">
                 <label>First name<input id="edit-firstname" type="text"></label>
                 <label>Last name<input id="edit-lastname" type="text"></label>
@@ -321,9 +605,16 @@
                 <button class="profile-btn secondary" id="btn-cancel-edit">Cancel</button>
               </div>
             </section>
+
+            <!-- Change password panel -->
             <section id="profile-change-password" style="display:none;">
-              <h3 class="panel-title">Change Password</h3>
-              <p class="password-hint">A verification code will be sent to your email.</p>
+              <div class="profile-panel-header">
+                <div class="profile-panel-icon-wrap purple-icon-wrap">
+                  <i class="fa-solid fa-lock"></i>
+                </div>
+                <h3 class="panel-title">Change Password</h3>
+              </div>
+              <p class="password-hint"><i class="fa-solid fa-circle-info" style="color:var(--accent);margin-right:6px;"></i>A verification code will be sent to your email.</p>
               <div class="form-grid">
                 <label>Username<input id="pw-username-display" type="text" disabled></label>
                 <label>New password<input id="pw-new" type="password"></label>
@@ -342,10 +633,10 @@
             </section>
           </div>
         </div>
-      </div><!-- /view-profile -->
+      </div>
 
     </main>
-  </div><!-- /app-wrapper -->
+  </div>
 
   <!-- ===== JOIN CLASS MODAL ===== -->
   <div id="join-modal" class="modal-overlay">

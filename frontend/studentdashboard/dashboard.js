@@ -308,9 +308,9 @@ function setupJoinButton() {
   const codeInput = document.getElementById('enrollment-code-input');
   if (codeInput) {
     codeInput.oninput = async () => {
-      const code            = codeInput.value.trim().toUpperCase();
+      const code             = codeInput.value.trim().toUpperCase();
       const previewContainer = document.getElementById('preview-container');
-      const confirmBtn      = document.getElementById('confirm-join');
+      const confirmBtn       = document.getElementById('confirm-join');
       if (code.length >= 6) {
         const result = await checkEnrollmentCode(code);
         if (result && !result.error) {
@@ -364,11 +364,32 @@ function setActiveNav(el) {
   el.classList.add('active');
 }
 
+// ── TAB SWITCHING (class detail) ─────────────────────────────────
+
+function switchDetailTab(tabName) {
+  // Update tab buttons
+  document.querySelectorAll('.detail-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  });
+  // Update panels
+  document.querySelectorAll('.detail-tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === `tab-panel-${tabName}`);
+  });
+}
+
+// Wire tab clicks (once, on DOMContentLoaded)
+document.addEventListener('click', e => {
+  const tab = e.target.closest('.detail-tab');
+  if (tab && tab.dataset.tab) {
+    switchDetailTab(tab.dataset.tab);
+  }
+});
+
 // ── RENDER HOME ──────────────────────────────────────────────────
 
 async function renderHome() {
-  if (!DATA.profileLoaded)      await fetchProfile();
-  if (!DATA.classesLoaded)      await fetchClasses();
+  if (!DATA.profileLoaded)       await fetchProfile();
+  if (!DATA.classesLoaded)       await fetchClasses();
   if (!DATA.announcementsLoaded) await fetchAnnouncements();
 
   // Welcome heading
@@ -474,7 +495,6 @@ async function renderHome() {
   // ── Wire "View all" link (safe to call multiple times) ───────
   document.querySelectorAll('[data-view]').forEach(el => {
     if (el.classList.contains('nav-item')) return;
-    // remove previous listener by cloning (lightweight — only a few elements)
     const clone = el.cloneNode(true);
     el.parentNode.replaceChild(clone, el);
     clone.addEventListener('click', e => {
@@ -499,84 +519,144 @@ async function renderClasses() {
   }
 
   grid.innerHTML = '';
+
   if (DATA.classes.length === 0) {
-    grid.innerHTML = '<p style="color:var(--text-muted);padding:20px;">No classes yet. Click "Join Class" to add your first class!</p>';
+    grid.innerHTML = `
+      <div class="empty-state" style="padding:48px 20px;">
+        <div class="empty-state-icon-wrap">
+          <i class="fa-solid fa-chalkboard-user"></i>
+        </div>
+        <p class="empty-state-title">No classes yet</p>
+        <p class="empty-state-sub">Join a class using an enrollment code from your teacher.</p>
+      </div>`;
     return;
   }
 
   DATA.classes.forEach(cls => {
     const card = document.createElement('div');
     card.className = 'class-card';
-    card.innerHTML = `<p class="class-card-title">${cls.title}</p><p class="class-card-prof">${cls.professor}</p>`;
+    card.innerHTML = `
+      <div class="class-card-icon">
+        <i class="fa-solid fa-book-open"></i>
+      </div>
+      <div class="class-card-info">
+        <p class="class-card-title">${cls.title}</p>
+        <p class="class-card-prof">${cls.professor}</p>
+      </div>
+      <div class="class-card-action">
+        View Class <i class="fa-solid fa-arrow-right"></i>
+      </div>
+    `;
     card.addEventListener('click', () => openClassDetail(cls));
     grid.appendChild(card);
   });
 }
 
-// ── CLASS DETAIL ─────────────────────────────────────────────────
+// ── CLASS DETAIL (REDESIGNED WITH TABS) ──────────────────────────
+
+function buildDetailCard(item, type, clickHandler) {
+  const key    = completionKey(type, item.id);
+  const isDone = state.done.has(key);
+
+  // Pick icon per type
+  const iconMap = {
+    material:   'fa-solid fa-book-open',
+    quiz:       'fa-solid fa-clipboard-question',
+    assignment: 'fa-solid fa-file-lines'
+  };
+  const icon = iconMap[type] || 'fa-solid fa-file';
+
+  // Sub text: due date or points
+  let subText = '';
+  if (item.due_date) subText = `Due ${formatDueDate(item.due_date)}`;
+  else if (item.points !== undefined) subText = `${item.points} pts`;
+
+  const el = document.createElement('div');
+  el.className = (type === 'material' ? 'material-item' : 'quiz-item') + (isDone ? ' done' : '');
+  el._itemId   = item.id; // keep for updateItemDisplay()
+
+  el.innerHTML = `
+    <div class="item-card-icon">
+      <i class="${icon}"></i>
+    </div>
+    <div class="item-card-body">
+      <p class="item-card-title">${item.title}</p>
+      ${subText ? `<p class="item-card-sub">${subText}</p>` : ''}
+    </div>
+    ${isDone ? '<span class="item-card-badge"><i class="fa-solid fa-check"></i> Done</span>' : ''}
+  `;
+
+  el.addEventListener('click', clickHandler);
+  return el;
+}
 
 function openClassDetail(cls) {
   state.currentClass = cls;
 
+  // Set header
   const detailClassName = document.getElementById('detail-class-name');
   if (detailClassName) detailClassName.textContent = cls.title;
 
-  // Materials
-  const matList = document.getElementById('materials-list');
-  if (matList) {
-    matList.innerHTML = '';
-    (cls.materials || []).forEach(mat => {
-      const el  = document.createElement('div');
-      const key = completionKey('material', mat.id);
-      el.className = 'material-item' + (state.done.has(key) ? ' done' : '');
-      el.textContent = mat.title;
-      el.addEventListener('click', () => openMaterialDetail(mat, cls.title));
-      matList.appendChild(el);
-    });
-  }
+  const detailMeta = document.getElementById('detail-class-meta');
+  if (detailMeta) detailMeta.textContent = cls.professor || '';
 
-  // Quizzes
+  // ── Keep hidden labels updated (JS compatibility) ────────────
   const quizzesLabel = document.getElementById('quizzes-label');
   if (quizzesLabel) quizzesLabel.innerHTML = `<i class="fa-solid fa-clipboard-question"></i> ${cls.title} Quizzes`;
 
-  const quizList = document.getElementById('quizzes-list');
-  if (quizList) {
-    quizList.innerHTML = '';
-    if (!cls.quizzes || cls.quizzes.length === 0) {
-      quizList.innerHTML = '<p style="color:#888;padding:20px;">No quizzes yet.</p>';
-    } else {
-      (cls.quizzes || []).forEach(quiz => {
-        const el  = document.createElement('div');
-        const key = completionKey('quiz', quiz.id);
-        el.className = 'quiz-item' + (state.done.has(key) ? ' done' : '');
-        el.textContent = quiz.title;
-        el.addEventListener('click', () => openQuizDetail(quiz, cls.title));
-        quizList.appendChild(el);
-      });
-    }
-  }
-
-  // Assignments
   const assignmentsLabel = document.getElementById('assignments-label');
   if (assignmentsLabel) assignmentsLabel.innerHTML = `<i class="fa-solid fa-file-lines"></i> ${cls.title} Assignments`;
 
-  const assignmentsList = document.getElementById('assignments-list');
-  if (assignmentsList) {
-    assignmentsList.innerHTML = '';
-    if (!cls.assignments || cls.assignments.length === 0) {
-      assignmentsList.innerHTML = '<p style="color:#888;padding:20px;">No assignments yet.</p>';
+  // ── Materials tab ─────────────────────────────────────────────
+  const matList = document.getElementById('materials-list');
+  if (matList) {
+    matList.innerHTML = '';
+    const materials = cls.materials || [];
+    if (materials.length === 0) {
+      matList.innerHTML = '<p class="detail-empty-msg">No lessons yet.</p>';
     } else {
-      (cls.assignments || []).forEach(assign => {
-        const el  = document.createElement('div');
-        const key = completionKey('assignment', assign.id);
-        el.className = 'quiz-item' + (state.done.has(key) ? ' done' : '');
-        el.innerHTML = `<span>${assign.title}</span><span style="font-size:11px;color:#888;">${assign.points || 0} pts</span>`;
-        el.addEventListener('click', () => openAssignmentDetail(assign, cls.title));
-        assignmentsList.appendChild(el);
+      materials.forEach(mat => {
+        matList.appendChild(
+          buildDetailCard(mat, 'material', () => openMaterialDetail(mat, cls.title))
+        );
       });
     }
   }
 
+  // ── Assignments tab ───────────────────────────────────────────
+  const assignmentsList = document.getElementById('assignments-list');
+  if (assignmentsList) {
+    assignmentsList.innerHTML = '';
+    const assignments = cls.assignments || [];
+    if (assignments.length === 0) {
+      assignmentsList.innerHTML = '<p class="detail-empty-msg">No assignments yet.</p>';
+    } else {
+      assignments.forEach(assign => {
+        assignmentsList.appendChild(
+          buildDetailCard(assign, 'assignment', () => openAssignmentDetail(assign, cls.title))
+        );
+      });
+    }
+  }
+
+  // ── Quizzes tab ───────────────────────────────────────────────
+  const quizList = document.getElementById('quizzes-list');
+  if (quizList) {
+    quizList.innerHTML = '';
+    const quizzes = cls.quizzes || [];
+    if (quizzes.length === 0) {
+      quizList.innerHTML = '<p class="detail-empty-msg">No quizzes yet.</p>';
+    } else {
+      quizzes.forEach(quiz => {
+        quizList.appendChild(
+          buildDetailCard(quiz, 'quiz', () => openQuizDetail(quiz, cls.title))
+        );
+      });
+    }
+  }
+
+  // Default to Lessons tab
+  switchDetailTab('materials');
   showView('class-detail');
 }
 
@@ -600,7 +680,7 @@ function openMaterialDetail(mat, className) {
 
   const matDueEl = document.getElementById('mat-due-text');
   if (matDueEl) {
-    matDueEl.textContent = mat.due_date ? 'Due ' + formatDueDate(mat.due_date) : '';
+    matDueEl.textContent   = mat.due_date ? 'Due ' + formatDueDate(mat.due_date) : '';
     matDueEl.style.display = mat.due_date ? 'block' : 'none';
   }
 
@@ -634,7 +714,7 @@ function openQuizDetail(quiz, className) {
 
   const quizLink = document.getElementById('quiz-link');
   if (quizLink) {
-    quizLink.href      = quiz.link || '#';
+    quizLink.href        = quiz.link || '#';
     quizLink.textContent = quiz.link_label || 'Open Quiz';
   }
 
@@ -654,23 +734,23 @@ function openQuizDetail(quiz, className) {
     const isOverdue = dueDate && new Date() > dueDate;
 
     if (state.done.has(key)) {
-      btn.textContent  = '✓ Marked as done';
-      btn.className    = 'mark-done-btn done-state';
-      btn.disabled     = false;
+      btn.textContent   = '✓ Marked as done';
+      btn.className     = 'mark-done-btn done-state';
+      btn.disabled      = false;
       btn.style.opacity = '1';
       btn.style.cursor  = 'pointer';
       btn.onclick       = () => markDone('quiz');
     } else if (isOverdue) {
-      btn.textContent  = 'Past due date';
-      btn.className    = 'mark-done-btn dark';
-      btn.disabled     = true;
+      btn.textContent   = 'Past due date';
+      btn.className     = 'mark-done-btn dark';
+      btn.disabled      = true;
       btn.style.opacity = '0.5';
       btn.style.cursor  = 'not-allowed';
       btn.onclick       = null;
     } else {
-      btn.textContent  = 'Mark as done';
-      btn.className    = 'mark-done-btn yellow';
-      btn.disabled     = false;
+      btn.textContent   = 'Mark as done';
+      btn.className     = 'mark-done-btn yellow';
+      btn.disabled      = false;
       btn.style.opacity = '1';
       btn.style.cursor  = 'pointer';
       btn.onclick       = () => markDone('quiz');
@@ -714,23 +794,23 @@ function openAssignmentDetail(assign, className) {
     const isOverdue = dueDate && new Date() > dueDate;
 
     if (state.done.has(key)) {
-      btn.textContent  = '✓ Marked as done';
-      btn.className    = 'mark-done-btn done-state';
-      btn.disabled     = false;
+      btn.textContent   = '✓ Marked as done';
+      btn.className     = 'mark-done-btn done-state';
+      btn.disabled      = false;
       btn.style.opacity = '1';
       btn.style.cursor  = 'pointer';
       btn.onclick       = () => markDone('assignment');
     } else if (isOverdue) {
-      btn.textContent  = 'Past due date';
-      btn.className    = 'mark-done-btn dark';
-      btn.disabled     = true;
+      btn.textContent   = 'Past due date';
+      btn.className     = 'mark-done-btn dark';
+      btn.disabled      = true;
       btn.style.opacity = '0.5';
       btn.style.cursor  = 'not-allowed';
       btn.onclick       = null;
     } else {
-      btn.textContent  = 'Mark as done';
-      btn.className    = 'mark-done-btn yellow';
-      btn.disabled     = false;
+      btn.textContent   = 'Mark as done';
+      btn.className     = 'mark-done-btn yellow';
+      btn.disabled      = false;
       btn.style.opacity = '1';
       btn.style.cursor  = 'pointer';
       btn.onclick       = () => markDone('assignment');
@@ -765,7 +845,7 @@ async function markDone(type) {
         });
         state.done.delete(key);
         if (btn) {
-          btn.textContent = type === 'material' ? 'Mark as done' : 'Mark as done';
+          btn.textContent = 'Mark as done';
           btn.className   = type === 'material' ? 'mark-done-btn dark' : 'mark-done-btn yellow';
           btn.disabled    = false;
         }
@@ -789,10 +869,10 @@ async function markDone(type) {
       });
       state.done.add(key);
       if (btn) {
-        btn.textContent  = '✓ Marked as done';
-        btn.className    = 'mark-done-btn done-state';
-        btn.disabled     = false;
-        btn.onclick       = () => markDone(type);
+        btn.textContent = '✓ Marked as done';
+        btn.className   = 'mark-done-btn done-state';
+        btn.disabled    = false;
+        btn.onclick     = () => markDone(type);
       }
       updateItemDisplay(type, id, true);
       if (state.currentView === 'progress') renderProgress();
@@ -815,6 +895,22 @@ function updateItemDisplay(type, id, isDone) {
   document.querySelectorAll(selector).forEach(item => {
     if (item._itemId === id) {
       isDone ? item.classList.add('done') : item.classList.remove('done');
+
+      // Also update the done badge inside the card
+      const existingBadge = item.querySelector('.item-card-badge');
+      if (isDone && !existingBadge) {
+        const badge = document.createElement('span');
+        badge.className = 'item-card-badge';
+        badge.innerHTML = '<i class="fa-solid fa-check"></i> Done';
+        item.appendChild(badge);
+        // Update icon color
+        const icon = item.querySelector('.item-card-icon');
+        if (icon) { icon.style.background = 'var(--success-bg)'; icon.style.color = 'var(--success-text)'; }
+      } else if (!isDone && existingBadge) {
+        existingBadge.remove();
+        const icon = item.querySelector('.item-card-icon');
+        if (icon) { icon.style.background = ''; icon.style.color = ''; }
+      }
     }
   });
 }
@@ -914,10 +1010,10 @@ function renderProgress() {
   let totalItems     = 0;
 
   DATA.classes.forEach(cls => {
-    const materials    = cls.materials    || [];
-    const quizzes      = cls.quizzes      || [];
-    const assignments  = cls.assignments  || [];
-    const classTotal   = materials.length + quizzes.length + assignments.length;
+    const materials   = cls.materials   || [];
+    const quizzes     = cls.quizzes     || [];
+    const assignments = cls.assignments || [];
+    const classTotal  = materials.length + quizzes.length + assignments.length;
     const classCompleted = [
       ...materials.map(m   => completionKey('material',   m.id)),
       ...quizzes.map(q     => completionKey('quiz',        q.id)),
@@ -967,20 +1063,20 @@ function renderProfile() {
 
 function refreshProfileDisplay() {
   const p = DATA.profile;
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const set    = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
 
-  set('display-firstname', p.firstName);
-  set('display-lastname',  p.lastName);
-  set('display-username',  p.username);
-  set('display-email',     p.email);
+  set('display-firstname',        p.firstName);
+  set('display-lastname',         p.lastName);
+  set('display-username',         p.username);
+  set('display-email',            p.email);
   set('profile-username-display', p.username);
   set('profile-role-display',     p.role || 'student');
-  setVal('pw-username-display', p.username || 'student');
-  setVal('edit-firstname', p.firstName || '');
-  setVal('edit-lastname',  p.lastName  || '');
-  setVal('edit-username',  p.username  || '');
-  setVal('edit-email',     p.email     || '');
+  setVal('pw-username-display',   p.username  || 'student');
+  setVal('edit-firstname',        p.firstName || '');
+  setVal('edit-lastname',         p.lastName  || '');
+  setVal('edit-username',         p.username  || '');
+  setVal('edit-email',            p.email     || '');
 
   updateProfilePictureDisplay();
 }
@@ -991,9 +1087,9 @@ function showProfilePanel(panel) {
     if (el) el.style.display = 'none';
   });
   const active = document.getElementById(
-    panel === 'main'            ? 'profile-main'            :
-    panel === 'edit-info'       ? 'profile-edit-info'       :
-                                  'profile-change-password'
+    panel === 'main'       ? 'profile-main'            :
+    panel === 'edit-info'  ? 'profile-edit-info'       :
+                             'profile-change-password'
   );
   if (active) active.style.display = 'block';
 }
@@ -1019,9 +1115,9 @@ document.querySelectorAll('.nav-item').forEach(link => {
 // ── BACK BUTTONS ─────────────────────────────────────────────────
 
 document.addEventListener('click', async e => {
-  if (e.target.closest('#view-class-detail .back-btn'))           { goBackToClasses();    return; }
-  if (e.target.closest('#view-material-detail .back-btn'))        { goBackToClassDetail(); return; }
-  if (e.target.closest('#view-quiz-detail .back-btn'))            { goBackToClassDetail(); return; }
+  if (e.target.closest('#view-class-detail .back-btn'))    { goBackToClasses();     return; }
+  if (e.target.closest('#view-material-detail .back-btn')) { goBackToClassDetail(); return; }
+  if (e.target.closest('#view-quiz-detail .back-btn'))     { goBackToClassDetail(); return; }
 });
 
 // ── FILE UPLOAD ──────────────────────────────────────────────────
@@ -1060,9 +1156,9 @@ document.addEventListener('click', async e => {
     document.getElementById('profile-picture-input').click();
   }
 
-  if (e.target.id === 'btn-edit-profile')     showProfilePanel('edit-info');
-  if (e.target.id === 'btn-cancel-edit')      showProfilePanel('main');
-  if (e.target.id === 'btn-cancel-password')  showProfilePanel('main');
+  if (e.target.id === 'btn-edit-profile')    showProfilePanel('edit-info');
+  if (e.target.id === 'btn-cancel-edit')     showProfilePanel('main');
+  if (e.target.id === 'btn-cancel-password') showProfilePanel('main');
 
   if (e.target.id === 'btn-change-password') {
     showProfilePanel('change-password');
@@ -1087,8 +1183,8 @@ document.addEventListener('click', async e => {
       if (response.ok) {
         Swal.fire('Code Sent', 'Verification code sent to your email', 'success');
         document.getElementById('verification-code-section').style.display = 'block';
-        document.getElementById('btn-send-code').style.display   = 'none';
-        document.getElementById('btn-save-password').style.display = 'block';
+        document.getElementById('btn-send-code').style.display             = 'none';
+        document.getElementById('btn-save-password').style.display         = 'block';
       } else {
         Swal.fire('Error', data.message, 'error');
       }
@@ -1136,8 +1232,8 @@ document.addEventListener('click', async e => {
     const newPw   = document.getElementById('pw-new').value.trim();
     const confirm = document.getElementById('pw-confirm').value.trim();
     if (!code || !newPw || !confirm) { Swal.fire('Missing', 'All fields are required', 'warning'); return; }
-    if (code.length !== 6)           { Swal.fire('Invalid', 'Enter 6-digit code', 'warning'); return; }
-    if (newPw !== confirm)           { Swal.fire('Mismatch', 'Passwords do not match', 'error'); return; }
+    if (code.length !== 6)           { Swal.fire('Invalid', 'Enter 6-digit code', 'warning');      return; }
+    if (newPw !== confirm)           { Swal.fire('Mismatch', 'Passwords do not match', 'error');   return; }
     try {
       const response = await fetch('/api/change-password', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -1169,7 +1265,112 @@ document.addEventListener('click', async e => {
       }
     });
   }
+
+  if (e.target.id === 'remove-picture-btn') {
+    Swal.fire({
+      title: 'Remove picture?', text: 'Your profile picture will be removed.',
+      icon: 'warning', showCancelButton: true,
+      confirmButtonText: 'Yes, remove it!', cancelButtonText: 'Cancel'
+    }).then(async result => {
+      if (result.isConfirmed) {
+        try {
+          const response = await fetch('/api/remove-profile-picture', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: DATA.profile.id })
+          });
+          if (response.ok) {
+            DATA.profile.profilePicture = null;
+            updateProfilePictureDisplay();
+            Swal.fire('Removed', 'Profile picture removed.', 'success');
+          } else {
+            Swal.fire('Error', 'Could not remove picture.', 'error');
+          }
+        } catch (error) {
+          Swal.fire('Error', 'Could not connect to server.', 'error');
+        }
+      }
+    });
+  }
 });
+
+// ── SEARCH ───────────────────────────────────────────────────────
+
+(function setupSearch() {
+  const input    = document.getElementById('search-input');
+  const dropdown = document.getElementById('search-dropdown');
+  if (!input || !dropdown) return;
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    dropdown.innerHTML = '';
+    if (!q) { dropdown.classList.add('hidden'); return; }
+
+    const results = [];
+
+    DATA.classes.forEach(cls => {
+      if (cls.title.toLowerCase().includes(q)) {
+        results.push({ type: 'class', label: cls.title, sub: cls.professor, cls });
+      }
+      (cls.materials || []).forEach(m => {
+        if (m.title.toLowerCase().includes(q)) {
+          results.push({ type: 'material', label: m.title, sub: cls.title, cls, item: m });
+        }
+      });
+      (cls.quizzes || []).forEach(qz => {
+        if (qz.title.toLowerCase().includes(q)) {
+          results.push({ type: 'quiz', label: qz.title, sub: cls.title, cls, item: qz });
+        }
+      });
+      (cls.assignments || []).forEach(a => {
+        if (a.title.toLowerCase().includes(q)) {
+          results.push({ type: 'assignment', label: a.title, sub: cls.title, cls, item: a });
+        }
+      });
+    });
+
+    if (results.length === 0) {
+      dropdown.innerHTML = '<div class="search-no-results">No results found</div>';
+      dropdown.classList.remove('hidden');
+      return;
+    }
+
+    results.slice(0, 8).forEach(r => {
+      const el = document.createElement('div');
+      el.className = 'search-result-item';
+      el.innerHTML = `
+        <span class="search-result-type type-${r.type === 'assignment' ? 'quiz' : r.type}">${r.type}</span>
+        <p class="search-result-title">${r.label}</p>
+        <p class="search-result-sub">${r.sub}</p>
+      `;
+      el.addEventListener('click', () => {
+        input.value = '';
+        dropdown.classList.add('hidden');
+        setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
+        if (r.type === 'class') {
+          renderClasses();
+          showView('classes');
+          openClassDetail(r.cls);
+        } else if (r.type === 'material') {
+          openClassDetail(r.cls);
+          openMaterialDetail(r.item, r.cls.title);
+        } else if (r.type === 'quiz') {
+          openClassDetail(r.cls);
+          openQuizDetail(r.item, r.cls.title);
+        } else if (r.type === 'assignment') {
+          openClassDetail(r.cls);
+          openAssignmentDetail(r.item, r.cls.title);
+        }
+      });
+      dropdown.appendChild(el);
+    });
+
+    dropdown.classList.remove('hidden');
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.search-bar')) dropdown.classList.add('hidden');
+  });
+})();
 
 // ── INIT ─────────────────────────────────────────────────────────
 
