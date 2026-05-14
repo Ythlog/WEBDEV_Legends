@@ -6,14 +6,23 @@
 // TEACHER DATA
 // =============================================
 const TEACHER_DATA = {
-  profile: { id: null, firstName: '', lastName: '', username: '', email: '', role: '' },
+  profile: { 
+    id: null, 
+    firstName: '', 
+    lastName: '', 
+    username: '', 
+    email: '', 
+    role: '',
+    profilePicture: null
+  },
   profileLoaded: false,
   classes: [],
   sections: [],
   materials: [],
   quizzes: [],
   assignments: [],
-  students: []
+  students: [],
+  allSectionsForAnnouncements: []
 };
 
 // =============================================
@@ -59,11 +68,146 @@ async function fetchTeacherProfile() {
       TEACHER_DATA.profile.email = user.email || '';
       TEACHER_DATA.profile.role = user.role || 'teacher';
       TEACHER_DATA.profileLoaded = true;
+      await fetchTeacherProfilePicture();
       return;
     } catch (e) { console.error('Error parsing saved user:', e); }
   }
   TEACHER_DATA.profileLoaded = true;
 }
+
+// =============================================
+// PROFILE PICTURE FUNCTIONS
+// =============================================
+function updateTeacherProfilePicture() {
+  const profileImg = document.getElementById('profile-picture-img');
+  const profileIcon = document.getElementById('profile-picture-icon');
+  const topBarAvatar = document.getElementById('top-bar-avatar');
+  
+  const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(TEACHER_DATA.profile.firstName + ' ' + TEACHER_DATA.profile.lastName)}&background=6366f1&color=fff`;
+  
+  if (TEACHER_DATA.profile.profilePicture) {
+    const timestamp = new Date().getTime();
+    const imgUrl = `/uploads/profile-pictures/${TEACHER_DATA.profile.profilePicture}?t=${timestamp}`;
+    
+    if (profileImg) {
+      profileImg.src = imgUrl;
+      profileImg.style.display = 'block';
+    }
+    if (profileIcon) {
+      profileIcon.style.display = 'none';
+    }
+    if (topBarAvatar) {
+      topBarAvatar.style.backgroundImage = `url(${imgUrl})`;
+      topBarAvatar.style.backgroundSize = 'cover';
+      topBarAvatar.style.backgroundPosition = 'center';
+      topBarAvatar.style.backgroundColor = 'transparent';
+      topBarAvatar.innerHTML = '';
+    }
+  } else {
+    if (profileImg) {
+      profileImg.src = defaultAvatar;
+      profileImg.style.display = 'block';
+    }
+    if (profileIcon) {
+      profileIcon.style.display = 'none';
+    }
+    if (topBarAvatar) {
+      topBarAvatar.style.backgroundImage = `url(${defaultAvatar})`;
+      topBarAvatar.style.backgroundSize = 'cover';
+      topBarAvatar.style.backgroundPosition = 'center';
+      topBarAvatar.innerHTML = '';
+    }
+  }
+}
+
+async function fetchTeacherProfilePicture() {
+  if (!TEACHER_DATA.profile.id) return;
+  try {
+    const response = await fetch(`/api/profile-picture?userId=${TEACHER_DATA.profile.id}`);
+    if (response.ok) {
+      const data = await response.json();
+      TEACHER_DATA.profile.profilePicture = data.profile_picture;
+      updateTeacherProfilePicture();
+    }
+  } catch (error) {
+    console.error('Error fetching profile picture:', error);
+  }
+}
+
+// Profile picture upload handler
+document.addEventListener('change', function(e) {
+  if (e.target.id === 'profile-picture-input' && e.target.files && e.target.files[0]) {
+    const file = e.target.files[0];
+    
+    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/gif'].includes(file.type)) {
+      Swal.fire('Error', 'Only JPG, PNG, GIF allowed', 'error');
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      Swal.fire('Error', 'File size must be less than 5MB', 'error');
+      return;
+    }
+    
+    const formData = new FormData();
+    formData.append('profilePicture', file);
+    formData.append('userId', TEACHER_DATA.profile.id);
+    
+    fetch('/api/upload-profile-picture', { method: 'POST', body: formData })
+      .then(res => res.json())
+      .then(data => {
+        if (data.filename) {
+          TEACHER_DATA.profile.profilePicture = data.filename;
+          updateTeacherProfilePicture();
+          Swal.fire('Success', 'Profile picture updated!', 'success');
+        } else {
+          Swal.fire('Error', 'Upload failed', 'error');
+        }
+      })
+      .catch(() => Swal.fire('Error', 'Could not upload picture', 'error'));
+  }
+});
+
+// Upload button click handler
+document.addEventListener('click', function(e) {
+  if (e.target.id === 'upload-picture-btn' || e.target.closest('#upload-picture-btn')) {
+    document.getElementById('profile-picture-input').click();
+  }
+});
+
+// Remove picture button
+document.addEventListener('click', async function(e) {
+  if (e.target.id === 'remove-picture-btn' || e.target.closest('#remove-picture-btn')) {
+    const result = await Swal.fire({
+      title: 'Remove picture?',
+      text: 'Your profile picture will be removed.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Remove',
+      cancelButtonText: 'Cancel'
+    });
+    
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch('/api/remove-profile-picture', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: TEACHER_DATA.profile.id })
+        });
+        
+        if (response.ok) {
+          TEACHER_DATA.profile.profilePicture = null;
+          updateTeacherProfilePicture();
+          Swal.fire('Removed', 'Profile picture removed.', 'success');
+        } else {
+          Swal.fire('Error', 'Failed to remove picture.', 'error');
+        }
+      } catch (error) {
+        Swal.fire('Error', 'Could not connect to server.', 'error');
+      }
+    }
+  }
+});
 
 // =============================================
 // API HELPERS
@@ -136,6 +280,122 @@ async function apiDelete(url, body = null) {
 }
 
 // =============================================
+// FETCH ALL SECTIONS FOR ANNOUNCEMENTS
+// =============================================
+async function fetchAllSectionsForAnnouncements() {
+  try {
+    const classes = await apiGet(`/api/teacher/classes?teacherId=${TEACHER_DATA.profile.id}`);
+    const allSections = [];
+    
+    for (const cls of classes) {
+      const sections = await apiGet(`/api/teacher/sections?classId=${cls.id}`);
+      sections.forEach(sec => {
+        allSections.push({
+          sectionId: sec.id,
+          sectionName: sec.name,
+          sectionCode: sec.code,
+          classId: cls.id,
+          className: cls.title
+        });
+      });
+    }
+    
+    TEACHER_DATA.allSectionsForAnnouncements = allSections;
+    return allSections;
+  } catch (err) {
+    console.error('Error fetching sections for announcements:', err);
+    return [];
+  }
+}
+
+// =============================================
+// RENDER AUDIENCE CHECKBOXES
+// =============================================
+function renderAudienceCheckboxes(preselectedAudiences = []) {
+  const container = document.getElementById('audience-checkboxes');
+  if (!container) return;
+  
+  const sections = TEACHER_DATA.allSectionsForAnnouncements;
+  
+  if (sections.length === 0) {
+    container.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">No sections available. Create sections first.</div>';
+    return;
+  }
+  
+  const groupedByClass = {};
+  sections.forEach(sec => {
+    if (!groupedByClass[sec.className]) {
+      groupedByClass[sec.className] = [];
+    }
+    groupedByClass[sec.className].push(sec);
+  });
+  
+  container.innerHTML = '';
+  
+  Object.keys(groupedByClass).forEach(className => {
+    const classSections = groupedByClass[className];
+    
+    const classGroup = document.createElement('div');
+    classGroup.style.cssText = 'margin-bottom: 12px;';
+    
+    const classHeader = document.createElement('div');
+    classHeader.style.cssText = 'font-weight: 600; color: #374151; font-size: 13px; margin-bottom: 6px; padding: 4px 8px; background: #f3f4f6; border-radius: 4px;';
+    classHeader.textContent = `📚 ${className}`;
+    classGroup.appendChild(classHeader);
+    
+    classSections.forEach(sec => {
+      const label = document.createElement('label');
+      label.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer; font-size: 13px; color: #4b5563; border-radius: 4px; transition: background 0.2s;';
+      label.addEventListener('mouseenter', () => label.style.background = '#f9fafb');
+      label.addEventListener('mouseleave', () => label.style.background = 'transparent');
+      
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = `section_${sec.sectionId}`;
+      checkbox.dataset.sectionId = sec.sectionId;
+      checkbox.dataset.classId = sec.classId;
+      checkbox.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
+      
+      if (preselectedAudiences.includes(checkbox.value)) {
+        checkbox.checked = true;
+      }
+      
+      const text = document.createElement('span');
+      text.textContent = `${sec.sectionName} (${sec.sectionCode || 'No code'})`;
+      
+      label.appendChild(checkbox);
+      label.appendChild(text);
+      classGroup.appendChild(label);
+    });
+    
+    container.appendChild(classGroup);
+  });
+  
+  const selectAllContainer = document.createElement('div');
+  selectAllContainer.style.cssText = 'margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb; display: flex; gap: 8px;';
+  
+  const selectAllBtn = document.createElement('button');
+  selectAllBtn.type = 'button';
+  selectAllBtn.textContent = 'Select All';
+  selectAllBtn.style.cssText = 'padding: 4px 12px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;';
+  selectAllBtn.addEventListener('click', () => {
+    container.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+  });
+  
+  const deselectAllBtn = document.createElement('button');
+  deselectAllBtn.type = 'button';
+  deselectAllBtn.textContent = 'Deselect All';
+  deselectAllBtn.style.cssText = 'padding: 4px 12px; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;';
+  deselectAllBtn.addEventListener('click', () => {
+    container.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+  });
+  
+  selectAllContainer.appendChild(selectAllBtn);
+  selectAllContainer.appendChild(deselectAllBtn);
+  container.appendChild(selectAllContainer);
+}
+
+// =============================================
 // NAVIGATION
 // =============================================
 function showView(viewId) {
@@ -154,7 +414,10 @@ document.querySelectorAll('.nav-item').forEach(item => {
     if (view === 'classes') fetchAndRenderClasses();
     else if (view === 'progress') renderProgressView();
     else if (view === 'announcements') renderAnnouncementsView();
-    else if (view === 'profile') showView('profile');
+    else if (view === 'profile') {
+      refreshTeacherProfileDisplay();
+      showView('profile');
+    }
   });
 });
 
@@ -316,8 +579,6 @@ async function fetchAndRenderSections(classId) {
 // OPEN SECTION DETAIL
 // =============================================
 function openSectionDetail(sectionId, sectionName) {
-  console.log("Opening section detail. Section ID:", sectionId);
-  
   state.currentSectionId = sectionId;
   
   const cls = TEACHER_DATA.classes.find(c => c.id === state.currentClassId);
@@ -483,7 +744,6 @@ document.getElementById('delete-section-modal-btn').addEventListener('click', as
 // SWITCH TAB
 // =============================================
 function switchTab(tab) {
-  console.log("Switching to tab:", tab);
   state.activeSectionTab = tab;
   
   document.querySelectorAll('.detail-tab').forEach(b => {
@@ -497,8 +757,6 @@ function switchTab(tab) {
   const activeTab = document.getElementById('tab-' + tab);
   if (activeTab) {
     activeTab.classList.add('active');
-  } else {
-    console.error("Tab panel not found: tab-" + tab);
   }
   
   if (tab === 'lessons') {
@@ -562,14 +820,10 @@ function renderMaterialsList() {
 function openMaterialDetail(mat) {
   state.currentMaterialId = mat.id;
   
-  // Update header
   document.getElementById('mat-title-display').textContent = mat.title;
   document.getElementById('mat-section-label').textContent = document.getElementById('section-detail-name').textContent;
-  
-  // Update description
   document.getElementById('mat-detail-desc').textContent = mat.description || 'No description provided.';
   
-  // Update link
   const link = document.getElementById('mat-detail-link');
   if (mat.pdf_url) {
     link.href = mat.pdf_url;
@@ -583,7 +837,6 @@ function openMaterialDetail(mat) {
     document.querySelector('.material-link-text-wrapper').style.display = 'none';
   }
   
-  // Update completion tabs
   state.activeCompletionTab.mat = 'pending';
   renderCompletionTabs(document.querySelector('#view-material-detail .completion-tabs'), 'mat');
   renderCompletionStudents('mat-done-students', 'material', mat.id, 'pending');
@@ -652,17 +905,11 @@ function renderQuizzesList() {
 function openQuizDetail(quiz) {
   state.currentQuizId = quiz.id;
   
-  // Update header
   document.getElementById('quiz-title-display').textContent = quiz.title;
   document.getElementById('quiz-section-label').textContent = document.getElementById('section-detail-name').textContent;
-  
-  // Update due date
   document.getElementById('quiz-detail-due').textContent = quiz.due_date ? new Date(quiz.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'No due date';
-  
-  // Update description
   document.getElementById('quiz-detail-desc').textContent = quiz.description || 'No description provided.';
   
-  // Update link
   const link = document.getElementById('quiz-detail-link');
   if (quiz.link) {
     link.href = quiz.link;
@@ -676,7 +923,6 @@ function openQuizDetail(quiz) {
     document.querySelector('.quiz-link-text-wrapper').style.display = 'none';
   }
   
-  // Update completion tabs
   state.activeCompletionTab.quiz = 'pending';
   renderCompletionTabs(document.querySelector('#view-quiz-detail .completion-tabs'), 'quiz');
   renderCompletionStudents('quiz-done-students', 'quiz', quiz.id, 'pending');
@@ -745,18 +991,12 @@ function renderAssignmentsList() {
 function openAssignmentDetail(assign) {
   state.currentAssignmentId = assign.id;
   
-  // Update header
   document.getElementById('assign-title-display').textContent = assign.title;
   document.getElementById('assign-section-label').textContent = document.getElementById('section-detail-name').textContent;
-  
-  // Update due date and points
   document.getElementById('assign-detail-due').textContent = assign.due_date ? new Date(assign.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'No due date';
   document.getElementById('assign-detail-points').textContent = (assign.points || 0) + ' points';
-  
-  // Update description
   document.getElementById('assign-detail-desc').textContent = assign.description || 'No instructions provided.';
   
-  // Update link
   const link = document.getElementById('assign-detail-link');
   if (assign.link) {
     link.href = assign.link;
@@ -766,7 +1006,6 @@ function openAssignmentDetail(assign) {
     document.getElementById('assign-link-card').style.display = 'none';
   }
   
-  // Update completion tabs
   state.activeCompletionTab.assign = 'pending';
   renderCompletionTabs(document.querySelector('#view-assignment-detail .completion-tabs'), 'assign');
   renderCompletionStudents('assign-done-students', 'assignment', assign.id, 'pending');
@@ -893,7 +1132,6 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
 // =============================================
 async function fetchAndRenderStudents() {
   if (!state.currentSectionId) {
-    console.error('No section ID set');
     const enrolledEl = document.getElementById('enrolled-students-list');
     if (enrolledEl) {
       enrolledEl.innerHTML = '<div class="empty-state">No section selected. Please select a section first.</div>';
@@ -907,14 +1145,8 @@ async function fetchAndRenderStudents() {
       enrolledEl.innerHTML = '<div class="loading-state">Loading students...</div>';
     }
     
-    const response = await fetch(`/api/teacher/students?sectionId=${state.currentSectionId}`);
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to fetch');
-    }
-    
-    const students = await response.json();
+    // Using apiGet helper (merged version - cleaner)
+    const students = await apiGet(`/api/teacher/students?sectionId=${state.currentSectionId}`);
     TEACHER_DATA.students = students;
     renderStudentsList();
   } catch (err) {
@@ -1107,7 +1339,6 @@ document.getElementById('save-section-modal').addEventListener('click', async ()
 // FILE UPLOAD HANDLERS
 // =============================================
 
-// Generic function to setup file upload zone
 function setupFileUploadZone(zoneId, inputId, previewId, browseBtnId, stateKey) {
   const zone = document.getElementById(zoneId);
   const input = document.getElementById(inputId);
@@ -1116,9 +1347,8 @@ function setupFileUploadZone(zoneId, inputId, previewId, browseBtnId, stateKey) 
   
   if (!zone || !input || !preview) return;
   
-  // Click to browse
   zone.addEventListener('click', (e) => {
-    if (e.target === browseBtn || browseBtn.contains(e.target)) return;
+    if (e.target === browseBtn || (browseBtn && browseBtn.contains(e.target))) return;
     input.click();
   });
   
@@ -1129,12 +1359,10 @@ function setupFileUploadZone(zoneId, inputId, previewId, browseBtnId, stateKey) 
     });
   }
   
-  // File selection
   input.addEventListener('change', (e) => {
     handleFileSelect(e.target.files[0], preview, stateKey);
   });
   
-  // Drag and drop
   zone.addEventListener('dragover', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1159,14 +1387,11 @@ function setupFileUploadZone(zoneId, inputId, previewId, browseBtnId, stateKey) 
   });
 }
 
-// Handle file selection
 function handleFileSelect(file, previewContainer, stateKey) {
   if (!file) return;
   
-  // Update state
   state[stateKey] = file;
   
-  // Update preview
   const fileSize = formatFileSize(file.size);
   previewContainer.innerHTML = `
     <div class="file-preview-item">
@@ -1182,11 +1407,9 @@ function handleFileSelect(file, previewContainer, stateKey) {
   `;
 }
 
-// Remove file
-function removeFile(stateKey, previewId) {
+window.removeFile = function(stateKey, previewId) {
   state[stateKey] = null;
   
-  // Reset file input
   const inputMap = {
     'materialFile': 'material-file-input',
     'assignmentFile': 'assignment-file-input',
@@ -1198,11 +1421,9 @@ function removeFile(stateKey, previewId) {
     document.getElementById(inputId).value = '';
   }
   
-  // Clear preview
   document.getElementById(previewId).innerHTML = '';
-}
+};
 
-// Format file size
 function formatFileSize(bytes) {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -1211,7 +1432,6 @@ function formatFileSize(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-// Setup upload type toggles
 function setupUploadTypeToggle(fileTypeBtnId, linkTypeBtnId, fileUploadZoneId, linkInputGroupId, stateKey) {
   const fileBtn = document.getElementById(fileTypeBtnId);
   const linkBtn = document.getElementById(linkTypeBtnId);
@@ -1237,17 +1457,13 @@ function setupUploadTypeToggle(fileTypeBtnId, linkTypeBtnId, fileUploadZoneId, l
   });
 }
 
-// Initialize all file upload zones
 function initFileUploads() {
-  // Material
   setupFileUploadZone('material-file-upload-zone', 'material-file-input', 'material-file-preview', 'material-browse-btn', 'materialFile');
   setupUploadTypeToggle('material-file-type-btn', 'material-link-type-btn', 'material-file-upload-zone', 'material-link-input-group', 'materialUploadType');
   
-  // Assignment
   setupFileUploadZone('assignment-file-upload-zone', 'assignment-file-input', 'assignment-file-preview', 'assignment-browse-btn', 'assignmentFile');
   setupUploadTypeToggle('assignment-file-type-btn', 'assignment-link-type-btn', 'assignment-file-upload-zone', 'assignment-link-input-group', 'assignmentUploadType');
   
-  // Quiz
   setupFileUploadZone('quiz-file-upload-zone', 'quiz-file-input', 'quiz-file-preview', 'quiz-browse-btn', 'quizFile');
   setupUploadTypeToggle('quiz-file-type-btn', 'quiz-link-type-btn', 'quiz-file-upload-zone', 'quiz-link-input-group', 'quizUploadType');
 }
@@ -1262,12 +1478,10 @@ function openMaterialModal(editId = null) {
   document.getElementById('material-desc-input').value = mat ? mat.description || '' : '';
   document.getElementById('material-link-input').value = mat ? mat.pdf_url || '' : '';
   
-  // Reset file upload state
   state.materialFile = null;
   document.getElementById('material-file-preview').innerHTML = '';
   document.getElementById('material-file-input').value = '';
   
-  // Reset to file upload mode
   state.materialUploadType = 'file';
   document.getElementById('material-file-type-btn').classList.add('active');
   document.getElementById('material-link-type-btn').classList.remove('active');
@@ -1291,7 +1505,6 @@ document.getElementById('save-material-modal').addEventListener('click', async (
   
   try {
     if (state.materialUploadType === 'file' && state.materialFile) {
-      // Upload with file
       const formData = new FormData();
       formData.append('title', title);
       formData.append('description', desc);
@@ -1304,7 +1517,6 @@ document.getElementById('save-material-modal').addEventListener('click', async (
         await apiPostFormData('/api/teacher/materials', formData);
       }
     } else {
-      // Upload with link or no file
       const link = document.getElementById('material-link-input').value.trim();
       
       if (state.editingMaterialId) {
@@ -1334,12 +1546,10 @@ function openQuizModal(editId = null) {
   document.getElementById('quiz-due-input').value = quiz && quiz.due_date ? formatDateTimeLocal(quiz.due_date) : '';
   document.getElementById('quiz-points-input').value = quiz ? quiz.points || '' : '';
   
-  // Reset file upload state
   state.quizFile = null;
   document.getElementById('quiz-file-preview').innerHTML = '';
   document.getElementById('quiz-file-input').value = '';
   
-  // Reset to file upload mode
   state.quizUploadType = 'file';
   document.getElementById('quiz-file-type-btn').classList.add('active');
   document.getElementById('quiz-link-type-btn').classList.remove('active');
@@ -1365,7 +1575,6 @@ document.getElementById('save-quiz-modal').addEventListener('click', async () =>
   
   try {
     if (state.quizUploadType === 'file' && state.quizFile) {
-      // Upload with file
       const formData = new FormData();
       formData.append('title', title);
       formData.append('description', desc);
@@ -1380,7 +1589,6 @@ document.getElementById('save-quiz-modal').addEventListener('click', async () =>
         await apiPostFormData('/api/teacher/quizzes', formData);
       }
     } else {
-      // Upload with link
       const link = document.getElementById('quiz-link-input').value.trim();
       
       if (state.editingQuizId) {
@@ -1410,12 +1618,10 @@ function openAssignmentModal(editId = null) {
   document.getElementById('assignment-points-input').value = assign ? assign.points || '' : '';
   document.getElementById('assignment-link-input').value = assign ? assign.link || '' : '';
   
-  // Reset file upload state
   state.assignmentFile = null;
   document.getElementById('assignment-file-preview').innerHTML = '';
   document.getElementById('assignment-file-input').value = '';
   
-  // Reset to file upload mode
   state.assignmentUploadType = 'file';
   document.getElementById('assignment-file-type-btn').classList.add('active');
   document.getElementById('assignment-link-type-btn').classList.remove('active');
@@ -1441,7 +1647,6 @@ document.getElementById('save-assignment-modal').addEventListener('click', async
   
   try {
     if (state.assignmentUploadType === 'file' && state.assignmentFile) {
-      // Upload with file
       const formData = new FormData();
       formData.append('title', title);
       formData.append('description', desc);
@@ -1456,7 +1661,6 @@ document.getElementById('save-assignment-modal').addEventListener('click', async
         await apiPostFormData('/api/teacher/assignments', formData);
       }
     } else {
-      // Upload with link
       const link = document.getElementById('assignment-link-input').value.trim();
       
       if (state.editingAssignmentId) {
@@ -1474,12 +1678,19 @@ document.getElementById('save-assignment-modal').addEventListener('click', async
   }
 });
 
-// ---- Announcement Modal ----
-document.getElementById('btn-new-announcement').addEventListener('click', () => {
+// =============================================
+// ANNOUNCEMENTS SECTION
+// =============================================
+
+document.getElementById('btn-new-announcement').addEventListener('click', async () => {
   state.editingAnnouncementId = null;
   document.getElementById('modal-announcement-title-text').textContent = 'New Announcement';
   document.getElementById('announcement-title-input').value = '';
   document.getElementById('announcement-body-input').value = '';
+  
+  await fetchAllSectionsForAnnouncements();
+  renderAudienceCheckboxes([]);
+  
   openModal('modal-announcement');
 });
 
@@ -1489,26 +1700,48 @@ document.getElementById('cancel-announcement-modal-2').addEventListener('click',
 document.getElementById('save-announcement-modal').addEventListener('click', async () => {
   const title = document.getElementById('announcement-title-input').value.trim();
   const body = document.getElementById('announcement-body-input').value.trim();
-  const audience = document.getElementById('announcement-audience-input').value;
-  if (!title || !body) { Swal.fire('Error', 'Title and message are required.', 'error'); return; }
+  
+  const checkboxes = document.querySelectorAll('#audience-checkboxes input[type="checkbox"]:checked');
+  const selectedAudiences = Array.from(checkboxes).map(cb => cb.value);
+  
+  if (!title || !body) { 
+    Swal.fire('Error', 'Title and message are required.', 'error'); 
+    return; 
+  }
+  
+  if (selectedAudiences.length === 0) {
+    Swal.fire('Error', 'Please select at least one section for the audience.', 'error');
+    return;
+  }
+  
   try {
     let response;
+    const audienceString = selectedAudiences.join(',');
+    
     if (state.editingAnnouncementId) {
       response = await fetch(`/api/announcements/${state.editingAnnouncementId}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, body, audience })
+        method: 'PUT', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, body, audience: audienceString })
       });
     } else {
       response = await fetch('/api/announcements', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teacherId: TEACHER_DATA.profile.id, title, body, audience })
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          teacherId: TEACHER_DATA.profile.id, 
+          title, 
+          body, 
+          audience: audienceString 
+        })
       });
     }
+    
     const data = await response.json();
     if (response.ok) {
       closeModal('modal-announcement');
-      Swal.fire('Success', data.message, 'success');
-      fetchAnnouncements();
+      Swal.fire('Success', data.message || 'Announcement saved!', 'success');
+      renderAnnouncementsView();
     } else {
       Swal.fire('Error', data.message || 'Failed to save.', 'error');
     }
@@ -1591,11 +1824,11 @@ async function renderProgressView() {
 // =============================================
 // ANNOUNCEMENTS VIEW
 // =============================================
-function renderAnnouncementsView() {
+async function renderAnnouncementsView() {
   showView('announcements');
   const list = document.getElementById('announcements-list');
   list.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">Loading announcements...</div>';
-  fetchAnnouncements();
+  await fetchAnnouncements();
 }
 
 async function fetchAnnouncements() {
@@ -1607,19 +1840,32 @@ async function fetchAnnouncements() {
     renderAnnouncementList();
   } catch (err) {
     console.error('Fetch announcements error:', err);
-    document.getElementById('announcements-list').innerHTML = '<div class="empty-state">Failed to load announcements.</div>';
+    const list = document.getElementById('announcements-list');
+    if (list) {
+      list.innerHTML = '<div class="empty-state">Failed to load announcements.</div>';
+    }
   }
 }
 
 function renderAnnouncementList() {
   const list = document.getElementById('announcements-list');
+  if (!list) return;
+  
   list.innerHTML = '';
   if (!state.announcements.length) {
     list.innerHTML = '<div class="empty-state">No announcements yet.</div>';
     return;
   }
+  
   state.announcements.forEach(a => {
     const date = new Date(a.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    
+    let audienceDisplay = a.audience || 'All Classes';
+    if (audienceDisplay && audienceDisplay.startsWith('section_')) {
+      const sectionIds = audienceDisplay.split(',').map(s => s.replace('section_', ''));
+      audienceDisplay = `${sectionIds.length} section${sectionIds.length !== 1 ? 's' : ''} selected`;
+    }
+    
     const card = document.createElement('div');
     card.className = 'announcement-card';
     card.innerHTML = `
@@ -1630,11 +1876,11 @@ function renderAnnouncementList() {
         <div class="announcement-footer">
           <div>
             <div class="announcement-title">${escHtml(a.title)}</div>
-            <div class="announcement-meta">${escHtml(a.audience)} · ${date}</div>
+            <div class="announcement-meta">${escHtml(audienceDisplay)} · ${date}</div>
           </div>
           <div style="display:flex;gap:6px">
-            <button class="btn btn-ghost btn-sm" onclick="editAnnouncement(${a.id})"><i class="fa-solid fa-pen"></i> Edit</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement(${a.id})"><i class="fa-solid fa-trash"></i> Delete</button>
+            <button class="btn btn-ghost btn-sm" onclick="editAnnouncementFromList(${a.id})"><i class="fa-solid fa-pen"></i> Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteAnnouncementFromList(${a.id})"><i class="fa-solid fa-trash"></i> Delete</button>
           </div>
         </div>
         <div class="announcement-body" style="margin-top:10px">${escHtml(a.body)}</div>
@@ -1643,17 +1889,24 @@ function renderAnnouncementList() {
   });
 }
 
-function editAnnouncement(id) {
+window.editAnnouncementFromList = async function(id) {
   const a = state.announcements.find(an => an.id === id);
+  if (!a) return;
+  
   state.editingAnnouncementId = id;
   document.getElementById('announcement-title-input').value = a.title;
   document.getElementById('announcement-body-input').value = a.body;
-  document.getElementById('announcement-audience-input').value = a.audience;
   document.getElementById('modal-announcement-title-text').textContent = 'Edit Announcement';
+  
+  await fetchAllSectionsForAnnouncements();
+  
+  const preselectedAudiences = a.audience ? a.audience.split(',').map(s => s.trim()) : [];
+  renderAudienceCheckboxes(preselectedAudiences);
+  
   openModal('modal-announcement');
-}
+};
 
-async function deleteAnnouncement(id) {
+window.deleteAnnouncementFromList = async function(id) {
   const result = await Swal.fire({
     title: 'Delete announcement?', icon: 'warning', showCancelButton: true,
     confirmButtonText: 'Delete', confirmButtonColor: '#cc0000'
@@ -1662,12 +1915,12 @@ async function deleteAnnouncement(id) {
     try {
       await fetch(`/api/announcements/${id}`, { method: 'DELETE' });
       Swal.fire('Deleted', 'Announcement deleted.', 'success');
-      fetchAnnouncements();
+      renderAnnouncementsView();
     } catch (err) {
       Swal.fire('Error', 'Could not connect to server.', 'error');
     }
   }
-}
+};
 
 // =============================================
 // BACK BUTTONS
@@ -1698,48 +1951,33 @@ document.getElementById('back-to-section-assignments').addEventListener('click',
 // =============================================
 function refreshTeacherProfileDisplay() {
   const p = TEACHER_DATA.profile;
-  document.getElementById('display-firstname').textContent = p.firstName || 'Teacher';
-  document.getElementById('display-lastname').textContent = p.lastName || '';
-  document.getElementById('display-username').textContent = p.username || 'teacher';
-  document.getElementById('display-email').textContent = p.email || '';
-  document.getElementById('profile-username-display').textContent = p.username || 'teacher';
-  document.getElementById('profile-role-display').textContent = p.role || 'Teacher';
-  document.getElementById('pw-username-display').value = p.username || 'teacher';
-  document.getElementById('edit-firstname').value = p.firstName || '';
-  document.getElementById('edit-lastname').value = p.lastName || '';
-  document.getElementById('edit-username').value = p.username || '';
-  document.getElementById('edit-email').value = p.email || '';
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  
+  set('display-firstname', p.firstName || 'Teacher');
+  set('display-lastname', p.lastName || '');
+  set('display-username', p.username || 'teacher');
+  set('display-email', p.email || '');
+  set('profile-username-display', p.username || 'teacher');
+  set('profile-role-display', p.role || 'Teacher');
+  setVal('pw-username-display', p.username || 'teacher');
+  setVal('edit-firstname', p.firstName || '');
+  setVal('edit-lastname', p.lastName || '');
+  setVal('edit-username', p.username || '');
+  setVal('edit-email', p.email || '');
+  
+  updateTeacherProfilePicture();
 }
 
 function showTeacherProfilePanel(panel) {
-  document.getElementById('profile-main').style.display = (panel === 'main') ? 'block' : 'none';
-  document.getElementById('profile-edit-info').style.display = (panel === 'edit-info') ? 'block' : 'none';
-  document.getElementById('profile-change-password').style.display = (panel === 'change-password') ? 'block' : 'none';
+  const mainPanel = document.getElementById('profile-main');
+  const editPanel = document.getElementById('profile-edit-info');
+  const passwordPanel = document.getElementById('profile-change-password');
+  
+  if (mainPanel) mainPanel.style.display = (panel === 'main') ? 'block' : 'none';
+  if (editPanel) editPanel.style.display = (panel === 'edit-info') ? 'block' : 'none';
+  if (passwordPanel) passwordPanel.style.display = (panel === 'change-password') ? 'block' : 'none';
 }
-
-// Profile picture upload
-document.getElementById('upload-picture-btn').addEventListener('click', () => {
-  document.getElementById('profile-picture-input').click();
-});
-
-document.getElementById('profile-picture-input').addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      document.getElementById('profile-picture-img').src = event.target.result;
-      document.getElementById('profile-picture-img').style.display = 'block';
-      document.getElementById('profile-picture-icon').style.display = 'none';
-    };
-    reader.readAsDataURL(file);
-  }
-});
-
-document.getElementById('remove-picture-btn').addEventListener('click', () => {
-  document.getElementById('profile-picture-img').style.display = 'none';
-  document.getElementById('profile-picture-icon').style.display = 'block';
-  document.getElementById('profile-picture-input').value = '';
-});
 
 document.getElementById('btn-edit-profile').addEventListener('click', () => showTeacherProfilePanel('edit-info'));
 document.getElementById('btn-cancel-edit').addEventListener('click', () => showTeacherProfilePanel('main'));
@@ -1786,12 +2024,19 @@ document.getElementById('btn-save-profile').addEventListener('click', async () =
 
 document.getElementById('btn-change-password').addEventListener('click', () => {
   showTeacherProfilePanel('change-password');
-  document.getElementById('pw-new').value = '';
-  document.getElementById('pw-confirm').value = '';
-  document.getElementById('pw-verification-code').value = '';
-  document.getElementById('verification-code-section').style.display = 'none';
-  document.getElementById('btn-send-code').style.display = 'block';
-  document.getElementById('btn-save-password').style.display = 'none';
+  const pwNew = document.getElementById('pw-new');
+  const pwConfirm = document.getElementById('pw-confirm');
+  const pwCode = document.getElementById('pw-verification-code');
+  const vcSection = document.getElementById('verification-code-section');
+  const sendBtn = document.getElementById('btn-send-code');
+  const saveBtn = document.getElementById('btn-save-password');
+  
+  if (pwNew) pwNew.value = '';
+  if (pwConfirm) pwConfirm.value = '';
+  if (pwCode) pwCode.value = '';
+  if (vcSection) vcSection.style.display = 'none';
+  if (sendBtn) sendBtn.style.display = 'block';
+  if (saveBtn) saveBtn.style.display = 'none';
 });
 
 document.getElementById('btn-cancel-password').addEventListener('click', () => showTeacherProfilePanel('main'));
@@ -1805,9 +2050,12 @@ document.getElementById('btn-send-code').addEventListener('click', async () => {
     const data = await response.json();
     if (response.ok) {
       Swal.fire('Code Sent', 'A verification code has been sent to your email.', 'success');
-      document.getElementById('verification-code-section').style.display = 'block';
-      document.getElementById('btn-send-code').style.display = 'none';
-      document.getElementById('btn-save-password').style.display = 'block';
+      const vcSection = document.getElementById('verification-code-section');
+      const sendBtn = document.getElementById('btn-send-code');
+      const saveBtn = document.getElementById('btn-save-password');
+      if (vcSection) vcSection.style.display = 'block';
+      if (sendBtn) sendBtn.style.display = 'none';
+      if (saveBtn) saveBtn.style.display = 'block';
     } else {
       Swal.fire('Error', data.message, 'error');
     }
@@ -1840,9 +2088,12 @@ document.getElementById('btn-save-password').addEventListener('click', async () 
     const data = await response.json();
     if (response.ok) {
       Swal.fire('Updated', 'Password changed successfully.', 'success');
-      document.getElementById('pw-new').value = '';
-      document.getElementById('pw-confirm').value = '';
-      document.getElementById('pw-verification-code').value = '';
+      const pwNew = document.getElementById('pw-new');
+      const pwConfirm = document.getElementById('pw-confirm');
+      const pwCode = document.getElementById('pw-verification-code');
+      if (pwNew) pwNew.value = '';
+      if (pwConfirm) pwConfirm.value = '';
+      if (pwCode) pwCode.value = '';
       showTeacherProfilePanel('main');
     } else {
       Swal.fire('Error', data.message || 'Failed to change password.', 'error');

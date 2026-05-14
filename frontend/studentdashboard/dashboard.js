@@ -61,6 +61,11 @@ function formatDueDate(dateVal) {
   });
 }
 
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 // ── HOME VIEW CARD BUILDERS ──────────────────────────────────────
 
 function buildAnnouncementCard(title, body, timeAgo, isUnread = false) {
@@ -71,8 +76,8 @@ function buildAnnouncementCard(title, body, timeAgo, isUnread = false) {
       <i class="fa-regular fa-message" aria-hidden="true"></i>
     </div>
     <div class="announcement-body">
-      <p class="announcement-main">${title}</p>
-      <p class="announcement-sub">${body}</p>
+      <p class="announcement-main">${escapeHtml(title)}</p>
+      <p class="announcement-sub">${escapeHtml(body)}</p>
       ${timeAgo ? `<p class="announcement-time">${timeAgo}</p>` : ''}
     </div>
     ${isUnread ? '<div class="announcement-unread-dot"></div>' : ''}
@@ -88,9 +93,9 @@ function buildHomeTodoCard(item) {
       <i class="fa-solid fa-list-check" aria-hidden="true"></i>
     </div>
     <div class="todo-body">
-      <p class="todo-title">${item.title}</p>
+      <p class="todo-title">${escapeHtml(item.title)}</p>
       <p class="todo-due">Due: ${formatDueDate(item.dueDate) || 'No due date'}</p>
-      <p class="todo-class">${item.className}</p>
+      <p class="todo-class">${escapeHtml(item.className)}</p>
     </div>
   `;
   d.addEventListener('click', () => {
@@ -154,37 +159,87 @@ async function fetchProfilePicture() {
 }
 
 function updateProfilePictureDisplay() {
-  const profileImg    = document.getElementById('profile-picture-img');
-  const sidebarAvatar = document.querySelector('.avatar');
+  const profileImg = document.getElementById('profile-picture-img');
+  const profileIcon = document.getElementById('profile-picture-icon');
+  const sidebarAvatar = document.querySelector('.sidebar .avatar');
+  const topBarAvatar = document.getElementById('top-bar-avatar');
+
+  const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(DATA.profile.firstName + ' ' + DATA.profile.lastName)}&background=6366f1&color=fff`;
 
   if (DATA.profile.profilePicture) {
-    const imgUrl = `/uploads/profile-pictures/${DATA.profile.profilePicture}`;
-    if (profileImg) profileImg.src = imgUrl;
+    const timestamp = new Date().getTime();
+    const imgUrl = `/uploads/profile-pictures/${DATA.profile.profilePicture}?t=${timestamp}`;
+    
+    if (profileImg) {
+      profileImg.src = imgUrl;
+      profileImg.style.display = 'block';
+    }
+    if (profileIcon) profileIcon.style.display = 'none';
+    
+    if (topBarAvatar) {
+      topBarAvatar.style.backgroundImage = `url(${imgUrl})`;
+      topBarAvatar.style.backgroundSize = 'cover';
+      topBarAvatar.style.backgroundPosition = 'center';
+      topBarAvatar.style.backgroundColor = 'transparent';
+      topBarAvatar.innerHTML = '';
+    }
+    
     if (sidebarAvatar) {
-      sidebarAvatar.style.backgroundImage    = `url(${imgUrl})`;
-      sidebarAvatar.style.backgroundSize     = 'cover';
+      sidebarAvatar.style.backgroundImage = `url(${imgUrl})`;
+      sidebarAvatar.style.backgroundSize = 'cover';
       sidebarAvatar.style.backgroundPosition = 'center';
+      sidebarAvatar.style.backgroundColor = 'transparent';
+      sidebarAvatar.innerHTML = '';
     }
   } else {
-    const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(DATA.profile.firstName + ' ' + DATA.profile.lastName)}&background=6366f1&color=fff`;
-    if (profileImg) profileImg.src = defaultAvatar;
+    if (profileImg) {
+      profileImg.src = defaultAvatar;
+      profileImg.style.display = 'block';
+    }
+    if (profileIcon) profileIcon.style.display = 'none';
+    
+    if (topBarAvatar) {
+      topBarAvatar.style.backgroundImage = `url(${defaultAvatar})`;
+      topBarAvatar.style.backgroundSize = 'cover';
+      topBarAvatar.style.backgroundPosition = 'center';
+      topBarAvatar.innerHTML = '';
+    }
+    
     if (sidebarAvatar) {
-      sidebarAvatar.style.backgroundImage    = `url(${defaultAvatar})`;
-      sidebarAvatar.style.backgroundSize     = 'cover';
+      sidebarAvatar.style.backgroundImage = `url(${defaultAvatar})`;
+      sidebarAvatar.style.backgroundSize = 'cover';
       sidebarAvatar.style.backgroundPosition = 'center';
+      sidebarAvatar.innerHTML = '';
     }
   }
 }
 
 async function fetchAnnouncements() {
+  if (!DATA.profile.id) return;
+  
   try {
-    const res = await fetch('/api/announcements');
-    if (!res.ok) return;
-    const data = await res.json();
-    DATA.announcements        = data;
-    DATA.announcementsLoaded  = true;
+    const res = await fetch(`/api/student/announcements?studentId=${DATA.profile.id}`);
+    
+    if (!res.ok) {
+      console.log('Student endpoint failed, using fallback');
+      const fallbackRes = await fetch('/api/announcements');
+      if (fallbackRes.ok) {
+        const data = await fallbackRes.json();
+        DATA.announcements = Array.isArray(data) ? data : (data.announcements || []);
+      } else {
+        DATA.announcements = [];
+      }
+    } else {
+      const data = await res.json();
+      DATA.announcements = Array.isArray(data) ? data : (data.announcements || []);
+      console.log(`Loaded ${DATA.announcements.length} announcements for student`);
+    }
+    
+    DATA.announcementsLoaded = true;
   } catch (err) {
     console.error('fetchAnnouncements error:', err);
+    DATA.announcements = [];
+    DATA.announcementsLoaded = true;
   }
 }
 
@@ -367,23 +422,43 @@ function setActiveNav(el) {
 // ── TAB SWITCHING (class detail) ─────────────────────────────────
 
 function switchDetailTab(tabName) {
-  // Update tab buttons
   document.querySelectorAll('.detail-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tabName);
   });
-  // Update panels
   document.querySelectorAll('.detail-tab-panel').forEach(panel => {
     panel.classList.toggle('active', panel.id === `tab-panel-${tabName}`);
   });
 }
 
-// Wire tab clicks (once, on DOMContentLoaded)
 document.addEventListener('click', e => {
   const tab = e.target.closest('.detail-tab');
   if (tab && tab.dataset.tab) {
     switchDetailTab(tab.dataset.tab);
   }
 });
+
+// ── RENDER ANNOUNCEMENTS (FULL VIEW) ─────────────────────────────
+
+async function renderFullAnnouncements() {
+  if (!DATA.announcementsLoaded) {
+    await fetchAnnouncements();
+  }
+  
+  const listEl = document.getElementById('announcements-full-list');
+  if (!listEl) return;
+  
+  listEl.innerHTML = '';
+  
+  if (!DATA.announcements || DATA.announcements.length === 0) {
+    listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon-wrap"><i class="fa-regular fa-bell"></i></div><p class="empty-state-title">No announcements</p><p class="empty-state-sub">Nothing new from your teachers yet.</p></div>';
+    return;
+  }
+  
+  DATA.announcements.forEach(a => {
+    const timeAgo = a.created_at ? formatAnnouncementTime(new Date(a.created_at)) : '';
+    listEl.appendChild(buildAnnouncementCard(a.title, a.body, timeAgo, a.unread));
+  });
+}
 
 // ── RENDER HOME ──────────────────────────────────────────────────
 
@@ -392,13 +467,11 @@ async function renderHome() {
   if (!DATA.classesLoaded)       await fetchClasses();
   if (!DATA.announcementsLoaded) await fetchAnnouncements();
 
-  // Welcome heading
   const welcomeHeading = document.querySelector('#view-home .welcome-heading');
   if (welcomeHeading) {
     welcomeHeading.textContent = `Welcome, ${DATA.profile.firstName || DATA.profile.username || 'Student'}!`;
   }
 
-  // ── Stats row ────────────────────────────────────────────────
   const now = new Date();
   let completedCount = 0;
   let pendingCount   = 0;
@@ -426,7 +499,6 @@ async function renderHome() {
   if (statCompleted) statCompleted.textContent = completedCount;
   if (statPending)   statPending.textContent   = pendingCount;
 
-  // ── Announcements ────────────────────────────────────────────
   const annContainer = document.getElementById('announcements-container');
   if (annContainer) {
     annContainer.innerHTML = '';
@@ -443,7 +515,6 @@ async function renderHome() {
     }
   }
 
-  // ── To Do List (this week's pending) ─────────────────────────
   const todoContainer = document.getElementById('home-todo-container');
   if (todoContainer) {
     todoContainer.innerHTML = '';
@@ -492,7 +563,6 @@ async function renderHome() {
     }
   }
 
-  // ── Wire "View all" link (safe to call multiple times) ───────
   document.querySelectorAll('[data-view]').forEach(el => {
     if (el.classList.contains('nav-item')) return;
     const clone = el.cloneNode(true);
@@ -502,6 +572,7 @@ async function renderHome() {
       const view = clone.dataset.view;
       setActiveNav(document.querySelector(`.nav-item[data-view="${view}"]`));
       if (view === 'todo') renderTodo();
+      if (view === 'announcements') renderFullAnnouncements();
       showView(view);
     });
   });
@@ -540,8 +611,8 @@ async function renderClasses() {
         <i class="fa-solid fa-book-open"></i>
       </div>
       <div class="class-card-info">
-        <p class="class-card-title">${cls.title}</p>
-        <p class="class-card-prof">${cls.professor}</p>
+        <p class="class-card-title">${escapeHtml(cls.title)}</p>
+        <p class="class-card-prof">${escapeHtml(cls.professor)}</p>
       </div>
       <div class="class-card-action">
         View Class <i class="fa-solid fa-arrow-right"></i>
@@ -552,13 +623,12 @@ async function renderClasses() {
   });
 }
 
-// ── CLASS DETAIL (REDESIGNED WITH TABS) ──────────────────────────
+// ── CLASS DETAIL ─────────────────────────────────────────────────
 
 function buildDetailCard(item, type, clickHandler) {
   const key    = completionKey(type, item.id);
   const isDone = state.done.has(key);
 
-  // Pick icon per type
   const iconMap = {
     material:   'fa-solid fa-book-open',
     quiz:       'fa-solid fa-clipboard-question',
@@ -566,21 +636,20 @@ function buildDetailCard(item, type, clickHandler) {
   };
   const icon = iconMap[type] || 'fa-solid fa-file';
 
-  // Sub text: due date or points
   let subText = '';
   if (item.due_date) subText = `Due ${formatDueDate(item.due_date)}`;
   else if (item.points !== undefined) subText = `${item.points} pts`;
 
   const el = document.createElement('div');
   el.className = (type === 'material' ? 'material-item' : 'quiz-item') + (isDone ? ' done' : '');
-  el._itemId   = item.id; // keep for updateItemDisplay()
+  el._itemId   = item.id;
 
   el.innerHTML = `
     <div class="item-card-icon">
       <i class="${icon}"></i>
     </div>
     <div class="item-card-body">
-      <p class="item-card-title">${item.title}</p>
+      <p class="item-card-title">${escapeHtml(item.title)}</p>
       ${subText ? `<p class="item-card-sub">${subText}</p>` : ''}
     </div>
     ${isDone ? '<span class="item-card-badge"><i class="fa-solid fa-check"></i> Done</span>' : ''}
@@ -593,21 +662,12 @@ function buildDetailCard(item, type, clickHandler) {
 function openClassDetail(cls) {
   state.currentClass = cls;
 
-  // Set header
   const detailClassName = document.getElementById('detail-class-name');
   if (detailClassName) detailClassName.textContent = cls.title;
 
   const detailMeta = document.getElementById('detail-class-meta');
   if (detailMeta) detailMeta.textContent = cls.professor || '';
 
-  // ── Keep hidden labels updated (JS compatibility) ────────────
-  const quizzesLabel = document.getElementById('quizzes-label');
-  if (quizzesLabel) quizzesLabel.innerHTML = `<i class="fa-solid fa-clipboard-question"></i> ${cls.title} Quizzes`;
-
-  const assignmentsLabel = document.getElementById('assignments-label');
-  if (assignmentsLabel) assignmentsLabel.innerHTML = `<i class="fa-solid fa-file-lines"></i> ${cls.title} Assignments`;
-
-  // ── Materials tab ─────────────────────────────────────────────
   const matList = document.getElementById('materials-list');
   if (matList) {
     matList.innerHTML = '';
@@ -623,7 +683,6 @@ function openClassDetail(cls) {
     }
   }
 
-  // ── Assignments tab ───────────────────────────────────────────
   const assignmentsList = document.getElementById('assignments-list');
   if (assignmentsList) {
     assignmentsList.innerHTML = '';
@@ -639,7 +698,6 @@ function openClassDetail(cls) {
     }
   }
 
-  // ── Quizzes tab ───────────────────────────────────────────────
   const quizList = document.getElementById('quizzes-list');
   if (quizList) {
     quizList.innerHTML = '';
@@ -655,7 +713,6 @@ function openClassDetail(cls) {
     }
   }
 
-  // Default to Lessons tab
   switchDetailTab('materials');
   showView('class-detail');
 }
@@ -666,17 +723,17 @@ function openMaterialDetail(mat, className) {
   state.currentItem = mat;
   state.currentType = 'material';
 
-  const matClassName = document.getElementById('mat-class-name');
-  if (matClassName) matClassName.textContent = className;
-
-  const matBanner = document.getElementById('mat-banner');
-  if (matBanner) matBanner.textContent = mat.title;
-
-  const matPdfLink = document.getElementById('mat-pdf-link');
-  if (matPdfLink) matPdfLink.href = mat.pdf_url || '#';
-
-  const matDescription = document.getElementById('mat-description');
-  if (matDescription) matDescription.textContent = mat.description || 'No description available.';
+  const titleEl = document.getElementById('mat-title');
+  if (titleEl) titleEl.textContent = mat.title;
+  
+  const classNameEl = document.getElementById('mat-class-name');
+  if (classNameEl) classNameEl.textContent = className;
+  
+  const pdfLinkEl = document.getElementById('mat-pdf-link');
+  if (pdfLinkEl) pdfLinkEl.href = mat.pdf_url || '#';
+  
+  const descEl = document.getElementById('mat-description');
+  if (descEl) descEl.textContent = mat.description || 'No description available.';
 
   const matDueEl = document.getElementById('mat-due-text');
   if (matDueEl) {
@@ -688,11 +745,11 @@ function openMaterialDetail(mat, className) {
   if (btn) {
     const key = completionKey('material', mat.id);
     if (state.done.has(key)) {
-      btn.textContent = '✓ Marked as done';
-      btn.className   = 'mark-done-btn done-state';
+      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Marked as done';
+      btn.className = 'mark-done-btn done-state';
     } else {
-      btn.textContent = 'Mark as done';
-      btn.className   = 'mark-done-btn dark';
+      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> Mark as done';
+      btn.className = 'mark-done-btn dark';
     }
     btn.onclick = () => markDone('material');
   }
@@ -706,24 +763,24 @@ function openQuizDetail(quiz, className) {
   state.currentItem = quiz;
   state.currentType = 'quiz';
 
-  const quizClassName = document.getElementById('quiz-class-name');
-  if (quizClassName) quizClassName.textContent = className;
-
-  const quizBanner = document.getElementById('quiz-banner');
-  if (quizBanner) quizBanner.textContent = quiz.title;
-
-  const quizLink = document.getElementById('quiz-link');
-  if (quizLink) {
-    quizLink.href        = quiz.link || '#';
-    quizLink.textContent = quiz.link_label || 'Open Quiz';
+  const titleEl = document.getElementById('quiz-title');
+  if (titleEl) titleEl.textContent = quiz.title;
+  
+  const classNameEl = document.getElementById('quiz-class-name');
+  if (classNameEl) classNameEl.textContent = className;
+  
+  const linkEl = document.getElementById('quiz-link');
+  if (linkEl) {
+    linkEl.href = quiz.link || '#';
+    linkEl.textContent = quiz.link_label || 'Open Quiz';
   }
-
-  const quizDescription = document.getElementById('quiz-description');
-  if (quizDescription) quizDescription.textContent = quiz.description || 'No description available.';
+  
+  const descEl = document.getElementById('quiz-description');
+  if (descEl) descEl.textContent = quiz.description || 'No description available.';
 
   const quizDueEl = document.getElementById('quiz-due-text');
   if (quizDueEl) {
-    quizDueEl.textContent  = quiz.due_date ? 'Due ' + formatDueDate(quiz.due_date) : '';
+    quizDueEl.textContent = quiz.due_date ? 'Due ' + formatDueDate(quiz.due_date) : '';
     quizDueEl.style.display = quiz.due_date ? 'block' : 'none';
   }
 
@@ -734,26 +791,20 @@ function openQuizDetail(quiz, className) {
     const isOverdue = dueDate && new Date() > dueDate;
 
     if (state.done.has(key)) {
-      btn.textContent   = '✓ Marked as done';
-      btn.className     = 'mark-done-btn done-state';
-      btn.disabled      = false;
-      btn.style.opacity = '1';
-      btn.style.cursor  = 'pointer';
-      btn.onclick       = () => markDone('quiz');
+      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Marked as done';
+      btn.className = 'mark-done-btn done-state';
+      btn.disabled = false;
+      btn.onclick = () => markDone('quiz');
     } else if (isOverdue) {
-      btn.textContent   = 'Past due date';
-      btn.className     = 'mark-done-btn dark';
-      btn.disabled      = true;
-      btn.style.opacity = '0.5';
-      btn.style.cursor  = 'not-allowed';
-      btn.onclick       = null;
+      btn.innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Past due date';
+      btn.className = 'mark-done-btn dark';
+      btn.disabled = true;
+      btn.onclick = null;
     } else {
-      btn.textContent   = 'Mark as done';
-      btn.className     = 'mark-done-btn yellow';
-      btn.disabled      = false;
-      btn.style.opacity = '1';
-      btn.style.cursor  = 'pointer';
-      btn.onclick       = () => markDone('quiz');
+      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> Mark as done';
+      btn.className = 'mark-done-btn yellow';
+      btn.disabled = false;
+      btn.onclick = () => markDone('quiz');
     }
   }
 
@@ -766,58 +817,37 @@ function openAssignmentDetail(assign, className) {
   state.currentItem = assign;
   state.currentType = 'assignment';
 
-  const quizClassName = document.getElementById('quiz-class-name');
-  if (quizClassName) quizClassName.textContent = className;
+  const titleEl = document.getElementById('assignment-title');
+  if (titleEl) titleEl.textContent = assign.title;
+  
+  const classNameEl = document.getElementById('assignment-class-name');
+  if (classNameEl) classNameEl.textContent = className;
+  
+  const linkEl = document.getElementById('assignment-link');
+  if (linkEl) linkEl.href = assign.link || '#';
+  
+  const descEl = document.getElementById('assignment-description');
+  if (descEl) descEl.textContent = assign.description || '';
 
-  const quizBanner = document.getElementById('quiz-banner');
-  if (quizBanner) quizBanner.textContent = assign.title;
-
-  const quizLink = document.getElementById('quiz-link');
-  if (quizLink) {
-    quizLink.href        = assign.link || '#';
-    quizLink.textContent = assign.link_label || 'Open Assignment';
+  const dueEl = document.getElementById('assignment-due-text');
+  if (dueEl) {
+    dueEl.textContent = assign.due_date ? 'Due ' + formatDueDate(assign.due_date) : '';
   }
 
-  const quizDescription = document.getElementById('quiz-description');
-  if (quizDescription) quizDescription.textContent = assign.description || '';
-
-  const quizDueEl = document.getElementById('quiz-due-text');
-  if (quizDueEl) {
-    quizDueEl.textContent  = assign.due_date ? 'Due ' + formatDueDate(assign.due_date) : '';
-    quizDueEl.style.display = assign.due_date ? 'block' : 'none';
-  }
-
-  const btn = document.getElementById('quiz-mark-btn');
+  const btn = document.getElementById('assignment-mark-btn');
   if (btn) {
-    const key       = completionKey('assignment', assign.id);
-    const dueDate   = assign.due_date ? new Date(assign.due_date) : null;
-    const isOverdue = dueDate && new Date() > dueDate;
-
+    const key = completionKey('assignment', assign.id);
     if (state.done.has(key)) {
-      btn.textContent   = '✓ Marked as done';
-      btn.className     = 'mark-done-btn done-state';
-      btn.disabled      = false;
-      btn.style.opacity = '1';
-      btn.style.cursor  = 'pointer';
-      btn.onclick       = () => markDone('assignment');
-    } else if (isOverdue) {
-      btn.textContent   = 'Past due date';
-      btn.className     = 'mark-done-btn dark';
-      btn.disabled      = true;
-      btn.style.opacity = '0.5';
-      btn.style.cursor  = 'not-allowed';
-      btn.onclick       = null;
+      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Marked as done';
+      btn.className = 'mark-done-btn done-state';
     } else {
-      btn.textContent   = 'Mark as done';
-      btn.className     = 'mark-done-btn yellow';
-      btn.disabled      = false;
-      btn.style.opacity = '1';
-      btn.style.cursor  = 'pointer';
-      btn.onclick       = () => markDone('assignment');
+      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> Mark as done';
+      btn.className = 'mark-done-btn dark';
     }
+    btn.onclick = () => markDone('assignment');
   }
 
-  showView('quiz-detail');
+  showView('assignment-detail');
 }
 
 // ── MARK DONE / UNDO ─────────────────────────────────────────────
@@ -826,11 +856,11 @@ async function markDone(type) {
   if (!state.currentItem) return;
   const id  = state.currentItem.id;
   const key = completionKey(type, id);
-  const btn = document.getElementById(type === 'material' ? 'mat-mark-btn' : 'quiz-mark-btn');
+  const btnId = type === 'material' ? 'mat-mark-btn' : type === 'assignment' ? 'assignment-mark-btn' : 'quiz-mark-btn';
+  const btn = document.getElementById(btnId);
   if (btn) btn.disabled = true;
 
   if (state.done.has(key)) {
-    // Undo
     const result = await Swal.fire({
       title: 'Are you sure?', text: 'Do you want to undo marking this as done?',
       icon: 'warning', showCancelButton: true,
@@ -845,9 +875,9 @@ async function markDone(type) {
         });
         state.done.delete(key);
         if (btn) {
-          btn.textContent = 'Mark as done';
-          btn.className   = type === 'material' ? 'mark-done-btn dark' : 'mark-done-btn yellow';
-          btn.disabled    = false;
+          btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> Mark as done';
+          btn.className = type === 'material' ? 'mark-done-btn dark' : 'mark-done-btn dark';
+          btn.disabled = false;
         }
         updateItemDisplay(type, id, false);
         if (state.currentView === 'progress') renderProgress();
@@ -860,7 +890,6 @@ async function markDone(type) {
       if (btn) btn.disabled = false;
     }
   } else {
-    // Mark done
     try {
       await fetch('/api/mark-done', {
         method: 'POST',
@@ -869,10 +898,10 @@ async function markDone(type) {
       });
       state.done.add(key);
       if (btn) {
-        btn.textContent = '✓ Marked as done';
-        btn.className   = 'mark-done-btn done-state';
-        btn.disabled    = false;
-        btn.onclick     = () => markDone(type);
+        btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Marked as done';
+        btn.className = 'mark-done-btn done-state';
+        btn.disabled = false;
+        btn.onclick = () => markDone(type);
       }
       updateItemDisplay(type, id, true);
       if (state.currentView === 'progress') renderProgress();
@@ -896,14 +925,12 @@ function updateItemDisplay(type, id, isDone) {
     if (item._itemId === id) {
       isDone ? item.classList.add('done') : item.classList.remove('done');
 
-      // Also update the done badge inside the card
       const existingBadge = item.querySelector('.item-card-badge');
       if (isDone && !existingBadge) {
         const badge = document.createElement('span');
         badge.className = 'item-card-badge';
         badge.innerHTML = '<i class="fa-solid fa-check"></i> Done';
         item.appendChild(badge);
-        // Update icon color
         const icon = item.querySelector('.item-card-icon');
         if (icon) { icon.style.background = 'var(--success-bg)'; icon.style.color = 'var(--success-text)'; }
       } else if (!isDone && existingBadge) {
@@ -944,7 +971,6 @@ function renderTodo() {
   const assigned = allTodos.filter(t => t.dueDate >= now).sort((a, b) => a.dueDate - b.dueDate);
   const missing  = allTodos.filter(t => t.dueDate <  now).sort((a, b) => a.dueDate - b.dueDate);
 
-  // Assigned list
   const assignedList = document.getElementById('todo-assigned-list');
   if (assignedList) {
     assignedList.innerHTML = '';
@@ -955,8 +981,8 @@ function renderTodo() {
         const card = document.createElement('div');
         card.className = 'todo-page-card';
         card.innerHTML = `
-          <p class="todo-title">${t.title}</p>
-          <p class="todo-class-name">${t.cls.title}</p>
+          <p class="todo-title">${escapeHtml(t.title)}</p>
+          <p class="todo-class-name">${escapeHtml(t.cls.title)}</p>
           <p class="todo-due">Due Date: ${formatDueDate(t.dueDate)}</p>
         `;
         card.addEventListener('click', () => {
@@ -971,7 +997,6 @@ function renderTodo() {
     }
   }
 
-  // Missing list
   const missingList = document.getElementById('todo-missing-list');
   if (missingList) {
     missingList.innerHTML = '';
@@ -982,8 +1007,8 @@ function renderTodo() {
         const card = document.createElement('div');
         card.className = 'todo-missing-card';
         card.innerHTML = `
-          <p class="todo-title">${t.title}</p>
-          <p class="todo-class-name">${t.cls.title}</p>
+          <p class="todo-title">${escapeHtml(t.title)}</p>
+          <p class="todo-class-name">${escapeHtml(t.cls.title)}</p>
           <p class="todo-due todo-due-overdue">Due Date: ${formatDueDate(t.dueDate)} (Overdue)</p>
         `;
         card.addEventListener('click', () => {
@@ -1028,7 +1053,7 @@ function renderProgress() {
     card.className = 'progress-card';
     card.innerHTML = `
       <div class="progress-card-header">
-        <span class="progress-card-name">${cls.title}</span>
+        <span class="progress-card-name">${escapeHtml(cls.title)}</span>
         <span class="progress-card-count">${classCompleted}/${classTotal}</span>
       </div>
       <div class="progress-bar-track">
@@ -1103,11 +1128,12 @@ document.querySelectorAll('.nav-item').forEach(link => {
     const view = this.getAttribute('data-view');
     if (!view) return;
     switch (view) {
-      case 'home':     await renderHome();    showView('home');     break;
-      case 'classes':  await renderClasses(); showView('classes');  break;
-      case 'progress': renderProgress();      showView('progress'); break;
-      case 'todo':     renderTodo();          showView('todo');     break;
-      case 'profile':  renderProfile();       showView('profile');  break;
+      case 'home':          await renderHome();              showView('home');          break;
+      case 'classes':       await renderClasses();           showView('classes');       break;
+      case 'progress':      renderProgress();                showView('progress');      break;
+      case 'todo':          renderTodo();                    showView('todo');          break;
+      case 'announcements': await renderFullAnnouncements(); showView('announcements'); break;
+      case 'profile':       renderProfile();                 showView('profile');       break;
     }
   });
 });
@@ -1115,9 +1141,10 @@ document.querySelectorAll('.nav-item').forEach(link => {
 // ── BACK BUTTONS ─────────────────────────────────────────────────
 
 document.addEventListener('click', async e => {
-  if (e.target.closest('#view-class-detail .back-btn'))    { goBackToClasses();     return; }
-  if (e.target.closest('#view-material-detail .back-btn')) { goBackToClassDetail(); return; }
-  if (e.target.closest('#view-quiz-detail .back-btn'))     { goBackToClassDetail(); return; }
+  if (e.target.closest('#back-to-classes'))              { goBackToClasses();    return; }
+  if (e.target.closest('#back-to-class-from-material'))  { goBackToClassDetail(); return; }
+  if (e.target.closest('#back-to-class-from-assignment')){ goBackToClassDetail(); return; }
+  if (e.target.closest('#back-to-class-from-quiz'))      { goBackToClassDetail(); return; }
 });
 
 // ── FILE UPLOAD ──────────────────────────────────────────────────
@@ -1147,6 +1174,41 @@ document.addEventListener('change', e => {
       }
     })
     .catch(() => Swal.fire('Error', 'Could not upload picture', 'error'));
+});
+
+// ── REMOVE PROFILE PICTURE ───────────────────────────────────────
+
+document.addEventListener('click', async e => {
+  if (e.target.id === 'remove-picture-btn' || e.target.closest('#remove-picture-btn')) {
+    const result = await Swal.fire({
+      title: 'Remove picture?',
+      text: 'Your profile picture will be removed.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Remove',
+      cancelButtonText: 'Cancel'
+    });
+    
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch('/api/remove-profile-picture', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: DATA.profile.id })
+        });
+        
+        if (response.ok) {
+          DATA.profile.profilePicture = null;
+          updateProfilePictureDisplay();
+          Swal.fire('Removed', 'Profile picture removed.', 'success');
+        } else {
+          Swal.fire('Error', 'Failed to remove picture.', 'error');
+        }
+      } catch (error) {
+        Swal.fire('Error', 'Could not connect to server.', 'error');
+      }
+    }
+  }
 });
 
 // ── PROFILE BUTTON HANDLERS ──────────────────────────────────────
@@ -1265,32 +1327,6 @@ document.addEventListener('click', async e => {
       }
     });
   }
-
-  if (e.target.id === 'remove-picture-btn') {
-    Swal.fire({
-      title: 'Remove picture?', text: 'Your profile picture will be removed.',
-      icon: 'warning', showCancelButton: true,
-      confirmButtonText: 'Yes, remove it!', cancelButtonText: 'Cancel'
-    }).then(async result => {
-      if (result.isConfirmed) {
-        try {
-          const response = await fetch('/api/remove-profile-picture', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: DATA.profile.id })
-          });
-          if (response.ok) {
-            DATA.profile.profilePicture = null;
-            updateProfilePictureDisplay();
-            Swal.fire('Removed', 'Profile picture removed.', 'success');
-          } else {
-            Swal.fire('Error', 'Could not remove picture.', 'error');
-          }
-        } catch (error) {
-          Swal.fire('Error', 'Could not connect to server.', 'error');
-        }
-      }
-    });
-  }
 });
 
 // ── SEARCH ───────────────────────────────────────────────────────
@@ -1339,8 +1375,8 @@ document.addEventListener('click', async e => {
       el.className = 'search-result-item';
       el.innerHTML = `
         <span class="search-result-type type-${r.type === 'assignment' ? 'quiz' : r.type}">${r.type}</span>
-        <p class="search-result-title">${r.label}</p>
-        <p class="search-result-sub">${r.sub}</p>
+        <p class="search-result-title">${escapeHtml(r.label)}</p>
+        <p class="search-result-sub">${escapeHtml(r.sub)}</p>
       `;
       el.addEventListener('click', () => {
         input.value = '';
@@ -1381,6 +1417,8 @@ document.addEventListener('click', async e => {
   await fetchCompletions();
 
   setupJoinButton();
+  
+  updateProfilePictureDisplay();
 
   const homeNav = document.querySelector('.nav-item[data-view="home"]');
   if (homeNav) setActiveNav(homeNav);

@@ -14,8 +14,8 @@ console.log("EMAIL_USER:", process.env.EMAIL_USER ? "✓ Loaded" : "✗ Missing"
 console.log("EMAIL_APP_PASSWORD:", process.env.EMAIL_APP_PASSWORD ? "✓ Loaded" : "✗ Missing");
 console.log("DB_HOST:", process.env.DB_HOST ? "✓ Loaded" : "✗ Missing");
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
+// Configure multer for profile picture uploads
+const profileStorage = multer.diskStorage({
     destination: function (req, file, cb) {
         const uploadDir = path.join(__dirname, "..", "..", "frontend", "uploads", "profile-pictures");
         if (!fs.existsSync(uploadDir)) {
@@ -30,21 +30,43 @@ const storage = multer.diskStorage({
     }
 });
 
+// Configure multer for material/assignment/quiz file uploads
+const materialStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = path.join(__dirname, "..", "..", "frontend", "uploads", "materials");
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, 'material-' + uniqueSuffix + ext);
+    }
+});
+
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif/;
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|ppt|pptx|txt/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
     
     if (mimetype && extname) {
         return cb(null, true);
     } else {
-        cb(new Error('Only image files are allowed'));
+        cb(new Error('Only images, PDF, DOC, PPT, and TXT files are allowed'));
     }
 };
 
-const upload = multer({ 
-    storage: storage,
+const uploadProfile = multer({ 
+    storage: profileStorage,
     limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: fileFilter
+});
+
+const uploadMaterial = multer({ 
+    storage: materialStorage,
+    limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: fileFilter
 });
 
@@ -60,6 +82,69 @@ const transporter = nodemailer.createTransport({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "..", "..", "frontend")));
+
+// =====================================================
+// FIXED: SERVE ALL MATERIAL FILES INLINE (NOT AS DOWNLOAD)
+// Maps file extensions to MIME types and forces
+// Content-Disposition: inline so the browser opens
+// the file instead of triggering a download prompt.
+//
+// Supported inline types:
+//   - PDF       → rendered by the browser's built-in PDF viewer
+//   - Images    → rendered directly (png, jpg, gif, webp, svg)
+//   - Text      → rendered as plain text
+//   - Office    → doc/docx/ppt/pptx cannot be rendered natively;
+//                 the frontend wraps these in Google Docs Viewer.
+//                 The server still sends them inline so the Viewer
+//                 can fetch them without a CORS / download issue.
+// =====================================================
+
+const MIME_MAP = {
+    // Documents
+    'pdf':  'application/pdf',
+    'txt':  'text/plain; charset=utf-8',
+    // Images
+    'png':  'image/png',
+    'jpg':  'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif':  'image/gif',
+    'webp': 'image/webp',
+    'svg':  'image/svg+xml',
+    // Office (browser cannot render natively but inline header
+    // lets Google Docs Viewer fetch them without a download dialog)
+    'doc':  'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'ppt':  'application/vnd.ms-powerpoint',
+    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'xls':  'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+};
+
+app.use('/uploads/materials', (req, res, next) => {
+    // Decode the URL-encoded path and strip any query string
+    const cleanPath  = decodeURIComponent(req.path.split('?')[0]);
+    const filePath   = path.join(__dirname, "..", "..", "frontend", "uploads", "materials", cleanPath);
+
+    if (!fs.existsSync(filePath)) {
+        return next(); // Let Express 404 handle it
+    }
+
+    const ext         = cleanPath.toLowerCase().split('.').pop();
+    const contentType = MIME_MAP[ext] || 'application/octet-stream';
+    const filename    = path.basename(filePath);
+
+    // Always send inline — browser decides whether to render or show a download bar.
+    // Office files will be fetched inline by the Google Docs Viewer embedded in the
+    // dashboard iframe; the user never sees a raw download dialog for those either.
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    // Allow embedding in iframes (needed for Google Docs Viewer)
+    res.setHeader('X-Frame-Options', 'ALLOWALL');
+    res.sendFile(filePath);
+});
+
+// Serve profile pictures and other uploads normally
 app.use('/uploads', express.static(path.join(__dirname, "..", "..", "frontend", "uploads")));
 
 function generateCode() {
@@ -114,7 +199,6 @@ app.get("/teacher-dashboard", (req, res) => {
 // STUDENT: JOIN SECTION WITH ENROLLMENT CODE
 // =====================================================
 
-// Get section info by enrollment code
 app.get("/api/section-by-code", async (req, res) => {
     const { code } = req.query;
     if (!code) return res.status(400).json({ message: "Enrollment code is required" });
@@ -145,8 +229,6 @@ app.get("/api/section-by-code", async (req, res) => {
     }
 });
 
-// Student joins section
-// Student joins section (DIRECT ENROLLMENT - NO APPROVAL NEEDED)
 app.post("/api/join-section", async (req, res) => {
     const { enrollmentCode, studentId } = req.body;
     if (!enrollmentCode || !studentId) {
@@ -161,9 +243,7 @@ app.post("/api/join-section", async (req, res) => {
         if (user.length === 0 || user[0].role !== 'student') {
             return res.status(403).json({ message: "Only students can join classes." });
         }
-
         
-        // Get section info
         const sectionInfo = await conn.query(
             "SELECT id FROM sections WHERE enrollment_code = ?",
             [enrollmentCode.toUpperCase()]
@@ -175,7 +255,6 @@ app.post("/api/join-section", async (req, res) => {
         
         const sectionId = sectionInfo[0].id;
         
-        // Check if already enrolled
         const existing = await conn.query(
             "SELECT * FROM section_students WHERE section_id = ? AND student_id = ?",
             [sectionId, studentId]
@@ -185,7 +264,6 @@ app.post("/api/join-section", async (req, res) => {
             return res.status(400).json({ message: "You are already enrolled in this section" });
         }
         
-        // Enroll student directly with 'enrolled' status (NO PENDING)
         await conn.query(
             "INSERT INTO section_students (section_id, student_id, status) VALUES (?, ?, 'enrolled')",
             [sectionId, studentId]
@@ -204,7 +282,6 @@ app.post("/api/join-section", async (req, res) => {
     }
 });
 
-// Get student's enrolled classes
 app.get("/api/my-classes", async (req, res) => {
     const { studentId } = req.query;
     if (!studentId) return res.status(400).json({ message: "Student ID is required" });
@@ -591,7 +668,7 @@ app.put("/api/update-profile", async (req, res) => {
     }
 });
 
-app.post("/api/upload-profile-picture", upload.single('profilePicture'), async (req, res) => {
+app.post("/api/upload-profile-picture", uploadProfile.single('profilePicture'), async (req, res) => {
     const { userId } = req.body;
     
     if (!userId) {
@@ -625,6 +702,36 @@ app.post("/api/upload-profile-picture", upload.single('profilePicture'), async (
         });
     } catch (err) {
         console.error("Upload profile picture error:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+app.post("/api/remove-profile-picture", async (req, res) => {
+    const { userId } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+    }
+    
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        
+        const user = await conn.query("SELECT profile_picture FROM users WHERE id = ?", [userId]);
+        if (user.length > 0 && user[0].profile_picture) {
+            const oldFilePath = path.join(__dirname, "..", "..", "frontend", "uploads", "profile-pictures", user[0].profile_picture);
+            if (fs.existsSync(oldFilePath)) {
+                fs.unlinkSync(oldFilePath);
+            }
+        }
+        
+        await conn.query("UPDATE users SET profile_picture = NULL WHERE id = ?", [userId]);
+        
+        res.json({ message: "Profile picture removed successfully" });
+    } catch (err) {
+        console.error("Remove profile picture error:", err);
         res.status(500).json({ message: "Server error: " + err.message });
     } finally {
         if (conn) conn.release();
@@ -747,7 +854,7 @@ app.get("/api/announcements", async (req, res) => {
     try {
         conn = await pool.getConnection();
         const rows = await conn.query(
-            "SELECT id, title, body, audience, created_at FROM announcements ORDER BY created_at DESC"
+            "SELECT id, teacher_id, title, body, audience, created_at FROM announcements ORDER BY created_at DESC"
         );
         res.json(rows);
     } catch (err) {
@@ -833,6 +940,135 @@ app.delete("/api/announcements/:id", async (req, res) => {
         res.json({ message: "Announcement deleted successfully." });
     } catch (err) {
         console.error("Delete announcement error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// =====================================================
+// STUDENT ANNOUNCEMENTS API (FILTERED BY ENROLLMENT)
+// =====================================================
+
+app.get("/api/student/announcements", async (req, res) => {
+    const { studentId } = req.query;
+    
+    if (!studentId) {
+        return res.status(400).json({ message: "Student ID is required" });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        
+        const enrolledSections = await conn.query(
+            `SELECT section_id
+             FROM section_students
+             WHERE student_id = ? AND status = 'enrolled'`,
+            [studentId]
+        );
+        
+        const sectionIds = enrolledSections.map(s => s.section_id);
+        
+        if (sectionIds.length === 0) {
+            return res.json([]);
+        }
+        
+        const allAnnouncements = await conn.query(
+            "SELECT id, teacher_id, title, body, audience, created_at FROM announcements ORDER BY created_at DESC"
+        );
+        
+        const filteredAnnouncements = allAnnouncements.filter(announcement => {
+            if (!announcement.audience ||
+                announcement.audience === 'All Classes' ||
+                announcement.audience === 'all' ||
+                announcement.audience === '') {
+                return true;
+            }
+            
+            const audienceSectionIds = announcement.audience
+                .split(',')
+                .map(s => {
+                    const cleaned = s.trim().replace('section_', '');
+                    return parseInt(cleaned);
+                })
+                .filter(id => !isNaN(id));
+            
+            return audienceSectionIds.some(audienceId => sectionIds.includes(audienceId));
+        });
+        
+        res.json(filteredAnnouncements);
+        
+    } catch (err) {
+        console.error("Get student announcements error:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+app.get("/api/my-sections", async (req, res) => {
+    const { studentId } = req.query;
+    
+    if (!studentId) {
+        return res.status(400).json({ message: "Student ID is required" });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        
+        const sections = await conn.query(
+            `SELECT
+                ss.section_id as id,
+                s.name,
+                s.code,
+                s.enrollment_code,
+                c.title as class_title,
+                c.id as class_id
+             FROM section_students ss
+             JOIN sections s ON ss.section_id = s.id
+             JOIN classes c ON s.class_id = c.id
+             WHERE ss.student_id = ? AND ss.status = 'enrolled'
+             ORDER BY c.title, s.name`,
+            [studentId]
+        );
+        
+        res.json(sections);
+        
+    } catch (err) {
+        console.error("Get student sections error:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// =====================================================
+// TEACHER: ALL SECTIONS FOR ANNOUNCEMENTS
+// =====================================================
+
+app.get("/api/teacher/all-sections", async (req, res) => {
+    const { teacherId } = req.query;
+    if (!teacherId) return res.status(400).json({ message: "Missing teacherId" });
+    
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        
+        const sections = await conn.query(
+            `SELECT s.id as section_id, s.name as section_name, s.code, s.enrollment_code,
+                    c.id as class_id, c.title as class_title
+             FROM sections s
+             JOIN classes c ON s.class_id = c.id
+             WHERE c.teacher_id = ?
+             ORDER BY c.title, s.name`,
+            [teacherId]
+        );
+        
+        res.json(sections);
+    } catch (err) {
+        console.error("Get teacher sections error:", err);
         res.status(500).json({ message: "Server error" });
     } finally {
         if (conn) conn.release();
@@ -1049,7 +1285,7 @@ app.delete("/api/teacher/sections/:id", async (req, res) => {
 });
 
 // =====================================================
-// TEACHER: MATERIALS API
+// TEACHER: MATERIALS API with file upload
 // =====================================================
 
 app.get("/api/teacher/materials", async (req, res) => {
@@ -1072,46 +1308,77 @@ app.get("/api/teacher/materials", async (req, res) => {
     }
 });
 
-app.post("/api/teacher/materials", async (req, res) => {
-    const { sectionId, title, description, link, dueDate } = req.body;
-    if (!sectionId || !title) return res.status(400).json({ message: "Missing required fields" });
-    if (isNaN(Number(sectionId))) return res.status(400).json({ message: "Invalid section ID" });
-
+app.post("/api/teacher/materials", uploadMaterial.single('file'), async (req, res) => {
+    const { sectionId, title, description, dueDate } = req.body;
+    if (!sectionId || !title) {
+        return res.status(400).json({ message: "Missing required fields" });
+    }
+    
     let conn;
     try {
         conn = await pool.getConnection();
-        const sections = await conn.query("SELECT id FROM sections WHERE id = ?", [Number(sectionId)]);
-        if (sections.length === 0) return res.status(404).json({ message: "Section not found" });
+        
+        const sectionCheck = await conn.query("SELECT id FROM sections WHERE id = ?", [sectionId]);
+        if (sectionCheck.length === 0) {
+            return res.status(404).json({ message: "Section not found" });
+        }
+        
+        let pdf_url = null;
+        if (req.file) {
+            pdf_url = `/uploads/materials/${req.file.filename}`;
+        } else if (req.body.link) {
+            pdf_url = req.body.link;
+        }
         
         const result = await conn.query(
             "INSERT INTO materials (section_id, title, description, pdf_url, due_date) VALUES (?, ?, ?, ?, ?)",
-            [Number(sectionId), title, description || null, link || null, dueDate || null]
+            [sectionId, title, description || null, pdf_url, dueDate || null]
         );
-        res.json({ id: Number(result.insertId), message: "Material created" });
+        
+        res.json({ 
+            id: Number(result.insertId), 
+            message: "Material created successfully",
+            file: req.file ? req.file.filename : null
+        });
     } catch (err) {
         console.error("Create material error:", err);
-        res.status(500).json({ message: "Server error" });
+        res.status(500).json({ message: "Server error: " + err.message });
     } finally {
         if (conn) conn.release();
     }
 });
 
-app.put("/api/teacher/materials/:id", async (req, res) => {
+app.put("/api/teacher/materials/:id", uploadMaterial.single('file'), async (req, res) => {
     const { id } = req.params;
-    const { title, description, link, dueDate } = req.body;
+    const { title, description, dueDate } = req.body;
     if (!title) return res.status(400).json({ message: "Title is required" });
 
     let conn;
     try {
         conn = await pool.getConnection();
-        await conn.query(
-            "UPDATE materials SET title = ?, description = ?, pdf_url = ?, due_date = ? WHERE id = ?",
-            [title, description || null, link || null, dueDate || null, id]
-        );
-        res.json({ message: "Material updated" });
+        
+        let pdf_url = null;
+        if (req.file) {
+            pdf_url = `/uploads/materials/${req.file.filename}`;
+        } else if (req.body.link) {
+            pdf_url = req.body.link;
+        }
+        
+        if (pdf_url) {
+            await conn.query(
+                "UPDATE materials SET title = ?, description = ?, pdf_url = ?, due_date = ? WHERE id = ?",
+                [title, description || null, pdf_url, dueDate || null, id]
+            );
+        } else {
+            await conn.query(
+                "UPDATE materials SET title = ?, description = ?, due_date = ? WHERE id = ?",
+                [title, description || null, dueDate || null, id]
+            );
+        }
+        res.json({ message: "Material updated successfully" });
     } catch (err) {
         console.error("Update material error:", err);
-        res.status(500).json({ message: "Server error" });
+        res.status(500).json({ message: "Server error: " + err.message });
     } finally {
         if (conn) conn.release();
     }
@@ -1124,7 +1391,7 @@ app.delete("/api/teacher/materials/:id", async (req, res) => {
         conn = await pool.getConnection();
         await conn.query("DELETE FROM task_completions WHERE item_type = 'material' AND item_id = ?", [id]);
         await conn.query("DELETE FROM materials WHERE id = ?", [id]);
-        res.json({ message: "Material deleted" });
+        res.json({ message: "Material deleted successfully" });
     } catch (err) {
         console.error("Delete material error:", err);
         res.status(500).json({ message: "Server error" });
@@ -1157,25 +1424,36 @@ app.get("/api/teacher/quizzes", async (req, res) => {
     }
 });
 
-app.post("/api/teacher/quizzes", async (req, res) => {
-    const { sectionId, title, description, link, dueDate } = req.body;
-    if (!sectionId || !title) return res.status(400).json({ message: "Missing required fields" });
-    if (isNaN(Number(sectionId))) return res.status(400).json({ message: "Invalid section ID" });
+app.post("/api/teacher/quizzes", uploadMaterial.single('file'), async (req, res) => {
+    const { sectionId, title, description, dueDate, points } = req.body;
+    if (!sectionId || !title) {
+        return res.status(400).json({ message: "Missing required fields" });
+    }
 
     let conn;
     try {
         conn = await pool.getConnection();
-        const sections = await conn.query("SELECT id FROM sections WHERE id = ?", [Number(sectionId)]);
-        if (sections.length === 0) return res.status(404).json({ message: "Section not found" });
+        
+        const sectionCheck = await conn.query("SELECT id FROM sections WHERE id = ?", [sectionId]);
+        if (sectionCheck.length === 0) {
+            return res.status(404).json({ message: "Section not found" });
+        }
+        
+        let link = null;
+        if (req.file) {
+            link = `/uploads/materials/${req.file.filename}`;
+        } else if (req.body.link) {
+            link = req.body.link;
+        }
         
         const result = await conn.query(
-            "INSERT INTO quizzes (section_id, title, description, link, link_label, due_date) VALUES (?, ?, ?, ?, ?, ?)",
-            [Number(sectionId), title, description || null, link || null, link || 'Open Quiz', dueDate || null]
+            "INSERT INTO quizzes (section_id, title, description, link, link_label, due_date, points) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [sectionId, title, description || null, link, link || 'Open Quiz', dueDate || null, points || 0]
         );
-        res.json({ id: Number(result.insertId), message: "Quiz created" });
+        res.json({ id: Number(result.insertId), message: "Quiz created successfully" });
     } catch (err) {
         console.error("Create quiz error:", err);
-        res.status(500).json({ message: "Server error" });
+        res.status(500).json({ message: "Server error: " + err.message });
     } finally {
         if (conn) conn.release();
     }
@@ -1183,17 +1461,17 @@ app.post("/api/teacher/quizzes", async (req, res) => {
 
 app.put("/api/teacher/quizzes/:id", async (req, res) => {
     const { id } = req.params;
-    const { title, description, link, dueDate } = req.body;
+    const { title, description, link, dueDate, points } = req.body;
     if (!title) return res.status(400).json({ message: "Title is required" });
 
     let conn;
     try {
         conn = await pool.getConnection();
         await conn.query(
-            "UPDATE quizzes SET title = ?, description = ?, link = ?, link_label = ?, due_date = ? WHERE id = ?",
-            [title, description || null, link || null, link || 'Open Quiz', dueDate || null, id]
+            "UPDATE quizzes SET title = ?, description = ?, link = ?, link_label = ?, due_date = ?, points = ? WHERE id = ?",
+            [title, description || null, link || null, link || 'Open Quiz', dueDate || null, points || 0, id]
         );
-        res.json({ message: "Quiz updated" });
+        res.json({ message: "Quiz updated successfully" });
     } catch (err) {
         console.error("Update quiz error:", err);
         res.status(500).json({ message: "Server error" });
@@ -1209,7 +1487,7 @@ app.delete("/api/teacher/quizzes/:id", async (req, res) => {
         conn = await pool.getConnection();
         await conn.query("DELETE FROM task_completions WHERE item_type = 'quiz' AND item_id = ?", [id]);
         await conn.query("DELETE FROM quizzes WHERE id = ?", [id]);
-        res.json({ message: "Quiz deleted" });
+        res.json({ message: "Quiz deleted successfully" });
     } catch (err) {
         console.error("Delete quiz error:", err);
         res.status(500).json({ message: "Server error" });
@@ -1219,7 +1497,7 @@ app.delete("/api/teacher/quizzes/:id", async (req, res) => {
 });
 
 // =====================================================
-// TEACHER: ASSIGNMENTS API
+// TEACHER: ASSIGNMENTS API with file upload
 // =====================================================
 
 app.get("/api/teacher/assignments", async (req, res) => {
@@ -1242,25 +1520,36 @@ app.get("/api/teacher/assignments", async (req, res) => {
     }
 });
 
-app.post("/api/teacher/assignments", async (req, res) => {
-    const { sectionId, title, description, link, dueDate, points } = req.body;
-    if (!sectionId || !title) return res.status(400).json({ message: "Missing required fields" });
-    if (isNaN(Number(sectionId))) return res.status(400).json({ message: "Invalid section ID" });
+app.post("/api/teacher/assignments", uploadMaterial.single('file'), async (req, res) => {
+    const { sectionId, title, description, dueDate, points } = req.body;
+    if (!sectionId || !title) {
+        return res.status(400).json({ message: "Missing required fields" });
+    }
 
     let conn;
     try {
         conn = await pool.getConnection();
-        const sections = await conn.query("SELECT id FROM sections WHERE id = ?", [Number(sectionId)]);
-        if (sections.length === 0) return res.status(404).json({ message: "Section not found" });
+        
+        const sectionCheck = await conn.query("SELECT id FROM sections WHERE id = ?", [sectionId]);
+        if (sectionCheck.length === 0) {
+            return res.status(404).json({ message: "Section not found" });
+        }
+        
+        let link = null;
+        if (req.file) {
+            link = `/uploads/materials/${req.file.filename}`;
+        } else if (req.body.link) {
+            link = req.body.link;
+        }
         
         const result = await conn.query(
             "INSERT INTO assignments (section_id, title, description, link, due_date, points) VALUES (?, ?, ?, ?, ?, ?)",
-            [Number(sectionId), title, description || null, link || null, dueDate || null, points || 0]
+            [sectionId, title, description || null, link, dueDate || null, points || 0]
         );
-        res.json({ id: Number(result.insertId), message: "Assignment created" });
+        res.json({ id: Number(result.insertId), message: "Assignment created successfully" });
     } catch (err) {
         console.error("Create assignment error:", err);
-        res.status(500).json({ message: "Server error" });
+        res.status(500).json({ message: "Server error: " + err.message });
     } finally {
         if (conn) conn.release();
     }
@@ -1278,7 +1567,7 @@ app.put("/api/teacher/assignments/:id", async (req, res) => {
             "UPDATE assignments SET title = ?, description = ?, link = ?, due_date = ?, points = ? WHERE id = ?",
             [title, description || null, link || null, dueDate || null, points || 0, id]
         );
-        res.json({ message: "Assignment updated" });
+        res.json({ message: "Assignment updated successfully" });
     } catch (err) {
         console.error("Update assignment error:", err);
         res.status(500).json({ message: "Server error" });
@@ -1294,7 +1583,7 @@ app.delete("/api/teacher/assignments/:id", async (req, res) => {
         conn = await pool.getConnection();
         await conn.query("DELETE FROM task_completions WHERE item_type = 'assignment' AND item_id = ?", [id]);
         await conn.query("DELETE FROM assignments WHERE id = ?", [id]);
-        res.json({ message: "Assignment deleted" });
+        res.json({ message: "Assignment deleted successfully" });
     } catch (err) {
         console.error("Delete assignment error:", err);
         res.status(500).json({ message: "Server error" });
@@ -1307,11 +1596,8 @@ app.delete("/api/teacher/assignments/:id", async (req, res) => {
 // TEACHER: STUDENTS API
 // =====================================================
 
-// Get students for a section (FIXED)
 app.get("/api/teacher/students", async (req, res) => {
     const { sectionId } = req.query;
-    console.log("Getting students for sectionId:", sectionId);
-    console.log("SectionId type:", typeof sectionId);
     
     if (!sectionId) {
         return res.status(400).json({ message: "Missing sectionId", students: [] });
@@ -1321,7 +1607,6 @@ app.get("/api/teacher/students", async (req, res) => {
     try {
         conn = await pool.getConnection();
         
-        // Query with the exact sectionId
         const students = await conn.query(
             `SELECT 
                 u.id, 
@@ -1337,12 +1622,32 @@ app.get("/api/teacher/students", async (req, res) => {
             [sectionId]
         );
         
-        console.log("Found students:", students.length);
-        
         res.json(students);
     } catch (err) {
         console.error("Get students error:", err);
         res.status(500).json({ message: "Server error: " + err.message, students: [] });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+app.delete("/api/teacher/students", async (req, res) => {
+    const { sectionId, studentId } = req.body;
+    if (!sectionId || !studentId) {
+        return res.status(400).json({ message: "Missing required fields" });
+    }
+    
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query(
+            "DELETE FROM section_students WHERE section_id = ? AND student_id = ?",
+            [sectionId, studentId]
+        );
+        res.json({ message: "Student removed successfully" });
+    } catch (err) {
+        console.error("Remove student error:", err);
+        res.status(500).json({ message: "Server error" });
     } finally {
         if (conn) conn.release();
     }
