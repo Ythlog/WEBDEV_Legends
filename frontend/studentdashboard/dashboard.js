@@ -1026,6 +1026,8 @@ function renderTodo() {
 
 // ── RENDER PROGRESS ──────────────────────────────────────────────
 
+// ── RENDER PROGRESS (UPDATED - CLICKABLE CARDS) ─────────────────
+
 function renderProgress() {
   const list    = document.getElementById('progress-list');
   const summary = document.getElementById('progress-summary');
@@ -1052,14 +1054,26 @@ function renderProgress() {
     const card = document.createElement('div');
     card.className = 'progress-card';
     card.innerHTML = `
-      <div class="progress-card-header">
-        <span class="progress-card-name">${escapeHtml(cls.title)}</span>
-        <span class="progress-card-count">${classCompleted}/${classTotal}</span>
+      <div class="progress-card-icon">
+        <i class="fa-solid fa-book-open"></i>
       </div>
-      <div class="progress-bar-track">
-        <div class="progress-bar-fill" style="width: ${pct}%"></div>
+      <div class="progress-card-body">
+        <div class="progress-card-header">
+          <span class="progress-card-name">${escapeHtml(cls.title)}</span>
+          <span class="progress-card-count">${classCompleted}/${classTotal} completed</span>
+        </div>
+        <div class="progress-card-pct">${pct}% complete</div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" style="width: ${pct}%"></div>
+        </div>
       </div>
     `;
+    
+    // Make card clickable - open scores detail
+    card.addEventListener('click', () => {
+      openScoresModal(cls);
+    });
+    
     if (list) list.appendChild(card);
   });
 
@@ -1067,17 +1081,201 @@ function renderProgress() {
   if (summary) {
     summary.innerHTML = `
       <div class="progress-summary-card">
-        <div>
+        <div class="progress-summary-left">
           <p class="summary-label">Overall progress</p>
           <p class="summary-value">${overallPct}%</p>
+          <p class="summary-sub">${totalCompleted} of ${totalItems} items completed</p>
         </div>
-        <div class="summary-bar-track">
-          <div class="summary-bar-fill" style="width: ${overallPct}%"></div>
+        <div class="progress-summary-right">
+          <div class="summary-ring">${overallPct}%</div>
+        </div>
+        <div class="summary-bar-track" style="margin-top:8px;">
+          <div class="summary-bar-fill" style="width:${overallPct}%"></div>
         </div>
       </div>
     `;
   }
 }
+
+// ── SCORES MODAL ─────────────────────────────────────────────────
+
+async function openScoresModal(cls) {
+  const modal = document.getElementById('scores-modal-overlay');
+  const title = document.getElementById('scores-modal-title');
+  const body = document.getElementById('scores-modal-body');
+  
+  if (!modal || !body) return;
+  
+  title.textContent = cls.title + ' - Your Progress';
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:#888;">Loading scores...</div>';
+  modal.classList.add('active');
+
+    console.log('Opening scores modal for class:', cls.title);
+    console.log('Student ID:', DATA.profile.id);  // <-- ADD THIS
+    
+    if (!DATA.profile.id) {
+        body.innerHTML = `
+            <div class="scores-empty">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <p>Unable to load scores. Please try logging out and back in.</p>
+            </div>
+        `;
+        modal.classList.add('active');
+        return;
+    }
+  
+  try {
+    // Fetch scores from the API
+    const response = await fetch(`/api/student/scores/${DATA.profile.id}`);
+    if (!response.ok) throw new Error('Failed to fetch scores');
+    const allScores = await response.json();
+    
+    // Get completed items for this class
+    const completedItems = [];
+    
+    // Check materials
+    (cls.materials || []).forEach(m => {
+      if (state.done.has(completionKey('material', m.id))) {
+        const scoreData = allScores.find(s => 
+          s.item_type === 'material' && s.item_id === m.id
+        );
+        completedItems.push({
+          title: m.title,
+          type: 'material',
+          typeLabel: 'Lesson',
+          icon: 'fa-solid fa-book-open',
+          iconClass: 'score-item-icon',
+          completedAt: scoreData?.completed_at || null,
+          score: scoreData?.score || null
+        });
+      }
+    });
+    
+    // Check quizzes
+    (cls.quizzes || []).forEach(q => {
+      if (state.done.has(completionKey('quiz', q.id))) {
+        const scoreData = allScores.find(s => 
+          s.item_type === 'quiz' && s.item_id === q.id
+        );
+        completedItems.push({
+          title: q.title,
+          type: 'quiz',
+          typeLabel: 'Quiz',
+          icon: 'fa-solid fa-clipboard-question',
+          iconClass: 'score-item-icon quiz-icon',
+          completedAt: scoreData?.completed_at || null,
+          score: scoreData?.score || null
+        });
+      }
+    });
+    
+    // Check assignments
+    (cls.assignments || []).forEach(a => {
+      if (state.done.has(completionKey('assignment', a.id))) {
+        const scoreData = allScores.find(s => 
+          s.item_type === 'assignment' && s.item_id === a.id
+        );
+        completedItems.push({
+          title: a.title,
+          type: 'assignment',
+          typeLabel: 'Assignment',
+          icon: 'fa-solid fa-file-lines',
+          iconClass: 'score-item-icon assignment-icon',
+          completedAt: scoreData?.completed_at || null,
+          score: scoreData?.score || null
+        });
+      }
+    });
+    
+    // Calculate average score
+    const scoredItems = completedItems.filter(i => i.score !== null);
+    const avgScore = scoredItems.length > 0 
+      ? Math.round(scoredItems.reduce((sum, i) => sum + parseFloat(i.score), 0) / scoredItems.length) 
+      : null;
+    
+    // Build the modal body
+    let html = '';
+    
+    if (avgScore !== null) {
+      html += `
+        <div class="scores-summary">
+          <span class="scores-summary-label">
+            <i class="fa-solid fa-calculator"></i> Average Score
+          </span>
+          <span class="scores-summary-value">${avgScore}%</span>
+        </div>
+      `;
+    }
+    
+    if (completedItems.length === 0) {
+      html += `
+        <div class="scores-empty">
+          <i class="fa-solid fa-clipboard-list"></i>
+          <p>No completed items yet.<br>Mark quizzes and assignments as done to see your scores here.</p>
+        </div>
+      `;
+    } else {
+      completedItems.forEach(item => {
+        const dateStr = item.completedAt 
+          ? new Date(item.completedAt).toLocaleDateString('en-US', { 
+              month: 'short', day: 'numeric', year: 'numeric' 
+            })
+          : '';
+        
+        const scoreDisplay = item.score !== null 
+          ? `<div class="score-item-value">${item.score}<span class="score-item-max">/100</span></div>`
+          : `<div class="score-item-value no-score">Not yet graded</div>`;
+        
+        html += `
+          <div class="score-item-card">
+            <div class="${item.iconClass}">
+              <i class="${item.icon}"></i>
+            </div>
+            <div class="score-item-info">
+              <div class="score-item-title">${escapeHtml(item.title)}</div>
+              <div class="score-item-type">${item.typeLabel}</div>
+              ${dateStr ? `<div class="score-item-date">Completed: ${dateStr}</div>` : ''}
+            </div>
+            ${scoreDisplay}
+          </div>
+        `;
+      });
+    }
+    
+    body.innerHTML = html;
+    
+  } catch (err) {
+    console.error('Error loading scores:', err);
+    body.innerHTML = `
+      <div class="scores-empty">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <p>Failed to load scores. Please try again.</p>
+      </div>
+    `;
+  }
+}
+
+// ── CLOSE SCORES MODAL ───────────────────────────────────────────
+
+function closeScoresModal() {
+  const modal = document.getElementById('scores-modal-overlay');
+  if (modal) modal.classList.remove('active');
+}
+
+// Add to your existing event listeners
+document.addEventListener('click', (e) => {
+  if (e.target.id === 'scores-modal-close' || e.target.closest('#scores-modal-close')) {
+    closeScoresModal();
+  }
+  if (e.target.id === 'scores-modal-overlay') {
+    closeScoresModal();
+  }
+});
+
+// Close with Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeScoresModal();
+});
 
 // ── PROFILE ──────────────────────────────────────────────────────
 

@@ -1,5 +1,6 @@
 // =============================================
 // TEACHER DASHBOARD - FULL WORKING VERSION
+// With Score Input for Quizzes & Assignments
 // =============================================
 
 // =============================================
@@ -1029,7 +1030,7 @@ async function deleteAssignment(id) {
 }
 
 // =============================================
-// COMPLETION TABS & STUDENTS
+// COMPLETION TABS & STUDENTS (WITH SCORE INPUTS)
 // =============================================
 function renderCompletionTabs(container, key) {
   if (!container) return;
@@ -1062,7 +1063,8 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
 
     let filtered = students.map(s => ({
       ...s,
-      status: s.completed_at ? doneStatus : 'pending'
+      status: s.completed_at ? doneStatus : 'pending',
+      score: s.score || null
     }));
 
     if (type !== 'material') {
@@ -1104,27 +1106,168 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
       return;
     }
 
+    // Show score inputs for finished/passed tabs of quizzes and assignments
+    const showScoreInput = (filterStatus === 'passed' || filterStatus === 'finished') && 
+                           (type === 'quiz' || type === 'assignment');
+
     filtered.forEach(s => {
       const badgeClass = s.status === 'finished' || s.status === 'passed' ? 'badge-done' : s.status === 'missed' ? 'badge-missed' : 'badge-pending';
       const badgeLabel = s.status === 'finished' ? '✓ Finished' : s.status === 'passed' ? '✓ Passed' : s.status === 'missed' ? '✗ Missed' : '⏳ Pending';
+      
       const card = document.createElement('div');
       card.className = 'student-done-card';
+      
+      let scoreHtml = '';
+      if (showScoreInput) {
+        const studentId = s.user_id || s.student_id;
+        scoreHtml = `
+          <div class="score-input-group" style="display:flex;align-items:center;gap:8px;margin-left:12px;flex-shrink:0;">
+            <input 
+              type="number" 
+              class="score-input" 
+              data-student-id="${studentId}" 
+              data-item-id="${itemId}" 
+              data-item-type="${type}"
+              data-original-value="${s.score !== null && s.score !== undefined ? s.score : ''}"
+              value="${s.score !== null && s.score !== undefined ? s.score : ''}" 
+              placeholder="Score"
+              min="0"
+              max="100"
+              style="width:70px;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;text-align:center;outline:none;transition:all 0.2s;"
+              onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px rgba(59,108,247,0.1)';"
+              onblur="saveStudentScore(this); this.style.borderColor='var(--border)'; this.style.boxShadow='none';"
+              onkeydown="if(event.key==='Enter'){this.blur();}"
+            />
+            <span style="font-size:11px;color:var(--text-muted);">/ 100</span>
+            <i class="fa-solid fa-check score-saved-icon" style="display:none;color:#10b981;font-size:14px;"></i>
+          </div>
+        `;
+      } else if (s.score !== null && s.score !== undefined && (type === 'quiz' || type === 'assignment')) {
+        // Show score even in non-editable view if it exists
+        scoreHtml = `
+          <span style="font-weight:700;color:var(--accent);font-size:13px;margin-left:12px;flex-shrink:0;">
+            ${s.score}/100
+          </span>
+        `;
+      }
+      
       card.innerHTML = `
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="item-icon-wrap" style="background:#11265c">
+        <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
+          <div class="item-icon-wrap" style="background:#11265c;flex-shrink:0;">
             <i class="fa-solid fa-user"></i>
           </div>
-          <div>
-            <div style="font-weight:600">${escHtml(s.first_name + ' ' + s.last_name)}</div>
-            <div style="font-size:12px;color:#777">${escHtml(s.email)}</div>
+          <div style="min-width:0;">
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(s.first_name + ' ' + s.last_name)}</div>
+            <div style="font-size:12px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(s.email)}</div>
           </div>
         </div>
-        <span class="student-done-badge ${badgeClass}">${badgeLabel}</span>`;
+        <span class="student-done-badge ${badgeClass}" style="flex-shrink:0;">${badgeLabel}</span>
+        ${scoreHtml}
+      `;
       container.appendChild(card);
     });
   } catch (err) {
     container.innerHTML = '<div class="empty-state">Failed to load students.</div>';
   }
+}
+
+// =============================================
+// SAVE STUDENT SCORE (FIXED)
+// =============================================
+async function saveStudentScore(inputElement) {
+  const studentId = inputElement.dataset.studentId;
+  const itemId = inputElement.dataset.itemId;
+  const itemType = inputElement.dataset.itemType;
+  const score = inputElement.value.trim();
+  const savedIcon = inputElement.parentElement.querySelector('.score-saved-icon');
+  
+  // If value hasn't changed, don't save
+  if (score === inputElement.dataset.originalValue) {
+    return;
+  }
+  
+  // Handle clearing score
+  if (score === '') {
+    try {
+      const response = await fetch('/api/teacher/scores', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId: parseInt(studentId),
+          itemType: itemType,
+          itemId: parseInt(itemId),
+          sectionId: state.currentSectionId,
+          score: null
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to clear score');
+      }
+      
+      inputElement.dataset.originalValue = '';
+      showScoreSaved(inputElement, savedIcon);
+    } catch (err) {
+      console.error('Save score error:', err);
+      Swal.fire('Error', 'Failed to clear score: ' + err.message, 'error');
+      inputElement.value = inputElement.dataset.originalValue || '';
+    }
+    return;
+  }
+  
+  const numScore = parseFloat(score);
+  if (isNaN(numScore) || numScore < 0 || numScore > 100) {
+    Swal.fire('Invalid Score', 'Score must be between 0 and 100', 'warning');
+    inputElement.value = inputElement.dataset.originalValue || '';
+    return;
+  }
+  
+  try {
+    const response = await fetch('/api/teacher/scores', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        studentId: parseInt(studentId),
+        itemType: itemType,
+        itemId: parseInt(itemId),
+        sectionId: state.currentSectionId,
+        score: numScore
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to save score');
+    }
+    
+    const data = await response.json();
+    console.log('Score saved:', data);
+    
+    // Store the new value as original
+    inputElement.dataset.originalValue = numScore;
+    showScoreSaved(inputElement, savedIcon);
+  } catch (err) {
+    console.error('Save score error:', err);
+    Swal.fire('Error', 'Failed to save score: ' + err.message, 'error');
+    inputElement.value = inputElement.dataset.originalValue || '';
+  }
+}
+
+function showScoreSaved(inputElement, iconElement) {
+  if (iconElement) {
+    iconElement.style.display = 'inline-block';
+    setTimeout(() => {
+      iconElement.style.display = 'none';
+    }, 2000);
+  }
+  // Brief green flash on input
+  inputElement.style.borderColor = '#10b981';
+  inputElement.style.backgroundColor = '#f0fdf4';
+  setTimeout(() => {
+    inputElement.style.borderColor = 'var(--border)';
+    inputElement.style.backgroundColor = 'white';
+  }, 1500);
 }
 
 // =============================================
@@ -1145,7 +1288,6 @@ async function fetchAndRenderStudents() {
       enrolledEl.innerHTML = '<div class="loading-state">Loading students...</div>';
     }
     
-    // Using apiGet helper (merged version - cleaner)
     const students = await apiGet(`/api/teacher/students?sectionId=${state.currentSectionId}`);
     TEACHER_DATA.students = students;
     renderStudentsList();

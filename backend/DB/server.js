@@ -85,33 +85,17 @@ app.use(express.static(path.join(__dirname, "..", "..", "frontend")));
 
 // =====================================================
 // FIXED: SERVE ALL MATERIAL FILES INLINE (NOT AS DOWNLOAD)
-// Maps file extensions to MIME types and forces
-// Content-Disposition: inline so the browser opens
-// the file instead of triggering a download prompt.
-//
-// Supported inline types:
-//   - PDF       → rendered by the browser's built-in PDF viewer
-//   - Images    → rendered directly (png, jpg, gif, webp, svg)
-//   - Text      → rendered as plain text
-//   - Office    → doc/docx/ppt/pptx cannot be rendered natively;
-//                 the frontend wraps these in Google Docs Viewer.
-//                 The server still sends them inline so the Viewer
-//                 can fetch them without a CORS / download issue.
 // =====================================================
 
 const MIME_MAP = {
-    // Documents
     'pdf':  'application/pdf',
     'txt':  'text/plain; charset=utf-8',
-    // Images
     'png':  'image/png',
     'jpg':  'image/jpeg',
     'jpeg': 'image/jpeg',
     'gif':  'image/gif',
     'webp': 'image/webp',
     'svg':  'image/svg+xml',
-    // Office (browser cannot render natively but inline header
-    // lets Google Docs Viewer fetch them without a download dialog)
     'doc':  'application/msword',
     'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'ppt':  'application/vnd.ms-powerpoint',
@@ -121,30 +105,24 @@ const MIME_MAP = {
 };
 
 app.use('/uploads/materials', (req, res, next) => {
-    // Decode the URL-encoded path and strip any query string
     const cleanPath  = decodeURIComponent(req.path.split('?')[0]);
     const filePath   = path.join(__dirname, "..", "..", "frontend", "uploads", "materials", cleanPath);
 
     if (!fs.existsSync(filePath)) {
-        return next(); // Let Express 404 handle it
+        return next();
     }
 
     const ext         = cleanPath.toLowerCase().split('.').pop();
     const contentType = MIME_MAP[ext] || 'application/octet-stream';
     const filename    = path.basename(filePath);
 
-    // Always send inline — browser decides whether to render or show a download bar.
-    // Office files will be fetched inline by the Google Docs Viewer embedded in the
-    // dashboard iframe; the user never sees a raw download dialog for those either.
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
     res.setHeader('Cache-Control', 'public, max-age=3600');
-    // Allow embedding in iframes (needed for Google Docs Viewer)
     res.setHeader('X-Frame-Options', 'ALLOWALL');
     res.sendFile(filePath);
 });
 
-// Serve profile pictures and other uploads normally
 app.use('/uploads', express.static(path.join(__dirname, "..", "..", "frontend", "uploads")));
 
 function generateCode() {
@@ -1681,7 +1659,7 @@ app.get("/api/teacher/class-students", async (req, res) => {
 });
 
 // =====================================================
-// TEACHER: COMPLETIONS API
+// TEACHER: COMPLETIONS API (UPDATED WITH SCORES)
 // =====================================================
 
 app.get("/api/teacher/completions", async (req, res) => {
@@ -1693,7 +1671,8 @@ app.get("/api/teacher/completions", async (req, res) => {
         conn = await pool.getConnection();
         const completions = await conn.query(
             `SELECT u.id, u.first_name, u.last_name, u.email, 
-                    CASE WHEN tc.id IS NOT NULL THEN tc.completed_at ELSE NULL END as completed_at
+                    CASE WHEN tc.id IS NOT NULL THEN tc.completed_at ELSE NULL END as completed_at,
+                    tc.score
              FROM section_students ss
              JOIN users u ON ss.student_id = u.id
              LEFT JOIN task_completions tc ON tc.user_id = u.id AND tc.item_type = ? AND tc.item_id = ?
@@ -1705,6 +1684,188 @@ app.get("/api/teacher/completions", async (req, res) => {
     } catch (err) {
         console.error("Get completions error:", err);
         res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// =====================================================
+// TEACHER: SAVE/UPDATE STUDENT SCORE
+// =====================================================
+// FIND the /api/teacher/scores PUT endpoint and replace with:
+app.put("/api/teacher/scores", async (req, res) => {
+    const { studentId, itemType, itemId, sectionId, score } = req.body;
+    
+    console.log('Score save request:', { studentId, itemType, itemId, sectionId, score });
+    
+    if (!studentId || !itemType || !itemId) {
+        return res.status(400).json({ message: 'Missing required fields (studentId, itemType, itemId)' });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+
+        const existing = await conn.query(
+            `SELECT id FROM task_completions 
+             WHERE user_id = ? AND item_type = ? AND item_id = ?`,
+            [studentId, itemType, itemId]
+        );
+
+        if (existing.length > 0) {
+            if (score === null) {
+                await conn.query(
+                    `UPDATE task_completions 
+                     SET score = NULL, updated_at = NOW() 
+                     WHERE user_id = ? AND item_type = ? AND item_id = ?`,
+                    [studentId, itemType, itemId]
+                );
+            } else {
+                await conn.query(
+                    `UPDATE task_completions 
+                     SET score = ?, updated_at = NOW() 
+                     WHERE user_id = ? AND item_type = ? AND item_id = ?`,
+                    [score, studentId, itemType, itemId]
+                );
+            }
+        } else {
+            await conn.query(
+                `INSERT INTO task_completions (user_id, item_type, item_id, score, completed_at, updated_at) 
+                 VALUES (?, ?, ?, ?, NOW(), NOW())`,
+                [studentId, itemType, itemId, score]
+            );
+        }
+
+        console.log('Score saved successfully');
+        res.json({ 
+            message: 'Score saved successfully',
+            studentId: studentId,
+            itemType: itemType,
+            itemId: itemId,
+            score: score
+        });
+    } catch (error) {
+        console.error('Error saving score:', error);
+        // IMPORTANT: Always return JSON even on error
+        res.status(500).json({ message: 'Server error: ' + error.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// =====================================================
+// STUDENT: GET SCORES (For student dashboard)
+// =====================================================
+app.get("/api/student/scores/:studentId", async (req, res) => {
+    const { studentId } = req.params;
+
+     console.log('Fetching scores for student:', studentId);
+    
+    if (!studentId) {
+        return res.status(400).json({ message: 'Student ID is required' });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        
+        const scores = await conn.query(
+            `SELECT 
+                tc.item_type,
+                tc.item_id,
+                tc.score,
+                tc.completed_at,
+                COALESCE(m.title, q.title, a.title) as item_title,
+                CASE 
+                    WHEN tc.item_type = 'material' THEN m.section_id
+                    WHEN tc.item_type = 'quiz' THEN q.section_id
+                    WHEN tc.item_type = 'assignment' THEN a.section_id
+                END as section_id,
+                s.class_id
+             FROM task_completions tc
+             LEFT JOIN materials m ON tc.item_type = 'material' AND tc.item_id = m.id
+             LEFT JOIN quizzes q ON tc.item_type = 'quiz' AND tc.item_id = q.id
+             LEFT JOIN assignments a ON tc.item_type = 'assignment' AND tc.item_id = a.id
+             LEFT JOIN sections s ON s.id = (
+                 CASE 
+                     WHEN tc.item_type = 'material' THEN m.section_id
+                     WHEN tc.item_type = 'quiz' THEN q.section_id
+                     WHEN tc.item_type = 'assignment' THEN a.section_id
+                 END
+             )
+             WHERE tc.user_id = ? AND tc.completed_at IS NOT NULL
+             ORDER BY tc.completed_at DESC`,
+            [studentId]
+        );
+
+        res.json(scores);
+    } catch (error) {
+        console.error('Error fetching student scores:', error);
+        res.status(500).json({ message: 'Server error: ' + error.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// =====================================================
+// STUDENT: GET SCORES BY CLASS (For progress modal)
+// =====================================================
+app.get("/api/student/scores-by-class/:studentId/:classId", async (req, res) => {
+    const { studentId, classId } = req.params;
+    
+    if (!studentId || !classId) {
+        return res.status(400).json({ message: 'Student ID and Class ID are required' });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        
+        // First get all sections for this class
+        const sections = await conn.query(
+            "SELECT id FROM sections WHERE class_id = ?",
+            [classId]
+        );
+        
+        const sectionIds = sections.map(s => s.id);
+        
+        if (sectionIds.length === 0) {
+            return res.json([]);
+        }
+        
+        const placeholders = sectionIds.map(() => '?').join(',');
+        
+        const scores = await conn.query(
+            `SELECT 
+                tc.item_type,
+                tc.item_id,
+                tc.score,
+                tc.completed_at,
+                COALESCE(m.title, q.title, a.title) as item_title,
+                CASE 
+                    WHEN tc.item_type = 'material' THEN m.section_id
+                    WHEN tc.item_type = 'quiz' THEN q.section_id
+                    WHEN tc.item_type = 'assignment' THEN a.section_id
+                END as section_id
+             FROM task_completions tc
+             LEFT JOIN materials m ON tc.item_type = 'material' AND tc.item_id = m.id AND m.section_id IN (${placeholders})
+             LEFT JOIN quizzes q ON tc.item_type = 'quiz' AND tc.item_id = q.id AND q.section_id IN (${placeholders})
+             LEFT JOIN assignments a ON tc.item_type = 'assignment' AND tc.item_id = a.id AND a.section_id IN (${placeholders})
+             WHERE tc.user_id = ? 
+               AND tc.completed_at IS NOT NULL
+               AND (
+                 (tc.item_type = 'material' AND m.section_id IN (${placeholders})) OR
+                 (tc.item_type = 'quiz' AND q.section_id IN (${placeholders})) OR
+                 (tc.item_type = 'assignment' AND a.section_id IN (${placeholders}))
+               )
+             ORDER BY tc.completed_at DESC`,
+            [...sectionIds, studentId, ...sectionIds]
+        );
+
+        res.json(scores);
+    } catch (error) {
+        console.error('Error fetching student scores by class:', error);
+        res.status(500).json({ message: 'Server error: ' + error.message });
     } finally {
         if (conn) conn.release();
     }
