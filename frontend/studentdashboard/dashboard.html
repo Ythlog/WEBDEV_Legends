@@ -422,83 +422,144 @@
         </div>
       </div>
       
-      <!-- ===== QUIZ DETAIL VIEW ===== -->
-      <div class="page-body hidden" id="view-quiz-detail">
-        <button class="back-btn" id="back-to-class-from-quiz">
-          <i class="fa-solid fa-arrow-left"></i> Back to Class
-        </button>
+     <!-- ===== QUIZ DETAIL VIEW ===== -->
+<div class="page-body hidden" id="view-quiz-detail">
+  <button class="back-btn" id="back-to-class-from-quiz">
+    <i class="fa-solid fa-arrow-left"></i> Back to Class
+  </button>
 
-        <!-- Header card -->
-        <div class="detail-header detail-header-card">
-          <div class="detail-header-icon-wrap purple">
-            <i class="fa-solid fa-clipboard-question"></i>
-          </div>
-          <div class="detail-header-content">
-            <h1 class="page-heading" id="quiz-title"></h1>
-            <p class="class-meta-text" id="quiz-class-name"></p>
-          </div>
-        </div>
+  <!-- Header card -->
+  <div class="detail-header detail-header-card">
+    <div class="detail-header-icon-wrap purple">
+      <i class="fa-solid fa-clipboard-question"></i>
+    </div>
+    <div class="detail-header-content">
+      <h1 class="page-heading" id="quiz-title"></h1>
+      <p class="class-meta-text" id="quiz-class-name"></p>
+    </div>
+  </div>
 
-        <!-- Due date badge row -->
-        <div class="detail-info-row">
-          <div class="detail-info-badge due-badge" id="quiz-due-container">
-            <i class="fa-regular fa-clock"></i>
-            <span class="due-date-text" id="quiz-due-text"></span>
-          </div>
-          <div class="detail-info-badge status-badge" id="quiz-status-badge">
-            <i class="fa-regular fa-circle"></i>
-            <span id="quiz-status-text">Pending</span>
-          </div>
-        </div>
+  <!-- Due date badge row -->
+  <div class="detail-info-row">
+    <div class="detail-info-badge due-badge" id="quiz-due-container">
+      <i class="fa-regular fa-clock"></i>
+      <span class="due-date-text" id="quiz-due-text"></span>
+    </div>
+    <div class="detail-info-badge status-badge" id="quiz-status-badge">
+      <i class="fa-regular fa-circle"></i>
+      <span id="quiz-status-text">Pending</span>
+    </div>
+  </div>
 
-        <!-- Description card -->
-        <div class="item-content-card">
-          <div class="item-content-section-header">
-            <div class="section-header-icon-wrap">
-              <i class="fa-solid fa-align-left"></i>
-            </div>
-            <p class="item-section-title">Description</p>
-          </div>
-          <p class="item-description" id="quiz-description"></p>
-        </div>
-
-        <!-- Quiz link card -->
-        <div class="item-link-card purple-link-card" id="quiz-link-card">
-          <div class="item-link-icon-wrap purple-icon">
-            <i class="fa-solid fa-clipboard-question"></i>
-          </div>
-          <div class="item-link-content">
-            <p class="item-link-label">Quiz Link</p>
-            <p class="item-link-sub">Click below to open and take the quiz</p>
-          </div>
-        </div>
-
-        <!-- Clickable text link -->
-        <div class="quiz-link-text-wrapper">
-          <a href="#" class="quiz-link-text" id="quiz-link" target="_blank">
-            <i class="fa-solid fa-arrow-up-right-from-square"></i>
-            <span>Open Quiz</span>
-          </a>
-        </div>
-
-        <!-- Mark as done -->
-        <div class="mark-done-row">
-          <button class="mark-done-btn yellow" id="quiz-mark-btn">
-            <i class="fa-regular fa-circle-check"></i> Mark as done
-          </button>
-        </div>
-
-        <!-- Hidden elements preserved for JS compatibility -->
-        <div style="display:none;">
-          <div id="quiz-banner"></div>
-          <div id="quiz-class-tag"></div>
-          <ul id="quiz-instructions">
-            <li>Read each question carefully</li>
-            <li>Submit before the due date</li>
-            <li>You can only take the quiz once</li>
-          </ul>
-        </div>
+  <!-- Description card -->
+  <div class="item-content-card">
+    <div class="item-content-section-header">
+      <div class="section-header-icon-wrap">
+        <i class="fa-solid fa-align-left"></i>
       </div>
+      <p class="item-section-title">Description</p>
+    </div>
+    <p class="item-description" id="quiz-description"></p>
+
+    <div class="item-content-divider"></div>
+
+    <div class="item-content-section-header">
+      <div class="section-header-icon-wrap purple-icon-wrap">
+        <i class="fa-solid fa-list-ol"></i>
+      </div>
+      <p class="item-section-title">Instructions</p>
+    </div>
+    <ul class="item-instructions" id="quiz-instructions">
+      <li>Read each question carefully before answering</li>
+      <li>Submit your answers before the due date</li>
+      <li>You can only take the quiz once</li>
+    </ul>
+  </div>
+
+  <!-- Quiz link card -->
+  <div class="item-link-card purple-link-card" id="quiz-link-card">
+    <div class="item-link-icon-wrap purple-icon">
+      <i class="fa-solid fa-clipboard-question"></i>
+    </div>
+    <div class="item-link-content">
+      <p class="item-link-label">Quiz Link</p>
+      <p class="item-link-sub">Click below to open and take the quiz</p>
+    </div>
+  </div>
+
+  <!-- Clickable text link -->
+  <div class="quiz-link-text-wrapper">
+    <a href="#" class="quiz-link-text" id="quiz-link" target="_blank">
+      <i class="fa-solid fa-arrow-up-right-from-square"></i>
+      <span>Open Quiz</span>
+    </a>
+  </div>
+
+  <!-- ===== QUIZ SUBMISSION AREA ===== -->
+  <div class="submission-area" id="quiz-submission-area">
+    <div class="submission-header">
+      <div class="section-header-icon-wrap">
+        <i class="fa-solid fa-cloud-arrow-up"></i>
+      </div>
+      <h3 class="submission-title">Submit Your Quiz</h3>
+    </div>
+
+    <!-- Upload Type Selection -->
+    <div class="upload-type-selector">
+      <button class="upload-type-btn active" data-upload-type="file" id="quiz-submit-file-type-btn">
+        <i class="fa-solid fa-file-arrow-up"></i> Upload File
+      </button>
+      <button class="upload-type-btn" data-upload-type="link" id="quiz-submit-link-type-btn">
+        <i class="fa-solid fa-link"></i> Paste Link
+      </button>
+    </div>
+
+    <!-- File Upload Zone -->
+    <div class="file-upload-zone" id="quiz-submit-file-zone">
+      <input type="file" id="quiz-submit-file-input" style="display:none" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.zip">
+      <div class="file-upload-icon">
+        <i class="fa-solid fa-cloud-arrow-up" style="font-size: 40px; color: var(--text-muted);"></i>
+      </div>
+      <p class="file-upload-title">Drag & drop your file here</p>
+      <p class="file-upload-sub">or click to browse (PDF, DOC, PPT, images, ZIP)</p>
+      <button class="btn-browse" id="quiz-submit-browse-btn">
+        <i class="fa-solid fa-folder-open"></i> Browse Files
+      </button>
+      <div class="file-preview-list" id="quiz-submit-file-preview"></div>
+    </div>
+
+    <!-- Link Input -->
+    <div class="form-group hidden" id="quiz-submit-link-group">
+      <label>Submission Link</label>
+      <input type="text" id="quiz-submit-link-input" placeholder="https://drive.google.com/... or https://...">
+    </div>
+
+    <!-- Submit Button -->
+    <button class="submit-assignment-btn" id="btn-submit-quiz">
+      <i class="fa-solid fa-paper-plane"></i> Submit Quiz
+    </button>
+
+    <!-- Submitted status (hidden by default) -->
+    <div class="submission-success-msg hidden" id="quiz-submission-success-msg">
+      <i class="fa-solid fa-circle-check"></i>
+      <span>Quiz submitted successfully!</span>
+    </div>
+  </div>
+  <!-- ===== END QUIZ SUBMISSION AREA ===== -->
+
+  <!-- Mark as done -->
+  <div class="mark-done-row">
+    <button class="mark-done-btn yellow" id="quiz-mark-btn">
+      <i class="fa-regular fa-circle-check"></i> Mark as done
+    </button>
+  </div>
+
+  <!-- Hidden elements preserved for JS compatibility -->
+  <div style="display:none;">
+    <div id="quiz-banner"></div>
+    <div id="quiz-class-tag"></div>
+  </div>
+</div>
 
       <!-- ===== PROGRESS VIEW ===== -->
       <div class="page-body hidden" id="view-progress">

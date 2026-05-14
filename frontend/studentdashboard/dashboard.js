@@ -2131,3 +2131,227 @@ document.addEventListener('click', async e => {
     }
   }
 })();
+
+// ===== QUIZ SUBMISSION FILE UPLOAD =====
+(function () {
+  const quizSubmitFileZone = document.getElementById('quiz-submit-file-zone');
+  const quizSubmitFileInput = document.getElementById('quiz-submit-file-input');
+  const quizSubmitBrowseBtn = document.getElementById('quiz-submit-browse-btn');
+  const quizSubmitFilePreview = document.getElementById('quiz-submit-file-preview');
+  const quizSubmitFileTypeBtn = document.getElementById('quiz-submit-file-type-btn');
+  const quizSubmitLinkTypeBtn = document.getElementById('quiz-submit-link-type-btn');
+  const quizSubmitLinkGroup = document.getElementById('quiz-submit-link-group');
+  const quizSubmitBtn = document.getElementById('btn-submit-quiz');
+  const quizSuccessMsg = document.getElementById('quiz-submission-success-msg');
+
+  let quizSelectedFile = null;
+
+  // Toggle between File and Link upload types
+  if (quizSubmitFileTypeBtn && quizSubmitLinkTypeBtn) {
+    quizSubmitFileTypeBtn.addEventListener('click', function () {
+      quizSubmitFileTypeBtn.classList.add('active');
+      quizSubmitLinkTypeBtn.classList.remove('active');
+      if (quizSubmitFileZone) quizSubmitFileZone.classList.remove('hidden');
+      if (quizSubmitLinkGroup) quizSubmitLinkGroup.classList.add('hidden');
+    });
+
+    quizSubmitLinkTypeBtn.addEventListener('click', function () {
+      quizSubmitLinkTypeBtn.classList.add('active');
+      quizSubmitFileTypeBtn.classList.remove('active');
+      if (quizSubmitLinkGroup) quizSubmitLinkGroup.classList.remove('hidden');
+      if (quizSubmitFileZone) quizSubmitFileZone.classList.add('hidden');
+    });
+  }
+
+  // Browse button
+  if (quizSubmitBrowseBtn && quizSubmitFileInput) {
+    quizSubmitBrowseBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      quizSubmitFileInput.click();
+    });
+  }
+
+  // Click on zone to browse
+  if (quizSubmitFileZone && quizSubmitFileInput) {
+    quizSubmitFileZone.addEventListener('click', function () {
+      quizSubmitFileInput.click();
+    });
+
+    // Drag & drop
+    quizSubmitFileZone.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      quizSubmitFileZone.classList.add('drag-over');
+    });
+
+    quizSubmitFileZone.addEventListener('dragleave', function (e) {
+      e.preventDefault();
+      quizSubmitFileZone.classList.remove('drag-over');
+    });
+
+    quizSubmitFileZone.addEventListener('drop', function (e) {
+      e.preventDefault();
+      quizSubmitFileZone.classList.remove('drag-over');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleQuizFileSelection(files[0]);
+      }
+    });
+  }
+
+  // File input change
+  if (quizSubmitFileInput) {
+    quizSubmitFileInput.addEventListener('change', function () {
+      if (quizSubmitFileInput.files.length > 0) {
+        handleQuizFileSelection(quizSubmitFileInput.files[0]);
+      }
+    });
+  }
+
+  function handleQuizFileSelection(file) {
+    quizSelectedFile = file;
+    // Clear preview
+    if (quizSubmitFilePreview) {
+      quizSubmitFilePreview.innerHTML = '';
+      const item = document.createElement('div');
+      item.className = 'file-preview-item';
+      item.innerHTML = `
+        <div class="file-preview-item-left">
+          <i class="fa-solid fa-file" style="color: #7c3aed;"></i>
+          <div>
+            <div class="file-preview-name">${escapeHTML(file.name)}</div>
+            <div class="file-preview-size">${formatQuizFileSize(file.size)}</div>
+          </div>
+        </div>
+        <button class="file-preview-remove" title="Remove file">&times;</button>
+      `;
+      item.querySelector('.file-preview-remove').addEventListener('click', function (e) {
+        e.stopPropagation();
+        quizSelectedFile = null;
+        quizSubmitFilePreview.innerHTML = '';
+        quizSubmitFileInput.value = '';
+      });
+      quizSubmitFilePreview.appendChild(item);
+    }
+    // Hide success message on new file selection
+    if (quizSuccessMsg) quizSuccessMsg.classList.add('hidden');
+  }
+
+  function formatQuizFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  function escapeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // Submit button handler
+  if (quizSubmitBtn) {
+    quizSubmitBtn.addEventListener('click', async function () {
+      const isLinkMode = quizSubmitLinkTypeBtn && quizSubmitLinkTypeBtn.classList.contains('active');
+
+      if (!state.currentItem) {
+        Swal.fire('Error', 'No quiz selected', 'error');
+        return;
+      }
+
+      if (isLinkMode) {
+        const linkInput = document.getElementById('quiz-submit-link-input');
+        if (!linkInput || !linkInput.value.trim()) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Missing Link',
+            text: 'Please paste a submission link.',
+            confirmButtonColor: '#0f1f4b'
+          });
+          return;
+        }
+        // Submit link to backend
+        await submitQuizSubmission(linkInput.value.trim(), null);
+      } else {
+        if (!quizSelectedFile) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'No File Selected',
+            text: 'Please select a file to submit.',
+            confirmButtonColor: '#0f1f4b'
+          });
+          return;
+        }
+        // Submit file to backend
+        await submitQuizSubmission(null, quizSelectedFile);
+      }
+    });
+  }
+
+  async function submitQuizSubmission(link, file) {
+    const formData = new FormData();
+    formData.append('studentId', DATA.profile.id);
+    formData.append('quizId', state.currentItem.id);
+    formData.append('sectionId', state.currentClass?.section_id || '');
+    if (link) formData.append('submissionLink', link);
+    if (file) formData.append('submissionFile', file);
+
+    try {
+      const response = await fetch('/api/submit-quiz', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Submitted!',
+          text: 'Your quiz has been submitted successfully.',
+          confirmButtonColor: '#0f1f4b'
+        });
+
+        // Mark as done automatically
+        await fetch('/api/mark-done', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: DATA.profile.id,
+            itemType: 'quiz',
+            itemId: state.currentItem.id
+          })
+        });
+
+        // Update local state
+        const key = completionKey('quiz', state.currentItem.id);
+        state.done.add(key);
+
+        if (quizSuccessMsg) quizSuccessMsg.classList.remove('hidden');
+        if (quizSubmitBtn) {
+          quizSubmitBtn.disabled = true;
+          quizSubmitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted';
+        }
+
+        // Refresh the display
+        updateItemDisplay('quiz', state.currentItem.id, true);
+
+        // Update the quiz mark button if visible
+        const quizMarkBtn = document.getElementById('quiz-mark-btn');
+        if (quizMarkBtn) {
+          quizMarkBtn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Completed';
+          quizMarkBtn.className = 'mark-done-btn done-state';
+          quizMarkBtn.disabled = true;
+          quizMarkBtn.onclick = null;
+        }
+
+      } else {
+        Swal.fire('Error', data.message || 'Submission failed', 'error');
+      }
+    } catch (err) {
+      console.error('Quiz submission error:', err);
+      Swal.fire('Error', 'Could not connect to server', 'error');
+    }
+  }
+})();

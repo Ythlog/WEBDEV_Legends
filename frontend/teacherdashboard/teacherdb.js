@@ -2866,3 +2866,188 @@ function escHtml(str) {
   await fetchAndRenderClasses();
   console.log('Teacher dashboard initialized');
 })();
+
+// =============================================
+// SEARCH BAR - TEACHER DASHBOARD
+// =============================================
+(function setupTeacherSearch() {
+  const input    = document.getElementById('search-input');
+  const dropdown = document.getElementById('search-dropdown');
+  if (!input || !dropdown) return;
+
+  input.addEventListener('input', async () => {
+    const q = input.value.trim().toLowerCase();
+    dropdown.innerHTML = '';
+
+    if (!q) {
+      dropdown.classList.add('hidden');
+      return;
+    }
+
+    const results = [];
+
+    // ── Search Classes ──
+    TEACHER_DATA.classes.forEach(cls => {
+      if (cls.title.toLowerCase().includes(q)) {
+        results.push({
+          type: 'class',
+          label: cls.title,
+          sub: cls.subject_code || 'Class',
+          action: () => openClassDetail(cls.id)
+        });
+      }
+    });
+
+    // ── Search Sections ──
+    TEACHER_DATA.sections.forEach(sec => {
+      if (sec.name.toLowerCase().includes(q)) {
+        results.push({
+          type: 'section',
+          label: sec.name,
+          sub: 'Section · Code: ' + (sec.enrollment_code || sec.code),
+          action: () => openSectionDetail(sec.id, sec.name)
+        });
+      }
+    });
+
+    // ── Search Materials ──
+    TEACHER_DATA.materials.forEach(mat => {
+      if (mat.title.toLowerCase().includes(q) || (mat.description || '').toLowerCase().includes(q)) {
+        results.push({
+          type: 'material',
+          label: mat.title,
+          sub: mat.description || 'Learning Material',
+          action: () => openMaterialDetail(mat)
+        });
+      }
+    });
+
+    // ── Search Quizzes ──
+    TEACHER_DATA.quizzes.forEach(quiz => {
+      if (quiz.title.toLowerCase().includes(q) || (quiz.description || '').toLowerCase().includes(q)) {
+        results.push({
+          type: 'quiz',
+          label: quiz.title,
+          sub: quiz.due_date
+            ? 'Due: ' + new Date(quiz.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : 'Quiz',
+          action: () => openQuizDetail(quiz)
+        });
+      }
+    });
+
+    // ── Search Assignments ──
+    TEACHER_DATA.assignments.forEach(assign => {
+      if (assign.title.toLowerCase().includes(q) || (assign.description || '').toLowerCase().includes(q)) {
+        results.push({
+          type: 'assignment',
+          label: assign.title,
+          sub: assign.due_date
+            ? 'Due: ' + new Date(assign.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : 'Assignment',
+          action: () => openAssignmentDetail(assign)
+        });
+      }
+    });
+
+    // ── Search Students ──
+    TEACHER_DATA.students.forEach(stu => {
+      const fullName = `${stu.first_name} ${stu.last_name}`.toLowerCase();
+      const email    = (stu.email || '').toLowerCase();
+      if (fullName.includes(q) || email.includes(q)) {
+        results.push({
+          type: 'student',
+          label: `${stu.first_name} ${stu.last_name}`,
+          sub: stu.email || 'Student',
+          action: () => {
+            // Navigate to the section's students tab
+            if (state.currentSectionId) {
+              switchTab('students');
+            }
+          }
+        });
+      }
+    });
+
+    if (results.length === 0) {
+      dropdown.innerHTML = '<div class="search-no-results" style="padding:14px 16px;color:#94a3b8;font-size:13px;text-align:center;">No results found</div>';
+      dropdown.classList.remove('hidden');
+      return;
+    }
+
+    // ── Type colors ──
+    const typeColors = {
+      class:      { bg: '#eff6ff', color: '#2563eb' },
+      section:    { bg: '#f0fdf4', color: '#16a34a' },
+      material:   { bg: '#faf5ff', color: '#7c3aed' },
+      quiz:       { bg: '#fff7ed', color: '#ea580c' },
+      assignment: { bg: '#fff1f2', color: '#e11d48' },
+      student:    { bg: '#f0f9ff', color: '#0284c7' }
+    };
+
+    results.slice(0, 5).forEach(r => {
+      const colors = typeColors[r.type] || { bg: '#f1f5f9', color: '#475569' };
+      const el = document.createElement('div');
+      el.className = 'search-result-item';
+      el.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f5f9;
+        transition: background 0.15s;
+      `;
+      el.onmouseenter = () => el.style.background = '#f8fafc';
+      el.onmouseleave = () => el.style.background = 'transparent';
+
+      el.innerHTML = `
+        <span style="
+          background: ${colors.bg};
+          color: ${colors.color};
+          font-size: 10px;
+          font-weight: 700;
+          padding: 3px 8px;
+          border-radius: 20px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          white-space: nowrap;
+          flex-shrink: 0;
+        ">${r.type}</span>
+        <div style="min-width:0;">
+          <p style="margin:0;font-size:13px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${escHtml(r.label)}
+          </p>
+          <p style="margin:0;font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${escHtml(r.sub)}
+          </p>
+        </div>
+      `;
+
+      el.addEventListener('click', () => {
+        input.value = '';
+        dropdown.classList.add('hidden');
+        r.action();
+      });
+
+      dropdown.appendChild(el);
+    });
+
+    dropdown.classList.remove('hidden');
+  });
+
+  // Close dropdown on outside click
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.search-bar')) {
+      dropdown.classList.add('hidden');
+    }
+  });
+
+  // Close on Escape
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      dropdown.classList.add('hidden');
+      input.blur();
+    }
+  });
+})();

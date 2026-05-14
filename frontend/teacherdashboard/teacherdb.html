@@ -45,12 +45,14 @@
     <main class="main-content">
 
       <!-- TOP BAR -->
-      <header class="top-bar">
-        <div class="search-bar">
-          <i class="fa-solid fa-magnifying-glass search-icon"></i>
-          <input type="text" placeholder="Search classes, materials, quizzes..." id="search-input" />
-        </div>
-      </header>
+<header class="top-bar">
+  <div class="search-bar">
+    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+    <input type="text" placeholder="Search classes, materials, quizzes..." id="search-input" autocomplete="off" />
+    <div id="search-dropdown" class="search-dropdown hidden"></div>  <!-- ✅ ADD THIS -->
+  </div>
+</header>
+
 
       <!-- SECTION 1: CLASSES LIST VIEW -->
       <div class="page-body" id="view-classes">
