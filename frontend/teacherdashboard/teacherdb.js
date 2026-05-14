@@ -45,7 +45,6 @@ let state = {
   activeSectionTab: 'lessons',
   activeCompletionTab: { mat: 'pending', quiz: 'pending', assign: 'pending' },
   announcements: [],
-  // File upload state
   materialFile: null,
   assignmentFile: null,
   quizFile: null,
@@ -69,6 +68,7 @@ async function fetchTeacherProfile() {
       TEACHER_DATA.profile.email = user.email || '';
       TEACHER_DATA.profile.role = user.role || 'teacher';
       TEACHER_DATA.profileLoaded = true;
+      console.log('Teacher profile loaded:', TEACHER_DATA.profile);
       await fetchTeacherProfilePicture();
       return;
     } catch (e) { console.error('Error parsing saved user:', e); }
@@ -214,67 +214,76 @@ document.addEventListener('click', async function(e) {
 // API HELPERS
 // =============================================
 async function apiGet(url) {
+  console.log('API GET:', url);
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));
+    throw new Error(error.message || `HTTP ${res.status}`);
+  }
   return res.json();
 }
 
 async function apiPost(url, body) {
+  console.log('API POST:', url, body);
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
   if (!res.ok) {
-    const err = await res.json();
+    const err = await res.json().catch(() => ({ message: 'Server error' }));
     throw new Error(err.message || 'Server error');
   }
   return res.json();
 }
 
 async function apiPostFormData(url, formData) {
+  console.log('API POST FormData:', url);
   const res = await fetch(url, {
     method: 'POST',
     body: formData
   });
   if (!res.ok) {
-    const err = await res.json();
+    const err = await res.json().catch(() => ({ message: 'Server error' }));
     throw new Error(err.message || 'Server error');
   }
   return res.json();
 }
 
 async function apiPut(url, body) {
+  console.log('API PUT:', url, body);
   const res = await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
   if (!res.ok) {
-    const err = await res.json();
+    const err = await res.json().catch(() => ({ message: 'Server error' }));
     throw new Error(err.message || 'Server error');
   }
   return res.json();
 }
 
 async function apiPutFormData(url, formData) {
+  console.log('API PUT FormData:', url);
   const res = await fetch(url, {
     method: 'PUT',
     body: formData
   });
   if (!res.ok) {
-    const err = await res.json();
+    const err = await res.json().catch(() => ({ message: 'Server error' }));
     throw new Error(err.message || 'Server error');
   }
   return res.json();
 }
 
 async function apiDelete(url, body = null) {
+  console.log('API DELETE:', url, body);
   const opts = { method: 'DELETE', headers: { 'Content-Type': 'application/json' } };
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(url, opts);
   if (!res.ok) {
-    const err = await res.json();
+    const err = await res.json().catch(() => ({ message: 'Server error' }));
     throw new Error(err.message || 'Server error');
   }
   return res.json();
@@ -282,71 +291,156 @@ async function apiDelete(url, body = null) {
 
 // =============================================
 // FETCH ALL SECTIONS FOR ANNOUNCEMENTS
+// =============================================// =============================================
+// FETCH ALL CLASSES AND SECTIONS FOR ANNOUNCEMENTS
 // =============================================
-async function fetchAllSectionsForAnnouncements() {
+async function fetchAllClassesAndSectionsForAnnouncements() {
   try {
+    if (!TEACHER_DATA.profile.id) return [];
+    
     const classes = await apiGet(`/api/teacher/classes?teacherId=${TEACHER_DATA.profile.id}`);
-    const allSections = [];
+    const allData = [];
     
     for (const cls of classes) {
       const sections = await apiGet(`/api/teacher/sections?classId=${cls.id}`);
-      sections.forEach(sec => {
-        allSections.push({
+      allData.push({
+        classId: cls.id,
+        className: cls.title,
+        sections: sections.map(sec => ({
           sectionId: sec.id,
           sectionName: sec.name,
-          sectionCode: sec.code,
-          classId: cls.id,
-          className: cls.title
-        });
+          sectionCode: sec.code
+        }))
       });
     }
     
-    TEACHER_DATA.allSectionsForAnnouncements = allSections;
-    return allSections;
+    TEACHER_DATA.allSectionsForAnnouncements = allData;
+    return allData;
   } catch (err) {
-    console.error('Error fetching sections for announcements:', err);
+    console.error('Error fetching classes/sections for announcements:', err);
     return [];
   }
 }
 
 // =============================================
-// RENDER AUDIENCE CHECKBOXES
+// RENDER AUDIENCE CHECKBOXES (Class + Section selection)
 // =============================================
 function renderAudienceCheckboxes(preselectedAudiences = []) {
   const container = document.getElementById('audience-checkboxes');
   if (!container) return;
   
-  const sections = TEACHER_DATA.allSectionsForAnnouncements;
+  const classData = TEACHER_DATA.allSectionsForAnnouncements;
   
-  if (sections.length === 0) {
-    container.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">No sections available. Create sections first.</div>';
+  if (classData.length === 0) {
+    container.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">No classes available. Create classes first.</div>';
     return;
   }
   
-  const groupedByClass = {};
-  sections.forEach(sec => {
-    if (!groupedByClass[sec.className]) {
-      groupedByClass[sec.className] = [];
-    }
-    groupedByClass[sec.className].push(sec);
-  });
-  
   container.innerHTML = '';
   
-  Object.keys(groupedByClass).forEach(className => {
-    const classSections = groupedByClass[className];
-    
+  // Add "All Classes" option at the top
+  const allClassesDiv = document.createElement('div');
+  allClassesDiv.style.cssText = 'margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;';
+  
+  const allClassesLabel = document.createElement('label');
+  allClassesLabel.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #f0fdf4; border-radius: 8px; cursor: pointer; font-weight: 500;';
+  
+  const allClassesCheckbox = document.createElement('input');
+  allClassesCheckbox.type = 'checkbox';
+  allClassesCheckbox.value = 'all_classes';
+  allClassesCheckbox.id = 'select-all-classes';
+  allClassesCheckbox.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
+  
+  // If "all_classes" is preselected or all sections are selected
+  const allSectionsSelected = preselectedAudiences.length > 0 && 
+    preselectedAudiences.every(a => a.startsWith('section_')) &&
+    preselectedAudiences.length === classData.reduce((sum, cls) => sum + cls.sections.length, 0);
+  
+  if (preselectedAudiences.includes('all_classes') || allSectionsSelected) {
+    allClassesCheckbox.checked = true;
+  }
+  
+  const allClassesText = document.createElement('span');
+  allClassesText.innerHTML = '<i class="fa-solid fa-globe"></i> All Classes & Sections';
+  
+  allClassesLabel.appendChild(allClassesCheckbox);
+  allClassesLabel.appendChild(allClassesText);
+  allClassesDiv.appendChild(allClassesLabel);
+  container.appendChild(allClassesDiv);
+  
+  // Add "Select All Sections" button
+  const selectAllContainer = document.createElement('div');
+  selectAllContainer.style.cssText = 'margin-bottom: 16px; display: flex; gap: 10px; flex-wrap: wrap;';
+  
+  const selectAllSectionsBtn = document.createElement('button');
+  selectAllSectionsBtn.type = 'button';
+  selectAllSectionsBtn.textContent = '✓ Select All Sections';
+  selectAllSectionsBtn.style.cssText = 'padding: 6px 14px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;';
+  selectAllSectionsBtn.addEventListener('click', () => {
+    // Uncheck "All Classes" if checked
+    const allClassesChk = document.getElementById('select-all-classes');
+    if (allClassesChk) allClassesChk.checked = false;
+    // Check all section checkboxes
+    container.querySelectorAll('input[type="checkbox"][value^="section_"]').forEach(cb => cb.checked = true);
+  });
+  
+  const deselectAllSectionsBtn = document.createElement('button');
+  deselectAllSectionsBtn.type = 'button';
+  deselectAllSectionsBtn.textContent = '✗ Deselect All Sections';
+  deselectAllSectionsBtn.style.cssText = 'padding: 6px 14px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;';
+  deselectAllSectionsBtn.addEventListener('click', () => {
+    container.querySelectorAll('input[type="checkbox"][value^="section_"]').forEach(cb => cb.checked = false);
+  });
+  
+  selectAllContainer.appendChild(selectAllSectionsBtn);
+  selectAllContainer.appendChild(deselectAllSectionsBtn);
+  container.appendChild(selectAllContainer);
+  
+  // Render classes with their sections
+  classData.forEach(classItem => {
     const classGroup = document.createElement('div');
-    classGroup.style.cssText = 'margin-bottom: 12px;';
+    classGroup.style.cssText = 'margin-bottom: 16px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden;';
     
+    // Class header with "Select All" for this class
     const classHeader = document.createElement('div');
-    classHeader.style.cssText = 'font-weight: 600; color: #374151; font-size: 13px; margin-bottom: 6px; padding: 4px 8px; background: #f3f4f6; border-radius: 4px;';
-    classHeader.textContent = `📚 ${className}`;
-    classGroup.appendChild(classHeader);
+    classHeader.style.cssText = 'background: #f9fafb; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; cursor: pointer;';
     
-    classSections.forEach(sec => {
+    const classExpandIcon = document.createElement('i');
+    classExpandIcon.className = 'fa-solid fa-chevron-right';
+    classExpandIcon.style.cssText = 'font-size: 12px; color: #6366f1; transition: transform 0.2s;';
+    
+    const classCheckbox = document.createElement('input');
+    classCheckbox.type = 'checkbox';
+    classCheckbox.className = 'class-select-all';
+    classCheckbox.dataset.classId = classItem.classId;
+    classCheckbox.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
+    
+    // Check if all sections in this class are selected
+    const allSectionsInClassSelected = classItem.sections.length > 0 &&
+      classItem.sections.every(sec => preselectedAudiences.includes(`section_${sec.sectionId}`));
+    classCheckbox.checked = allSectionsInClassSelected;
+    
+    const className = document.createElement('span');
+    className.style.cssText = 'font-weight: 600; color: #1f2937; flex: 1;';
+    className.textContent = `📚 ${classItem.className}`;
+    
+    const sectionCount = document.createElement('span');
+    sectionCount.style.cssText = 'font-size: 12px; color: #6b7280;';
+    sectionCount.textContent = `${classItem.sections.length} section(s)`;
+    
+    classHeader.appendChild(classExpandIcon);
+    classHeader.appendChild(classCheckbox);
+    classHeader.appendChild(className);
+    classHeader.appendChild(sectionCount);
+    
+    // Sections container (collapsible)
+    const sectionsContainer = document.createElement('div');
+    sectionsContainer.className = 'class-sections-container';
+    sectionsContainer.style.cssText = 'padding: 8px 16px 12px 48px; background: white; display: block;';
+    
+    classItem.sections.forEach(sec => {
       const label = document.createElement('label');
-      label.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer; font-size: 13px; color: #4b5563; border-radius: 4px; transition: background 0.2s;';
+      label.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 4px; cursor: pointer; border-radius: 6px; transition: background 0.2s;';
       label.addEventListener('mouseenter', () => label.style.background = '#f9fafb');
       label.addEventListener('mouseleave', () => label.style.background = 'transparent');
       
@@ -354,7 +448,7 @@ function renderAudienceCheckboxes(preselectedAudiences = []) {
       checkbox.type = 'checkbox';
       checkbox.value = `section_${sec.sectionId}`;
       checkbox.dataset.sectionId = sec.sectionId;
-      checkbox.dataset.classId = sec.classId;
+      checkbox.dataset.classId = classItem.classId;
       checkbox.style.cssText = 'width: 16px; height: 16px; cursor: pointer;';
       
       if (preselectedAudiences.includes(checkbox.value)) {
@@ -362,38 +456,252 @@ function renderAudienceCheckboxes(preselectedAudiences = []) {
       }
       
       const text = document.createElement('span');
-      text.textContent = `${sec.sectionName} (${sec.sectionCode || 'No code'})`;
+      text.style.cssText = 'flex: 1;';
+      text.innerHTML = `<strong>${escapeHtml(sec.sectionName)}</strong> <span style="font-size: 11px; color: #888;">(${sec.sectionCode || 'No code'})</span>`;
       
       label.appendChild(checkbox);
       label.appendChild(text);
-      classGroup.appendChild(label);
+      sectionsContainer.appendChild(label);
     });
     
+    // Toggle sections visibility on header click
+    let sectionsVisible = true;
+    classHeader.addEventListener('click', (e) => {
+      // Don't toggle if clicking on checkbox
+      if (e.target.type === 'checkbox') return;
+      sectionsVisible = !sectionsVisible;
+      sectionsContainer.style.display = sectionsVisible ? 'block' : 'none';
+      classExpandIcon.style.transform = sectionsVisible ? 'rotate(0deg)' : 'rotate(-90deg)';
+    });
+    
+    // Class checkbox: select/deselect all sections in this class
+    classCheckbox.addEventListener('change', (e) => {
+      e.stopPropagation();
+      const isChecked = classCheckbox.checked;
+      sectionsContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.checked = isChecked;
+      });
+      // Update "All Classes" checkbox
+      updateAllClassesCheckbox();
+    });
+    
+    // Individual section checkboxes: update class checkbox
+    sectionsContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const allChecked = Array.from(sectionsContainer.querySelectorAll('input[type="checkbox"]'))
+          .every(c => c.checked);
+        classCheckbox.checked = allChecked;
+        updateAllClassesCheckbox();
+      });
+    });
+    
+    classGroup.appendChild(classHeader);
+    classGroup.appendChild(sectionsContainer);
     container.appendChild(classGroup);
   });
   
-  const selectAllContainer = document.createElement('div');
-  selectAllContainer.style.cssText = 'margin-top: 8px; padding-top: 8px; border-top: 1px solid #e5e7eb; display: flex; gap: 8px;';
+  // Function to update "All Classes" checkbox
+  function updateAllClassesCheckbox() {
+    const allClassesChk = document.getElementById('select-all-classes');
+    if (!allClassesChk) return;
+    
+    const allSectionCheckboxes = container.querySelectorAll('input[type="checkbox"][value^="section_"]');
+    const allChecked = Array.from(allSectionCheckboxes).every(cb => cb.checked);
+    allClassesChk.checked = allChecked;
+  }
   
-  const selectAllBtn = document.createElement('button');
-  selectAllBtn.type = 'button';
-  selectAllBtn.textContent = 'Select All';
-  selectAllBtn.style.cssText = 'padding: 4px 12px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;';
-  selectAllBtn.addEventListener('click', () => {
-    container.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
-  });
-  
-  const deselectAllBtn = document.createElement('button');
-  deselectAllBtn.type = 'button';
-  deselectAllBtn.textContent = 'Deselect All';
-  deselectAllBtn.style.cssText = 'padding: 4px 12px; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;';
-  deselectAllBtn.addEventListener('click', () => {
+  // "All Classes" checkbox handler
+  const allClassesChk = document.getElementById('select-all-classes');
+  if (allClassesChk) {
+    allClassesChk.addEventListener('change', () => {
+      const isChecked = allClassesChk.checked;
+      // Select/deselect all section checkboxes
+      container.querySelectorAll('input[type="checkbox"][value^="section_"]').forEach(cb => {
+        cb.checked = isChecked;
+      });
+      // Also update all class-level checkboxes
+      container.querySelectorAll('.class-select-all').forEach(cb => {
+        cb.checked = isChecked;
+      });
+    });
+  }
+}
+// =============================================
+// FETCH ALL CLASSES AND SECTIONS FOR ANNOUNCEMENTS
+// =============================================
+async function fetchAllSectionsForAnnouncements() {
+  try {
+    if (!TEACHER_DATA.profile.id) return [];
+    const data = await apiGet(`/api/teacher/all-sections?teacherId=${TEACHER_DATA.profile.id}`);
+    TEACHER_DATA.allSectionsForAnnouncements = data;
+    return data;
+  } catch (err) {
+    console.error('Error fetching sections for announcements:', err);
+    TEACHER_DATA.allSectionsForAnnouncements = [];
+    return [];
+  }
+}
+function renderAudienceCheckboxes(preselectedAudiences = []) {
+  const container = document.getElementById('audience-checkboxes');
+  if (!container) return;
+
+  const classData = TEACHER_DATA.allSectionsForAnnouncements;
+
+  if (!classData || classData.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:#888;padding:20px;">No classes available. Create classes and sections first.</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+
+  // ── All Classes master toggle ──
+  const allDiv = document.createElement('div');
+  allDiv.style.cssText = 'margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid #e5e7eb;';
+  const allLabel = document.createElement('label');
+  allLabel.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;color:#166534;';
+  const allChk = document.createElement('input');
+  allChk.type = 'checkbox';
+  allChk.value = 'all_classes';
+  allChk.id = 'select-all-classes';
+  allChk.style.cssText = 'width:18px;height:18px;cursor:pointer;accent-color:#6366f1;';
+  const allText = document.createElement('span');
+  allText.innerHTML = '<i class="fa-solid fa-globe"></i> All Classes & Sections';
+  allLabel.appendChild(allChk);
+  allLabel.appendChild(allText);
+  allDiv.appendChild(allLabel);
+  container.appendChild(allDiv);
+
+  // ── Select/Deselect All buttons ──
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'margin-bottom:14px;display:flex;gap:8px;';
+  const selAllBtn = document.createElement('button');
+  selAllBtn.type = 'button';
+  selAllBtn.textContent = '✓ Select All';
+  selAllBtn.style.cssText = 'padding:5px 14px;background:#6366f1;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;font-family:Poppins,sans-serif;';
+  selAllBtn.onclick = () => {
+    container.querySelectorAll('input[type="checkbox"][value^="section_"]').forEach(cb => cb.checked = true);
+    container.querySelectorAll('.class-select-all').forEach(cb => cb.checked = true);
+    allChk.checked = true;
+  };
+  const deselAllBtn = document.createElement('button');
+  deselAllBtn.type = 'button';
+  deselAllBtn.textContent = '✗ Deselect All';
+  deselAllBtn.style.cssText = 'padding:5px 14px;background:#6b7280;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;font-family:Poppins,sans-serif;';
+  deselAllBtn.onclick = () => {
     container.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+  };
+  btnRow.appendChild(selAllBtn);
+  btnRow.appendChild(deselAllBtn);
+  container.appendChild(btnRow);
+
+  // ── Per-class groups ──
+  classData.forEach(classItem => {
+    // Support both old flat format and new grouped format
+    const classId   = classItem.classId   || classItem.class_id;
+    const className = classItem.className || classItem.class_title;
+    const sections  = classItem.sections  || [];
+
+    const group = document.createElement('div');
+    group.style.cssText = 'margin-bottom:12px;border:1.5px solid #e5e7eb;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);';
+
+    // Class header row
+    const header = document.createElement('div');
+    header.style.cssText = 'background:#f8fafc;padding:11px 14px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:10px;';
+
+    const classChk = document.createElement('input');
+    classChk.type = 'checkbox';
+    classChk.className = 'class-select-all';
+    classChk.dataset.classId = classId;
+    classChk.style.cssText = 'width:17px;height:17px;cursor:pointer;accent-color:#6366f1;flex-shrink:0;';
+
+    // Pre-check if all sections selected
+    const allSectionsPreselected = sections.length > 0 && sections.every(sec => {
+      const sid = sec.sectionId || sec.section_id;
+      return preselectedAudiences.includes(`section_${sid}`);
+    });
+    classChk.checked = allSectionsPreselected;
+
+    const nameSpan = document.createElement('span');
+    nameSpan.style.cssText = 'font-weight:600;font-size:13px;color:#1e293b;flex:1;';
+    nameSpan.textContent = `📚 ${className}`;
+
+    const countBadge = document.createElement('span');
+    countBadge.style.cssText = 'font-size:11px;color:#94a3b8;background:#f1f5f9;padding:2px 8px;border-radius:20px;font-weight:500;';
+    countBadge.textContent = `${sections.length} section(s)`;
+
+    header.appendChild(classChk);
+    header.appendChild(nameSpan);
+    header.appendChild(countBadge);
+
+    // Sections list
+    const secContainer = document.createElement('div');
+    secContainer.className = 'class-sections-container';
+    secContainer.style.cssText = 'padding:8px 12px 10px 14px;background:#fff;';
+
+    if (sections.length === 0) {
+      const empty = document.createElement('p');
+      empty.style.cssText = 'font-size:12px;color:#94a3b8;padding:8px;margin:0;';
+      empty.textContent = 'No sections in this class.';
+      secContainer.appendChild(empty);
+    }
+
+    sections.forEach(sec => {
+      // Support both property name formats
+      const secId   = sec.sectionId   || sec.section_id;
+      const secName = sec.sectionName || sec.section_name || sec.name;
+      const secCode = sec.sectionCode || sec.enrollment_code || sec.code;
+
+      const lbl = document.createElement('label');
+      lbl.style.cssText = 'display:flex;align-items:center;gap:10px;padding:7px 10px;margin-bottom:3px;border-radius:6px;cursor:pointer;font-size:13px;transition:background 0.15s;';
+      lbl.onmouseenter = () => lbl.style.background = '#f1f5f9';
+      lbl.onmouseleave = () => lbl.style.background = 'transparent';
+
+      const secChk = document.createElement('input');
+      secChk.type = 'checkbox';
+      secChk.value = `section_${secId}`;
+      secChk.dataset.sectionId = secId;
+      secChk.dataset.classId = classId;
+      secChk.style.cssText = 'width:15px;height:15px;cursor:pointer;accent-color:#6366f1;flex-shrink:0;';
+      if (preselectedAudiences.includes(secChk.value)) secChk.checked = true;
+
+      const txt = document.createElement('span');
+      txt.style.cssText = 'flex:1;';
+      txt.innerHTML = `<strong style="color:#1e293b;">${escHtml(secName)}</strong> <span style="font-size:11px;color:#94a3b8;">(${secCode || 'No code'})</span>`;
+
+      lbl.appendChild(secChk);
+      lbl.appendChild(txt);
+      secContainer.appendChild(lbl);
+    });
+
+    // Class checkbox → select/deselect all its sections
+    classChk.onchange = () => {
+      secContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = classChk.checked);
+      updateAllClassesCheckbox();
+    };
+
+    // Section checkbox → update class + master checkbox
+    secContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.onchange = () => {
+        classChk.checked = Array.from(secContainer.querySelectorAll('input[type="checkbox"]')).every(c => c.checked);
+        updateAllClassesCheckbox();
+      };
+    });
+
+    group.appendChild(header);
+    group.appendChild(secContainer);
+    container.appendChild(group);
   });
-  
-  selectAllContainer.appendChild(selectAllBtn);
-  selectAllContainer.appendChild(deselectAllBtn);
-  container.appendChild(selectAllContainer);
+
+  function updateAllClassesCheckbox() {
+    const all = container.querySelectorAll('input[type="checkbox"][value^="section_"]');
+    allChk.checked = all.length > 0 && Array.from(all).every(cb => cb.checked);
+  }
+
+  // Master "All Classes" toggle
+  allChk.onchange = () => {
+    container.querySelectorAll('input[type="checkbox"][value^="section_"]').forEach(cb => cb.checked = allChk.checked);
+    container.querySelectorAll('.class-select-all').forEach(cb => cb.checked = allChk.checked);
+  };
 }
 
 // =============================================
@@ -401,7 +709,8 @@ function renderAudienceCheckboxes(preselectedAudiences = []) {
 // =============================================
 function showView(viewId) {
   document.querySelectorAll('.page-body').forEach(v => v.classList.add('hidden'));
-  document.getElementById('view-' + viewId).classList.remove('hidden');
+  const targetView = document.getElementById('view-' + viewId);
+  if (targetView) targetView.classList.remove('hidden');
   state.currentView = viewId;
   document.querySelectorAll('.nav-item').forEach(n => {
     n.classList.toggle('active', n.dataset.view === viewId);
@@ -434,17 +743,34 @@ function dotsIconSVG() {
 }
 
 // =============================================
-// CLASSES VIEW
+// CLASSES VIEW - FIXED
 // =============================================
 async function fetchAndRenderClasses() {
+  console.log('Fetching classes for teacher ID:', TEACHER_DATA.profile.id);
+  
+  if (!TEACHER_DATA.profile.id) {
+    console.error('No teacher ID available');
+    const grid = document.getElementById('classes-grid');
+    if (grid) grid.innerHTML = '<div class="empty-state">Please log in again.</div>';
+    return;
+  }
+  
   try {
     const classes = await apiGet(`/api/teacher/classes?teacherId=${TEACHER_DATA.profile.id}`);
     TEACHER_DATA.classes = classes;
+    console.log('Classes loaded:', classes);
+
+    // ✅ ADD THIS - update the profile badge
+    const badgeEl = document.getElementById('profile-badge-classes');
+    if (badgeEl) badgeEl.textContent = `${classes.length} Class${classes.length !== 1 ? 'es' : ''}`;
+
+    renderClassesView();
   } catch (err) {
     console.error('Fetch classes error:', err);
     TEACHER_DATA.classes = [];
+    renderClassesView();
+    Swal.fire('Error', 'Failed to load classes: ' + err.message, 'error');
   }
-  renderClassesView();
 }
 
 async function fetchSectionsForClass(classId) {
@@ -460,6 +786,7 @@ async function fetchSectionsForClass(classId) {
 function renderClassesView() {
   showView('classes');
   const grid = document.getElementById('classes-grid');
+  if (!grid) return;
   grid.innerHTML = '';
 
   if (!TEACHER_DATA.classes.length) {
@@ -515,10 +842,10 @@ function openEditClassModal(classId) {
   openModal('modal-edit-class');
 }
 
-document.getElementById('cancel-edit-class-modal').addEventListener('click', () => closeModal('modal-edit-class'));
-document.getElementById('cancel-edit-class-modal-2').addEventListener('click', () => closeModal('modal-edit-class'));
+document.getElementById('cancel-edit-class-modal')?.addEventListener('click', () => closeModal('modal-edit-class'));
+document.getElementById('cancel-edit-class-modal-2')?.addEventListener('click', () => closeModal('modal-edit-class'));
 
-document.getElementById('save-edit-class-modal').addEventListener('click', async () => {
+document.getElementById('save-edit-class-modal')?.addEventListener('click', async () => {
   const title = document.getElementById('edit-class-name-input').value.trim();
   const desc = document.getElementById('edit-class-desc-input').value.trim();
   if (!title) { Swal.fire('Error', 'Class name is required.', 'error'); return; }
@@ -533,7 +860,7 @@ document.getElementById('save-edit-class-modal').addEventListener('click', async
   }
 });
 
-document.getElementById('delete-class-modal-btn').addEventListener('click', async () => {
+document.getElementById('delete-class-modal-btn')?.addEventListener('click', async () => {
   closeModal('modal-edit-class');
   const result = await Swal.fire({
     title: 'Delete class?',
@@ -555,13 +882,17 @@ document.getElementById('delete-class-modal-btn').addEventListener('click', asyn
 });
 
 // =============================================
-// CLASS DETAIL VIEW
+// CLASS DETAIL VIEW - FIXED
 // =============================================
 async function openClassDetail(classId) {
   state.currentClassId = classId;
   const cls = TEACHER_DATA.classes.find(c => c.id === classId);
-  document.getElementById('class-detail-name').textContent = cls.title;
-  document.getElementById('class-detail-meta').textContent = cls.subject_code || '';
+  if (!cls) return;
+  
+  const classDetailName = document.getElementById('class-detail-name');
+  const classDetailMeta = document.getElementById('class-detail-meta');
+  if (classDetailName) classDetailName.textContent = cls.title;
+  if (classDetailMeta) classDetailMeta.textContent = cls.subject_code || '';
   await fetchAndRenderSections(classId);
   showView('class-detail');
 }
@@ -569,6 +900,7 @@ async function openClassDetail(classId) {
 async function fetchAndRenderSections(classId) {
   try {
     TEACHER_DATA.sections = await apiGet(`/api/teacher/sections?classId=${classId}`);
+    console.log('Sections loaded:', TEACHER_DATA.sections);
   } catch (err) {
     console.error('Fetch sections error:', err);
     TEACHER_DATA.sections = [];
@@ -583,8 +915,10 @@ function openSectionDetail(sectionId, sectionName) {
   state.currentSectionId = sectionId;
   
   const cls = TEACHER_DATA.classes.find(c => c.id === state.currentClassId);
-  document.getElementById('section-detail-name').textContent = sectionName;
-  document.getElementById('section-detail-class').textContent = cls ? cls.title : '';
+  const sectionDetailName = document.getElementById('section-detail-name');
+  const sectionDetailClass = document.getElementById('section-detail-class');
+  if (sectionDetailName) sectionDetailName.textContent = sectionName;
+  if (sectionDetailClass && cls) sectionDetailClass.textContent = cls.title;
   switchTab('lessons');
   showView('section-detail');
 }
@@ -594,6 +928,7 @@ function openSectionDetail(sectionId, sectionName) {
 // =============================================
 function renderSectionsList() {
   const list = document.getElementById('sections-list');
+  if (!list) return;
   list.innerHTML = '';
 
   if (!TEACHER_DATA.sections.length) {
@@ -704,10 +1039,10 @@ function openEditSectionModal(sectionId) {
   openModal('modal-edit-section');
 }
 
-document.getElementById('cancel-edit-section-modal').addEventListener('click', () => closeModal('modal-edit-section'));
-document.getElementById('cancel-edit-section-modal-2').addEventListener('click', () => closeModal('modal-edit-section'));
+document.getElementById('cancel-edit-section-modal')?.addEventListener('click', () => closeModal('modal-edit-section'));
+document.getElementById('cancel-edit-section-modal-2')?.addEventListener('click', () => closeModal('modal-edit-section'));
 
-document.getElementById('save-edit-section-modal').addEventListener('click', async () => {
+document.getElementById('save-edit-section-modal')?.addEventListener('click', async () => {
   const name = document.getElementById('edit-section-name-input').value.trim();
   if (!name) { Swal.fire('Error', 'Section name is required.', 'error'); return; }
   
@@ -721,7 +1056,7 @@ document.getElementById('save-edit-section-modal').addEventListener('click', asy
   }
 });
 
-document.getElementById('delete-section-modal-btn').addEventListener('click', async () => {
+document.getElementById('delete-section-modal-btn')?.addEventListener('click', async () => {
   closeModal('modal-edit-section');
   const result = await Swal.fire({
     title: 'Delete section?',
@@ -779,8 +1114,10 @@ document.querySelectorAll('.detail-tab').forEach(btn => {
 // MATERIALS
 // =============================================
 async function fetchAndRenderMaterials() {
+  if (!state.currentSectionId) return;
   try {
     TEACHER_DATA.materials = await apiGet(`/api/teacher/materials?sectionId=${state.currentSectionId}`);
+    console.log('Materials loaded:', TEACHER_DATA.materials);
   } catch (err) {
     console.error('Fetch materials error:', err);
     TEACHER_DATA.materials = [];
@@ -790,6 +1127,7 @@ async function fetchAndRenderMaterials() {
 
 function renderMaterialsList() {
   const list = document.getElementById('materials-list');
+  if (!list) return;
   list.innerHTML = '';
   if (!TEACHER_DATA.materials.length) {
     list.innerHTML = '<div class="empty-state">No learning materials yet.</div>';
@@ -821,25 +1159,38 @@ function renderMaterialsList() {
 function openMaterialDetail(mat) {
   state.currentMaterialId = mat.id;
   
-  document.getElementById('mat-title-display').textContent = mat.title;
-  document.getElementById('mat-section-label').textContent = document.getElementById('section-detail-name').textContent;
-  document.getElementById('mat-detail-desc').textContent = mat.description || 'No description provided.';
+  const matTitleDisplay = document.getElementById('mat-title-display');
+  const matSectionLabel = document.getElementById('mat-section-label');
+  const matDetailDesc = document.getElementById('mat-detail-desc');
+  
+  if (matTitleDisplay) matTitleDisplay.textContent = mat.title;
+  if (matSectionLabel) matSectionLabel.textContent = document.getElementById('section-detail-name')?.textContent || '';
+  if (matDetailDesc) matDetailDesc.textContent = mat.description || 'No description provided.';
   
   const link = document.getElementById('mat-detail-link');
-  if (mat.pdf_url) {
-    link.href = mat.pdf_url;
-    link.querySelector('span').textContent = 'Open Lesson';
-    document.getElementById('mat-link-card').style.display = 'flex';
-    document.querySelector('.material-link-text-wrapper').style.display = 'block';
-  } else {
-    link.href = '#';
-    link.querySelector('span').textContent = 'No file attached';
-    document.getElementById('mat-link-card').style.display = 'none';
-    document.querySelector('.material-link-text-wrapper').style.display = 'none';
+  if (link) {
+    if (mat.pdf_url) {
+      link.href = mat.pdf_url;
+      const span = link.querySelector('span');
+      if (span) span.textContent = 'Open Lesson';
+      const linkCard = document.getElementById('mat-link-card');
+      const textWrapper = document.querySelector('.material-link-text-wrapper');
+      if (linkCard) linkCard.style.display = 'flex';
+      if (textWrapper) textWrapper.style.display = 'block';
+    } else {
+      link.href = '#';
+      const span = link.querySelector('span');
+      if (span) span.textContent = 'No file attached';
+      const linkCard = document.getElementById('mat-link-card');
+      const textWrapper = document.querySelector('.material-link-text-wrapper');
+      if (linkCard) linkCard.style.display = 'none';
+      if (textWrapper) textWrapper.style.display = 'none';
+    }
   }
   
   state.activeCompletionTab.mat = 'pending';
-  renderCompletionTabs(document.querySelector('#view-material-detail .completion-tabs'), 'mat');
+  const completionTabs = document.querySelector('#view-material-detail .completion-tabs');
+  if (completionTabs) renderCompletionTabs(completionTabs, 'mat');
   renderCompletionStudents('mat-done-students', 'material', mat.id, 'pending');
   showView('material-detail');
 }
@@ -864,8 +1215,10 @@ async function deleteMaterial(id) {
 // QUIZZES
 // =============================================
 async function fetchAndRenderQuizzes() {
+  if (!state.currentSectionId) return;
   try {
     TEACHER_DATA.quizzes = await apiGet(`/api/teacher/quizzes?sectionId=${state.currentSectionId}`);
+    console.log('Quizzes loaded:', TEACHER_DATA.quizzes);
   } catch (err) {
     console.error('Fetch quizzes error:', err);
     TEACHER_DATA.quizzes = [];
@@ -875,6 +1228,7 @@ async function fetchAndRenderQuizzes() {
 
 function renderQuizzesList() {
   const list = document.getElementById('quizzes-list');
+  if (!list) return;
   list.innerHTML = '';
   if (!TEACHER_DATA.quizzes.length) {
     list.innerHTML = '<div class="empty-state">No quizzes yet. Click "Add Quiz" to create one.</div>';
@@ -906,26 +1260,40 @@ function renderQuizzesList() {
 function openQuizDetail(quiz) {
   state.currentQuizId = quiz.id;
   
-  document.getElementById('quiz-title-display').textContent = quiz.title;
-  document.getElementById('quiz-section-label').textContent = document.getElementById('section-detail-name').textContent;
-  document.getElementById('quiz-detail-due').textContent = quiz.due_date ? new Date(quiz.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'No due date';
-  document.getElementById('quiz-detail-desc').textContent = quiz.description || 'No description provided.';
+  const quizTitleDisplay = document.getElementById('quiz-title-display');
+  const quizSectionLabel = document.getElementById('quiz-section-label');
+  const quizDetailDue = document.getElementById('quiz-detail-due');
+  const quizDetailDesc = document.getElementById('quiz-detail-desc');
+  
+  if (quizTitleDisplay) quizTitleDisplay.textContent = quiz.title;
+  if (quizSectionLabel) quizSectionLabel.textContent = document.getElementById('section-detail-name')?.textContent || '';
+  if (quizDetailDue) quizDetailDue.textContent = quiz.due_date ? new Date(quiz.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'No due date';
+  if (quizDetailDesc) quizDetailDesc.textContent = quiz.description || 'No description provided.';
   
   const link = document.getElementById('quiz-detail-link');
-  if (quiz.link) {
-    link.href = quiz.link;
-    link.querySelector('span').textContent = 'Open Quiz';
-    document.getElementById('quiz-link-card').style.display = 'flex';
-    document.querySelector('.quiz-link-text-wrapper').style.display = 'block';
-  } else {
-    link.href = '#';
-    link.querySelector('span').textContent = 'No link attached';
-    document.getElementById('quiz-link-card').style.display = 'none';
-    document.querySelector('.quiz-link-text-wrapper').style.display = 'none';
+  if (link) {
+    if (quiz.link) {
+      link.href = quiz.link;
+      const span = link.querySelector('span');
+      if (span) span.textContent = 'Open Quiz';
+      const linkCard = document.getElementById('quiz-link-card');
+      const textWrapper = document.querySelector('.quiz-link-text-wrapper');
+      if (linkCard) linkCard.style.display = 'flex';
+      if (textWrapper) textWrapper.style.display = 'block';
+    } else {
+      link.href = '#';
+      const span = link.querySelector('span');
+      if (span) span.textContent = 'No link attached';
+      const linkCard = document.getElementById('quiz-link-card');
+      const textWrapper = document.querySelector('.quiz-link-text-wrapper');
+      if (linkCard) linkCard.style.display = 'none';
+      if (textWrapper) textWrapper.style.display = 'none';
+    }
   }
   
   state.activeCompletionTab.quiz = 'pending';
-  renderCompletionTabs(document.querySelector('#view-quiz-detail .completion-tabs'), 'quiz');
+  const completionTabs = document.querySelector('#view-quiz-detail .completion-tabs');
+  if (completionTabs) renderCompletionTabs(completionTabs, 'quiz');
   renderCompletionStudents('quiz-done-students', 'quiz', quiz.id, 'pending');
   showView('quiz-detail');
 }
@@ -950,8 +1318,10 @@ async function deleteQuiz(id) {
 // ASSIGNMENTS
 // =============================================
 async function fetchAndRenderAssignments() {
+  if (!state.currentSectionId) return;
   try {
     TEACHER_DATA.assignments = await apiGet(`/api/teacher/assignments?sectionId=${state.currentSectionId}`);
+    console.log('Assignments loaded:', TEACHER_DATA.assignments);
   } catch (err) {
     console.error('Fetch assignments error:', err);
     TEACHER_DATA.assignments = [];
@@ -961,6 +1331,7 @@ async function fetchAndRenderAssignments() {
 
 function renderAssignmentsList() {
   const list = document.getElementById('assignments-list');
+  if (!list) return;
   list.innerHTML = '';
   if (!TEACHER_DATA.assignments.length) {
     list.innerHTML = '<div class="empty-state">No assignments yet. Click "Add Assignment" to create one.</div>';
@@ -992,23 +1363,34 @@ function renderAssignmentsList() {
 function openAssignmentDetail(assign) {
   state.currentAssignmentId = assign.id;
   
-  document.getElementById('assign-title-display').textContent = assign.title;
-  document.getElementById('assign-section-label').textContent = document.getElementById('section-detail-name').textContent;
-  document.getElementById('assign-detail-due').textContent = assign.due_date ? new Date(assign.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'No due date';
-  document.getElementById('assign-detail-points').textContent = (assign.points || 0) + ' points';
-  document.getElementById('assign-detail-desc').textContent = assign.description || 'No instructions provided.';
+  const assignTitleDisplay = document.getElementById('assign-title-display');
+  const assignSectionLabel = document.getElementById('assign-section-label');
+  const assignDetailDue = document.getElementById('assign-detail-due');
+  const assignDetailPoints = document.getElementById('assign-detail-points');
+  const assignDetailDesc = document.getElementById('assign-detail-desc');
+  
+  if (assignTitleDisplay) assignTitleDisplay.textContent = assign.title;
+  if (assignSectionLabel) assignSectionLabel.textContent = document.getElementById('section-detail-name')?.textContent || '';
+  if (assignDetailDue) assignDetailDue.textContent = assign.due_date ? new Date(assign.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'No due date';
+  if (assignDetailPoints) assignDetailPoints.textContent = (assign.points || 0) + ' points';
+  if (assignDetailDesc) assignDetailDesc.textContent = assign.description || 'No instructions provided.';
   
   const link = document.getElementById('assign-detail-link');
-  if (assign.link) {
-    link.href = assign.link;
-    document.getElementById('assign-link-card').style.display = 'flex';
-  } else {
-    link.href = '#';
-    document.getElementById('assign-link-card').style.display = 'none';
+  if (link) {
+    if (assign.link) {
+      link.href = assign.link;
+      const linkCard = document.getElementById('assign-link-card');
+      if (linkCard) linkCard.style.display = 'flex';
+    } else {
+      link.href = '#';
+      const linkCard = document.getElementById('assign-link-card');
+      if (linkCard) linkCard.style.display = 'none';
+    }
   }
   
   state.activeCompletionTab.assign = 'pending';
-  renderCompletionTabs(document.querySelector('#view-assignment-detail .completion-tabs'), 'assign');
+  const completionTabs = document.querySelector('#view-assignment-detail .completion-tabs');
+  if (completionTabs) renderCompletionTabs(completionTabs, 'assign');
   renderCompletionStudents('assign-done-students', 'assignment', assign.id, 'pending');
   showView('assignment-detail');
 }
@@ -1030,7 +1412,7 @@ async function deleteAssignment(id) {
 }
 
 // =============================================
-// COMPLETION TABS & STUDENTS (WITH SCORE INPUTS)
+// COMPLETION TABS & STUDENTS (WITH SCORE INPUTS & PROFILE PICTURES)
 // =============================================
 function renderCompletionTabs(container, key) {
   if (!container) return;
@@ -1048,6 +1430,7 @@ function renderCompletionTabs(container, key) {
 
 async function renderCompletionStudents(containerId, type, itemId, filterStatus) {
   const container = document.getElementById(containerId);
+  if (!container) return;
   container.innerHTML = '<div style="text-align:center;padding:10px;color:#888;">Loading...</div>';
 
   try {
@@ -1106,20 +1489,25 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
       return;
     }
 
-    // Show score inputs for finished/passed tabs of quizzes and assignments
     const showScoreInput = (filterStatus === 'passed' || filterStatus === 'finished') && 
                            (type === 'quiz' || type === 'assignment');
 
-    filtered.forEach(s => {
+    for (const s of filtered) {
       const badgeClass = s.status === 'finished' || s.status === 'passed' ? 'badge-done' : s.status === 'missed' ? 'badge-missed' : 'badge-pending';
       const badgeLabel = s.status === 'finished' ? '✓ Finished' : s.status === 'passed' ? '✓ Passed' : s.status === 'missed' ? '✗ Missed' : '⏳ Pending';
+      
+      const fullName = `${s.first_name} ${s.last_name}`.trim();
+      const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=6366f1&color=fff`;
+      const profilePicUrl = s.profile_picture 
+        ? `/uploads/profile-pictures/${s.profile_picture}?t=${Date.now()}`
+        : defaultAvatar;
       
       const card = document.createElement('div');
       card.className = 'student-done-card';
       
       let scoreHtml = '';
       if (showScoreInput) {
-        const studentId = s.user_id || s.student_id;
+        const studentId = s.user_id || s.id;
         scoreHtml = `
           <div class="score-input-group" style="display:flex;align-items:center;gap:8px;margin-left:12px;flex-shrink:0;">
             <input 
@@ -1133,6 +1521,7 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
               placeholder="Score"
               min="0"
               max="100"
+              step="1"
               style="width:70px;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;text-align:center;outline:none;transition:all 0.2s;"
               onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px rgba(59,108,247,0.1)';"
               onblur="saveStudentScore(this); this.style.borderColor='var(--border)'; this.style.boxShadow='none';"
@@ -1143,7 +1532,6 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
           </div>
         `;
       } else if (s.score !== null && s.score !== undefined && (type === 'quiz' || type === 'assignment')) {
-        // Show score even in non-editable view if it exists
         scoreHtml = `
           <span style="font-weight:700;color:var(--accent);font-size:13px;margin-left:12px;flex-shrink:0;">
             ${s.score}/100
@@ -1153,11 +1541,11 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
       
       card.innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
-          <div class="item-icon-wrap" style="background:#11265c;flex-shrink:0;">
-            <i class="fa-solid fa-user"></i>
+          <div class="student-avatar" style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: #6366f1; flex-shrink:0;">
+            <img src="${profilePicUrl}" alt="${escHtml(fullName)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='${defaultAvatar}'">
           </div>
           <div style="min-width:0;">
-            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(s.first_name + ' ' + s.last_name)}</div>
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(fullName)}</div>
             <div style="font-size:12px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(s.email)}</div>
           </div>
         </div>
@@ -1165,8 +1553,9 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
         ${scoreHtml}
       `;
       container.appendChild(card);
-    });
+    }
   } catch (err) {
+    console.error('Error rendering completion students:', err);
     container.innerHTML = '<div class="empty-state">Failed to load students.</div>';
   }
 }
@@ -1271,7 +1660,7 @@ function showScoreSaved(inputElement, iconElement) {
 }
 
 // =============================================
-// STUDENTS TAB
+// STUDENTS TAB WITH PROFILE PICTURES - FIXED
 // =============================================
 async function fetchAndRenderStudents() {
   if (!state.currentSectionId) {
@@ -1290,6 +1679,7 @@ async function fetchAndRenderStudents() {
     
     const students = await apiGet(`/api/teacher/students?sectionId=${state.currentSectionId}`);
     TEACHER_DATA.students = students;
+    console.log('Students loaded:', students);
     renderStudentsList();
   } catch (err) {
     console.error('Fetch students error:', err);
@@ -1323,10 +1713,16 @@ function renderStudentsList() {
     const lastName = student.last_name || '';
     const fullName = (firstName + ' ' + lastName).trim() || 'Unknown';
     
+    // Generate profile picture URL or default avatar
+    const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=6366f1&color=fff`;
+    const profilePicUrl = student.profile_picture 
+      ? `/uploads/profile-pictures/${student.profile_picture}?t=${Date.now()}`
+      : defaultAvatar;
+    
     card.innerHTML = `
       <div class="student-card-left">
-        <div style="background: #11265c; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-          <i class="fa-solid fa-user" style="color: white; font-size: 18px;"></i>
+        <div class="student-avatar" style="width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: #6366f1; flex-shrink: 0;">
+          <img src="${profilePicUrl}" alt="${escHtml(fullName)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='${defaultAvatar}'">
         </div>
         <div>
           <div class="student-name">${escHtml(fullName)}</div>
@@ -1384,8 +1780,14 @@ async function removeStudent(studentId) {
 // =============================================
 // MODALS
 // =============================================
-function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+function openModal(id) { 
+  const modal = document.getElementById(id);
+  if (modal) modal.classList.remove('hidden');
+}
+function closeModal(id) { 
+  const modal = document.getElementById(id);
+  if (modal) modal.classList.add('hidden');
+}
 
 // Close modals when clicking overlay
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
@@ -1397,88 +1799,114 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 // Close modals when clicking X button
 document.querySelectorAll('.close-modal').forEach(btn => {
   btn.addEventListener('click', function() {
-    this.closest('.modal-overlay').classList.add('hidden');
+    const modal = this.closest('.modal-overlay');
+    if (modal) modal.classList.add('hidden');
   });
 });
 
 // ---- Class Modal ----
-document.getElementById('btn-create-class').addEventListener('click', () => {
-  document.getElementById('modal-class-title-text').textContent = 'Create Class';
-  document.getElementById('class-name-input').value = '';
-  document.getElementById('class-desc-input').value = '';
-  openModal('modal-class');
-});
-document.getElementById('cancel-class-modal').addEventListener('click', () => closeModal('modal-class'));
-document.getElementById('cancel-class-modal-2').addEventListener('click', () => closeModal('modal-class'));
-document.getElementById('save-class-modal').addEventListener('click', async () => {
-  const title = document.getElementById('class-name-input').value.trim();
-  const desc = document.getElementById('class-desc-input').value.trim();
-  if (!title) { Swal.fire('Error', 'Class name is required.', 'error'); return; }
-  try {
-    await apiPost('/api/teacher/classes', { teacherId: TEACHER_DATA.profile.id, title, description: desc });
-    closeModal('modal-class');
-    Swal.fire({ icon: 'success', title: 'Class created!', timer: 1200, showConfirmButton: false });
-    fetchAndRenderClasses();
-  } catch (err) {
-    Swal.fire('Error', err.message, 'error');
-  }
-});
+const createClassBtn = document.getElementById('btn-create-class');
+if (createClassBtn) {
+  createClassBtn.addEventListener('click', () => {
+    const modalClassTitle = document.getElementById('modal-class-title-text');
+    const classNameInput = document.getElementById('class-name-input');
+    const classDescInput = document.getElementById('class-desc-input');
+    if (modalClassTitle) modalClassTitle.textContent = 'Create Class';
+    if (classNameInput) classNameInput.value = '';
+    if (classDescInput) classDescInput.value = '';
+    openModal('modal-class');
+  });
+}
+
+const cancelClassModal = document.getElementById('cancel-class-modal');
+if (cancelClassModal) cancelClassModal.addEventListener('click', () => closeModal('modal-class'));
+const cancelClassModal2 = document.getElementById('cancel-class-modal-2');
+if (cancelClassModal2) cancelClassModal2.addEventListener('click', () => closeModal('modal-class'));
+
+const saveClassModal = document.getElementById('save-class-modal');
+if (saveClassModal) {
+  saveClassModal.addEventListener('click', async () => {
+    const title = document.getElementById('class-name-input')?.value.trim();
+    const desc = document.getElementById('class-desc-input')?.value.trim();
+    if (!title) { Swal.fire('Error', 'Class name is required.', 'error'); return; }
+    try {
+      await apiPost('/api/teacher/classes', { teacherId: TEACHER_DATA.profile.id, title, description: desc });
+      closeModal('modal-class');
+      Swal.fire({ icon: 'success', title: 'Class created!', timer: 1200, showConfirmButton: false });
+      fetchAndRenderClasses();
+    } catch (err) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  });
+}
 
 // ---- Section Modal ----
-document.getElementById('btn-add-section').addEventListener('click', () => {
-  document.getElementById('modal-section-title-text').textContent = 'Add Section';
-  document.getElementById('section-name-input').value = '';
-  openModal('modal-section');
-});
-document.getElementById('cancel-section-modal').addEventListener('click', () => closeModal('modal-section'));
-document.getElementById('cancel-section-modal-2').addEventListener('click', () => closeModal('modal-section'));
-document.getElementById('save-section-modal').addEventListener('click', async () => {
-  const name = document.getElementById('section-name-input').value.trim();
-  if (!name) { Swal.fire('Error', 'Section name is required.', 'error'); return; }
-  try {
-    const result = await apiPost('/api/teacher/sections', { classId: state.currentClassId, name });
-    closeModal('modal-section');
-    
-    Swal.fire({
-      icon: 'success',
-      title: 'Section Created!',
-      html: `
-        <div style="text-align: left;">
-          <p><strong>Section Name:</strong> ${escHtml(name)}</p>
-          <p><strong>Display Code:</strong> <code>${result.code}</code></p>
-          <p><strong><i class="fa-solid fa-key"></i> Enrollment Code (SHARE THIS WITH STUDENTS):</strong><br/>
-          <span style="background: #f0fdf4; padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 18px; font-weight: bold; display: inline-block; margin-top: 5px;">${result.enrollment_code}</span></p>
-          <button id="copy-enrollment-code" style="margin-top: 10px; padding: 5px 12px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-copy"></i> Copy Enrollment Code</button>
-        </div>
-      `,
-      showConfirmButton: true,
-      confirmButtonText: 'OK'
-    });
-    
-    setTimeout(() => {
-      const copyBtn = document.getElementById('copy-enrollment-code');
-      if (copyBtn) {
-        copyBtn.addEventListener('click', () => {
-          navigator.clipboard.writeText(result.enrollment_code);
-          Swal.fire({
-            icon: 'success',
-            title: 'Copied!',
-            text: 'Enrollment code copied to clipboard',
-            timer: 1500,
-            showConfirmButton: false
+const addSectionBtn = document.getElementById('btn-add-section');
+if (addSectionBtn) {
+  addSectionBtn.addEventListener('click', () => {
+    const modalSectionTitle = document.getElementById('modal-section-title-text');
+    const sectionNameInput = document.getElementById('section-name-input');
+    if (modalSectionTitle) modalSectionTitle.textContent = 'Add Section';
+    if (sectionNameInput) sectionNameInput.value = '';
+    openModal('modal-section');
+  });
+}
+
+const cancelSectionModal = document.getElementById('cancel-section-modal');
+if (cancelSectionModal) cancelSectionModal.addEventListener('click', () => closeModal('modal-section'));
+const cancelSectionModal2 = document.getElementById('cancel-section-modal-2');
+if (cancelSectionModal2) cancelSectionModal2.addEventListener('click', () => closeModal('modal-section'));
+
+const saveSectionModal = document.getElementById('save-section-modal');
+if (saveSectionModal) {
+  saveSectionModal.addEventListener('click', async () => {
+    const name = document.getElementById('section-name-input')?.value.trim();
+    if (!name) { Swal.fire('Error', 'Section name is required.', 'error'); return; }
+    try {
+      const result = await apiPost('/api/teacher/sections', { classId: state.currentClassId, name });
+      closeModal('modal-section');
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Section Created!',
+        html: `
+          <div style="text-align: left;">
+            <p><strong>Section Name:</strong> ${escHtml(name)}</p>
+            <p><strong>Display Code:</strong> <code>${result.code}</code></p>
+            <p><strong><i class="fa-solid fa-key"></i> Enrollment Code (SHARE THIS WITH STUDENTS):</strong><br/>
+            <span style="background: #f0fdf4; padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 18px; font-weight: bold; display: inline-block; margin-top: 5px;">${result.enrollment_code}</span></p>
+            <button id="copy-enrollment-code" style="margin-top: 10px; padding: 5px 12px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-copy"></i> Copy Enrollment Code</button>
+          </div>
+        `,
+        showConfirmButton: true,
+        confirmButtonText: 'OK'
+      });
+      
+      setTimeout(() => {
+        const copyBtn = document.getElementById('copy-enrollment-code');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(result.enrollment_code);
+            Swal.fire({
+              icon: 'success',
+              title: 'Copied!',
+              text: 'Enrollment code copied to clipboard',
+              timer: 1500,
+              showConfirmButton: false
+            });
           });
-        });
-      }
-    }, 100);
-    
-    await fetchAndRenderSections(state.currentClassId);
-  } catch (err) {
-    Swal.fire('Error', err.message, 'error');
-  }
-});
+        }
+      }, 100);
+      
+      await fetchAndRenderSections(state.currentClassId);
+    } catch (err) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  });
+}
 
 // =============================================
-// FILE UPLOAD HANDLERS
+// FILE UPLOAD HANDLERS (simplified)
 // =============================================
 
 function setupFileUploadZone(zoneId, inputId, previewId, browseBtnId, stateKey) {
@@ -1502,27 +1930,26 @@ function setupFileUploadZone(zoneId, inputId, previewId, browseBtnId, stateKey) 
   }
   
   input.addEventListener('change', (e) => {
-    handleFileSelect(e.target.files[0], preview, stateKey);
+    if (e.target.files && e.target.files[0]) {
+      handleFileSelect(e.target.files[0], preview, stateKey);
+    }
   });
   
   zone.addEventListener('dragover', (e) => {
     e.preventDefault();
-    e.stopPropagation();
     zone.classList.add('drag-over');
   });
   
   zone.addEventListener('dragleave', (e) => {
     e.preventDefault();
-    e.stopPropagation();
     zone.classList.remove('drag-over');
   });
   
   zone.addEventListener('drop', (e) => {
     e.preventDefault();
-    e.stopPropagation();
     zone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file) {
+    if (e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
       input.files = e.dataTransfer.files;
       handleFileSelect(file, preview, stateKey);
     }
@@ -1544,7 +1971,7 @@ function handleFileSelect(file, previewContainer, stateKey) {
           <div class="file-preview-size">${fileSize}</div>
         </div>
       </div>
-      <button class="file-preview-remove" onclick="removeFile('${stateKey}', '${previewContainer.id}')">&times;</button>
+      <button class="file-preview-remove" onclick="window.removeFile('${stateKey}', '${previewContainer.id}')">&times;</button>
     </div>
   `;
 }
@@ -1560,10 +1987,12 @@ window.removeFile = function(stateKey, previewId) {
   
   const inputId = inputMap[stateKey];
   if (inputId) {
-    document.getElementById(inputId).value = '';
+    const input = document.getElementById(inputId);
+    if (input) input.value = '';
   }
   
-  document.getElementById(previewId).innerHTML = '';
+  const preview = document.getElementById(previewId);
+  if (preview) preview.innerHTML = '';
 };
 
 function formatFileSize(bytes) {
@@ -1615,282 +2044,370 @@ function openMaterialModal(editId = null) {
   state.editingMaterialId = editId;
   const mat = editId ? TEACHER_DATA.materials.find(m => m.id === editId) : null;
   
-  document.getElementById('modal-material-title-text').textContent = editId ? 'Edit Material' : 'Add Learning Material';
-  document.getElementById('material-name-input').value = mat ? mat.title : '';
-  document.getElementById('material-desc-input').value = mat ? mat.description || '' : '';
-  document.getElementById('material-link-input').value = mat ? mat.pdf_url || '' : '';
+  const modalTitle = document.getElementById('modal-material-title-text');
+  const nameInput = document.getElementById('material-name-input');
+  const descInput = document.getElementById('material-desc-input');
+  const linkInput = document.getElementById('material-link-input');
+  
+  if (modalTitle) modalTitle.textContent = editId ? 'Edit Material' : 'Add Learning Material';
+  if (nameInput) nameInput.value = mat ? mat.title : '';
+  if (descInput) descInput.value = mat ? mat.description || '' : '';
+  if (linkInput) linkInput.value = mat ? mat.pdf_url || '' : '';
   
   state.materialFile = null;
-  document.getElementById('material-file-preview').innerHTML = '';
-  document.getElementById('material-file-input').value = '';
+  const filePreview = document.getElementById('material-file-preview');
+  const fileInput = document.getElementById('material-file-input');
+  if (filePreview) filePreview.innerHTML = '';
+  if (fileInput) fileInput.value = '';
   
   state.materialUploadType = 'file';
-  document.getElementById('material-file-type-btn').classList.add('active');
-  document.getElementById('material-link-type-btn').classList.remove('active');
-  document.getElementById('material-file-upload-zone').classList.remove('hidden');
-  document.getElementById('material-link-input-group').classList.add('hidden');
+  const fileTypeBtn = document.getElementById('material-file-type-btn');
+  const linkTypeBtn = document.getElementById('material-link-type-btn');
+  const fileZone = document.getElementById('material-file-upload-zone');
+  const linkGroup = document.getElementById('material-link-input-group');
+  
+  if (fileTypeBtn) fileTypeBtn.classList.add('active');
+  if (linkTypeBtn) linkTypeBtn.classList.remove('active');
+  if (fileZone) fileZone.classList.remove('hidden');
+  if (linkGroup) linkGroup.classList.add('hidden');
   
   openModal('modal-material');
 }
 
-document.getElementById('btn-add-material').addEventListener('click', () => openMaterialModal());
-document.getElementById('btn-edit-material').addEventListener('click', () => openMaterialModal(state.currentMaterialId));
-document.getElementById('btn-delete-material').addEventListener('click', () => deleteMaterial(state.currentMaterialId));
-document.getElementById('cancel-material-modal').addEventListener('click', () => closeModal('modal-material'));
-document.getElementById('cancel-material-modal-2').addEventListener('click', () => closeModal('modal-material'));
+const addMaterialBtn = document.getElementById('btn-add-material');
+if (addMaterialBtn) addMaterialBtn.addEventListener('click', () => openMaterialModal());
+const editMaterialBtn = document.getElementById('btn-edit-material');
+if (editMaterialBtn) editMaterialBtn.addEventListener('click', () => openMaterialModal(state.currentMaterialId));
+const deleteMaterialBtn = document.getElementById('btn-delete-material');
+if (deleteMaterialBtn) deleteMaterialBtn.addEventListener('click', () => deleteMaterial(state.currentMaterialId));
 
-document.getElementById('save-material-modal').addEventListener('click', async () => {
-  const title = document.getElementById('material-name-input').value.trim();
-  const desc = document.getElementById('material-desc-input').value.trim();
-  
-  if (!title) { Swal.fire('Error', 'Material name is required.', 'error'); return; }
-  
-  try {
-    if (state.materialUploadType === 'file' && state.materialFile) {
-      const formData = new FormData();
-      formData.append('title', title);
-      formData.append('description', desc);
-      formData.append('sectionId', state.currentSectionId);
-      formData.append('file', state.materialFile);
-      
-      if (state.editingMaterialId) {
-        await apiPutFormData(`/api/teacher/materials/${state.editingMaterialId}`, formData);
-      } else {
-        await apiPostFormData('/api/teacher/materials', formData);
-      }
-    } else {
-      const link = document.getElementById('material-link-input').value.trim();
-      
-      if (state.editingMaterialId) {
-        await apiPut(`/api/teacher/materials/${state.editingMaterialId}`, { title, description: desc, link });
-      } else {
-        await apiPost('/api/teacher/materials', { sectionId: state.currentSectionId, title, description: desc, link });
-      }
-    }
+const cancelMaterialModal = document.getElementById('cancel-material-modal');
+if (cancelMaterialModal) cancelMaterialModal.addEventListener('click', () => closeModal('modal-material'));
+const cancelMaterialModal2 = document.getElementById('cancel-material-modal-2');
+if (cancelMaterialModal2) cancelMaterialModal2.addEventListener('click', () => closeModal('modal-material'));
+
+const saveMaterialModal = document.getElementById('save-material-modal');
+if (saveMaterialModal) {
+  saveMaterialModal.addEventListener('click', async () => {
+    const title = document.getElementById('material-name-input')?.value.trim();
+    const desc = document.getElementById('material-desc-input')?.value.trim();
     
-    closeModal('modal-material');
-    fetchAndRenderMaterials();
-    Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
-  } catch (err) {
-    Swal.fire('Error', err.message, 'error');
-  }
-});
+    if (!title) { Swal.fire('Error', 'Material name is required.', 'error'); return; }
+    
+    try {
+      if (state.materialUploadType === 'file' && state.materialFile) {
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('description', desc);
+        formData.append('sectionId', state.currentSectionId);
+        formData.append('file', state.materialFile);
+        
+        if (state.editingMaterialId) {
+          await apiPutFormData(`/api/teacher/materials/${state.editingMaterialId}`, formData);
+        } else {
+          await apiPostFormData('/api/teacher/materials', formData);
+        }
+      } else {
+        const link = document.getElementById('material-link-input')?.value.trim();
+        
+        if (state.editingMaterialId) {
+          await apiPut(`/api/teacher/materials/${state.editingMaterialId}`, { title, description: desc, link });
+        } else {
+          await apiPost('/api/teacher/materials', { sectionId: state.currentSectionId, title, description: desc, link });
+        }
+      }
+      
+      closeModal('modal-material');
+      fetchAndRenderMaterials();
+      Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
+    } catch (err) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  });
+}
 
 // ---- Quiz Modal ----
 function openQuizModal(editId = null) {
   state.editingQuizId = editId;
   const quiz = editId ? TEACHER_DATA.quizzes.find(q => q.id === editId) : null;
   
-  document.getElementById('modal-quiz-title-text').textContent = editId ? 'Edit Quiz' : 'Add Quiz';
-  document.getElementById('quiz-name-input').value = quiz ? quiz.title : '';
-  document.getElementById('quiz-desc-input').value = quiz ? quiz.description || '' : '';
-  document.getElementById('quiz-link-input').value = quiz ? quiz.link || '' : '';
-  document.getElementById('quiz-due-input').value = quiz && quiz.due_date ? formatDateTimeLocal(quiz.due_date) : '';
-  document.getElementById('quiz-points-input').value = quiz ? quiz.points || '' : '';
+  const modalTitle = document.getElementById('modal-quiz-title-text');
+  const nameInput = document.getElementById('quiz-name-input');
+  const descInput = document.getElementById('quiz-desc-input');
+  const linkInput = document.getElementById('quiz-link-input');
+  const dueInput = document.getElementById('quiz-due-input');
+  const pointsInput = document.getElementById('quiz-points-input');
+  
+  if (modalTitle) modalTitle.textContent = editId ? 'Edit Quiz' : 'Add Quiz';
+  if (nameInput) nameInput.value = quiz ? quiz.title : '';
+  if (descInput) descInput.value = quiz ? quiz.description || '' : '';
+  if (linkInput) linkInput.value = quiz ? quiz.link || '' : '';
+  if (dueInput) dueInput.value = quiz && quiz.due_date ? formatDateTimeLocal(quiz.due_date) : '';
+  if (pointsInput) pointsInput.value = quiz ? quiz.points || '' : '';
   
   state.quizFile = null;
-  document.getElementById('quiz-file-preview').innerHTML = '';
-  document.getElementById('quiz-file-input').value = '';
+  const filePreview = document.getElementById('quiz-file-preview');
+  const fileInput = document.getElementById('quiz-file-input');
+  if (filePreview) filePreview.innerHTML = '';
+  if (fileInput) fileInput.value = '';
   
   state.quizUploadType = 'file';
-  document.getElementById('quiz-file-type-btn').classList.add('active');
-  document.getElementById('quiz-link-type-btn').classList.remove('active');
-  document.getElementById('quiz-file-upload-zone').classList.remove('hidden');
-  document.getElementById('quiz-link-input-group').classList.add('hidden');
+  const fileTypeBtn = document.getElementById('quiz-file-type-btn');
+  const linkTypeBtn = document.getElementById('quiz-link-type-btn');
+  const fileZone = document.getElementById('quiz-file-upload-zone');
+  const linkGroup = document.getElementById('quiz-link-input-group');
+  
+  if (fileTypeBtn) fileTypeBtn.classList.add('active');
+  if (linkTypeBtn) linkTypeBtn.classList.remove('active');
+  if (fileZone) fileZone.classList.remove('hidden');
+  if (linkGroup) linkGroup.classList.add('hidden');
   
   openModal('modal-quiz');
 }
 
-document.getElementById('btn-add-quiz').addEventListener('click', () => openQuizModal());
-document.getElementById('btn-edit-quiz').addEventListener('click', () => openQuizModal(state.currentQuizId));
-document.getElementById('btn-delete-quiz').addEventListener('click', () => deleteQuiz(state.currentQuizId));
-document.getElementById('cancel-quiz-modal').addEventListener('click', () => closeModal('modal-quiz'));
-document.getElementById('cancel-quiz-modal-2').addEventListener('click', () => closeModal('modal-quiz'));
+const addQuizBtn = document.getElementById('btn-add-quiz');
+if (addQuizBtn) addQuizBtn.addEventListener('click', () => openQuizModal());
+const editQuizBtn = document.getElementById('btn-edit-quiz');
+if (editQuizBtn) editQuizBtn.addEventListener('click', () => openQuizModal(state.currentQuizId));
+const deleteQuizBtn = document.getElementById('btn-delete-quiz');
+if (deleteQuizBtn) deleteQuizBtn.addEventListener('click', () => deleteQuiz(state.currentQuizId));
 
-document.getElementById('save-quiz-modal').addEventListener('click', async () => {
-  const title = document.getElementById('quiz-name-input').value.trim();
-  const desc = document.getElementById('quiz-desc-input').value.trim();
-  const due = document.getElementById('quiz-due-input').value;
-  const points = document.getElementById('quiz-points-input').value;
-  
-  if (!title) { Swal.fire('Error', 'Quiz title is required.', 'error'); return; }
-  
-  try {
-    if (state.quizUploadType === 'file' && state.quizFile) {
-      const formData = new FormData();
-      formData.append('title', title);
-      formData.append('description', desc);
-      formData.append('sectionId', state.currentSectionId);
-      formData.append('dueDate', due);
-      formData.append('points', points);
-      formData.append('file', state.quizFile);
-      
-      if (state.editingQuizId) {
-        await apiPutFormData(`/api/teacher/quizzes/${state.editingQuizId}`, formData);
-      } else {
-        await apiPostFormData('/api/teacher/quizzes', formData);
-      }
-    } else {
-      const link = document.getElementById('quiz-link-input').value.trim();
-      
-      if (state.editingQuizId) {
-        await apiPut(`/api/teacher/quizzes/${state.editingQuizId}`, { title, description: desc, link, dueDate: due, points });
-      } else {
-        await apiPost('/api/teacher/quizzes', { sectionId: state.currentSectionId, title, description: desc, link, dueDate: due, points });
-      }
-    }
+const cancelQuizModal = document.getElementById('cancel-quiz-modal');
+if (cancelQuizModal) cancelQuizModal.addEventListener('click', () => closeModal('modal-quiz'));
+const cancelQuizModal2 = document.getElementById('cancel-quiz-modal-2');
+if (cancelQuizModal2) cancelQuizModal2.addEventListener('click', () => closeModal('modal-quiz'));
+
+const saveQuizModal = document.getElementById('save-quiz-modal');
+if (saveQuizModal) {
+  saveQuizModal.addEventListener('click', async () => {
+    const title = document.getElementById('quiz-name-input')?.value.trim();
+    const desc = document.getElementById('quiz-desc-input')?.value.trim();
+    const due = document.getElementById('quiz-due-input')?.value;
+    const points = document.getElementById('quiz-points-input')?.value;
     
-    closeModal('modal-quiz');
-    fetchAndRenderQuizzes();
-    Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
-  } catch (err) {
-    Swal.fire('Error', err.message, 'error');
-  }
-});
+    if (!title) { Swal.fire('Error', 'Quiz title is required.', 'error'); return; }
+    
+    try {
+      if (state.quizUploadType === 'file' && state.quizFile) {
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('description', desc);
+        formData.append('sectionId', state.currentSectionId);
+        formData.append('dueDate', due);
+        formData.append('points', points);
+        formData.append('file', state.quizFile);
+        
+        if (state.editingQuizId) {
+          await apiPutFormData(`/api/teacher/quizzes/${state.editingQuizId}`, formData);
+        } else {
+          await apiPostFormData('/api/teacher/quizzes', formData);
+        }
+      } else {
+        const link = document.getElementById('quiz-link-input')?.value.trim();
+        
+        if (state.editingQuizId) {
+          await apiPut(`/api/teacher/quizzes/${state.editingQuizId}`, { title, description: desc, link, dueDate: due, points });
+        } else {
+          await apiPost('/api/teacher/quizzes', { sectionId: state.currentSectionId, title, description: desc, link, dueDate: due, points });
+        }
+      }
+      
+      closeModal('modal-quiz');
+      fetchAndRenderQuizzes();
+      Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
+    } catch (err) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  });
+}
 
 // ---- Assignment Modal ----
 function openAssignmentModal(editId = null) {
   state.editingAssignmentId = editId;
   const assign = editId ? TEACHER_DATA.assignments.find(a => a.id === editId) : null;
   
-  document.getElementById('modal-assignment-title-text').textContent = editId ? 'Edit Assignment' : 'Add Assignment';
-  document.getElementById('assignment-name-input').value = assign ? assign.title : '';
-  document.getElementById('assignment-desc-input').value = assign ? assign.description || '' : '';
-  document.getElementById('assignment-due-input').value = assign && assign.due_date ? formatDateTimeLocal(assign.due_date) : '';
-  document.getElementById('assignment-points-input').value = assign ? assign.points || '' : '';
-  document.getElementById('assignment-link-input').value = assign ? assign.link || '' : '';
+  const modalTitle = document.getElementById('modal-assignment-title-text');
+  const nameInput = document.getElementById('assignment-name-input');
+  const descInput = document.getElementById('assignment-desc-input');
+  const dueInput = document.getElementById('assignment-due-input');
+  const pointsInput = document.getElementById('assignment-points-input');
+  const linkInput = document.getElementById('assignment-link-input');
+  
+  if (modalTitle) modalTitle.textContent = editId ? 'Edit Assignment' : 'Add Assignment';
+  if (nameInput) nameInput.value = assign ? assign.title : '';
+  if (descInput) descInput.value = assign ? assign.description || '' : '';
+  if (dueInput) dueInput.value = assign && assign.due_date ? formatDateTimeLocal(assign.due_date) : '';
+  if (pointsInput) pointsInput.value = assign ? assign.points || '' : '';
+  if (linkInput) linkInput.value = assign ? assign.link || '' : '';
   
   state.assignmentFile = null;
-  document.getElementById('assignment-file-preview').innerHTML = '';
-  document.getElementById('assignment-file-input').value = '';
+  const filePreview = document.getElementById('assignment-file-preview');
+  const fileInput = document.getElementById('assignment-file-input');
+  if (filePreview) filePreview.innerHTML = '';
+  if (fileInput) fileInput.value = '';
   
   state.assignmentUploadType = 'file';
-  document.getElementById('assignment-file-type-btn').classList.add('active');
-  document.getElementById('assignment-link-type-btn').classList.remove('active');
-  document.getElementById('assignment-file-upload-zone').classList.remove('hidden');
-  document.getElementById('assignment-link-input-group').classList.add('hidden');
+  const fileTypeBtn = document.getElementById('assignment-file-type-btn');
+  const linkTypeBtn = document.getElementById('assignment-link-type-btn');
+  const fileZone = document.getElementById('assignment-file-upload-zone');
+  const linkGroup = document.getElementById('assignment-link-input-group');
+  
+  if (fileTypeBtn) fileTypeBtn.classList.add('active');
+  if (linkTypeBtn) linkTypeBtn.classList.remove('active');
+  if (fileZone) fileZone.classList.remove('hidden');
+  if (linkGroup) linkGroup.classList.add('hidden');
   
   openModal('modal-assignment');
 }
 
-document.getElementById('btn-add-assignment').addEventListener('click', () => openAssignmentModal());
-document.getElementById('btn-edit-assignment').addEventListener('click', () => openAssignmentModal(state.currentAssignmentId));
-document.getElementById('btn-delete-assignment').addEventListener('click', () => deleteAssignment(state.currentAssignmentId));
-document.getElementById('cancel-assignment-modal').addEventListener('click', () => closeModal('modal-assignment'));
-document.getElementById('cancel-assignment-modal-2').addEventListener('click', () => closeModal('modal-assignment'));
+const addAssignmentBtn = document.getElementById('btn-add-assignment');
+if (addAssignmentBtn) addAssignmentBtn.addEventListener('click', () => openAssignmentModal());
+const editAssignmentBtn = document.getElementById('btn-edit-assignment');
+if (editAssignmentBtn) editAssignmentBtn.addEventListener('click', () => openAssignmentModal(state.currentAssignmentId));
+const deleteAssignmentBtn = document.getElementById('btn-delete-assignment');
+if (deleteAssignmentBtn) deleteAssignmentBtn.addEventListener('click', () => deleteAssignment(state.currentAssignmentId));
 
-document.getElementById('save-assignment-modal').addEventListener('click', async () => {
-  const title = document.getElementById('assignment-name-input').value.trim();
-  const desc = document.getElementById('assignment-desc-input').value.trim();
-  const due = document.getElementById('assignment-due-input').value;
-  const points = document.getElementById('assignment-points-input').value;
-  
-  if (!title) { Swal.fire('Error', 'Assignment title is required.', 'error'); return; }
-  
-  try {
-    if (state.assignmentUploadType === 'file' && state.assignmentFile) {
-      const formData = new FormData();
-      formData.append('title', title);
-      formData.append('description', desc);
-      formData.append('sectionId', state.currentSectionId);
-      formData.append('dueDate', due);
-      formData.append('points', points);
-      formData.append('file', state.assignmentFile);
-      
-      if (state.editingAssignmentId) {
-        await apiPutFormData(`/api/teacher/assignments/${state.editingAssignmentId}`, formData);
-      } else {
-        await apiPostFormData('/api/teacher/assignments', formData);
-      }
-    } else {
-      const link = document.getElementById('assignment-link-input').value.trim();
-      
-      if (state.editingAssignmentId) {
-        await apiPut(`/api/teacher/assignments/${state.editingAssignmentId}`, { title, description: desc, link, dueDate: due, points });
-      } else {
-        await apiPost('/api/teacher/assignments', { sectionId: state.currentSectionId, title, description: desc, link, dueDate: due, points });
-      }
-    }
+const cancelAssignmentModal = document.getElementById('cancel-assignment-modal');
+if (cancelAssignmentModal) cancelAssignmentModal.addEventListener('click', () => closeModal('modal-assignment'));
+const cancelAssignmentModal2 = document.getElementById('cancel-assignment-modal-2');
+if (cancelAssignmentModal2) cancelAssignmentModal2.addEventListener('click', () => closeModal('modal-assignment'));
+
+const saveAssignmentModal = document.getElementById('save-assignment-modal');
+if (saveAssignmentModal) {
+  saveAssignmentModal.addEventListener('click', async () => {
+    const title = document.getElementById('assignment-name-input')?.value.trim();
+    const desc = document.getElementById('assignment-desc-input')?.value.trim();
+    const due = document.getElementById('assignment-due-input')?.value;
+    const points = document.getElementById('assignment-points-input')?.value;
     
-    closeModal('modal-assignment');
-    fetchAndRenderAssignments();
-    Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
-  } catch (err) {
-    Swal.fire('Error', err.message, 'error');
-  }
-});
+    if (!title) { Swal.fire('Error', 'Assignment title is required.', 'error'); return; }
+    
+    try {
+      if (state.assignmentUploadType === 'file' && state.assignmentFile) {
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('description', desc);
+        formData.append('sectionId', state.currentSectionId);
+        formData.append('dueDate', due);
+        formData.append('points', points);
+        formData.append('file', state.assignmentFile);
+        
+        if (state.editingAssignmentId) {
+          await apiPutFormData(`/api/teacher/assignments/${state.editingAssignmentId}`, formData);
+        } else {
+          await apiPostFormData('/api/teacher/assignments', formData);
+        }
+      } else {
+        const link = document.getElementById('assignment-link-input')?.value.trim();
+        
+        if (state.editingAssignmentId) {
+          await apiPut(`/api/teacher/assignments/${state.editingAssignmentId}`, { title, description: desc, link, dueDate: due, points });
+        } else {
+          await apiPost('/api/teacher/assignments', { sectionId: state.currentSectionId, title, description: desc, link, dueDate: due, points });
+        }
+      }
+      
+      closeModal('modal-assignment');
+      fetchAndRenderAssignments();
+      Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
+    } catch (err) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  });
+}
 
 // =============================================
 // ANNOUNCEMENTS SECTION
 // =============================================
 
-document.getElementById('btn-new-announcement').addEventListener('click', async () => {
-  state.editingAnnouncementId = null;
-  document.getElementById('modal-announcement-title-text').textContent = 'New Announcement';
-  document.getElementById('announcement-title-input').value = '';
-  document.getElementById('announcement-body-input').value = '';
-  
-  await fetchAllSectionsForAnnouncements();
-  renderAudienceCheckboxes([]);
-  
-  openModal('modal-announcement');
-});
-
-document.getElementById('cancel-announcement-modal').addEventListener('click', () => closeModal('modal-announcement'));
-document.getElementById('cancel-announcement-modal-2').addEventListener('click', () => closeModal('modal-announcement'));
-
-document.getElementById('save-announcement-modal').addEventListener('click', async () => {
-  const title = document.getElementById('announcement-title-input').value.trim();
-  const body = document.getElementById('announcement-body-input').value.trim();
-  
-  const checkboxes = document.querySelectorAll('#audience-checkboxes input[type="checkbox"]:checked');
-  const selectedAudiences = Array.from(checkboxes).map(cb => cb.value);
-  
-  if (!title || !body) { 
-    Swal.fire('Error', 'Title and message are required.', 'error'); 
-    return; 
-  }
-  
-  if (selectedAudiences.length === 0) {
-    Swal.fire('Error', 'Please select at least one section for the audience.', 'error');
-    return;
-  }
-  
-  try {
-    let response;
-    const audienceString = selectedAudiences.join(',');
+const newAnnouncementBtn = document.getElementById('btn-new-announcement');
+if (newAnnouncementBtn) {
+  newAnnouncementBtn.addEventListener('click', async () => {
+    state.editingAnnouncementId = null;
+    const announceTitle = document.getElementById('announcement-title-input');
+    const announceBody = document.getElementById('announcement-body-input');
+    const modalTitle = document.getElementById('modal-announcement-title-text');
     
-    if (state.editingAnnouncementId) {
-      response = await fetch(`/api/announcements/${state.editingAnnouncementId}`, {
-        method: 'PUT', 
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, body, audience: audienceString })
-      });
-    } else {
-      response = await fetch('/api/announcements', {
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          teacherId: TEACHER_DATA.profile.id, 
-          title, 
-          body, 
-          audience: audienceString 
-        })
-      });
+    if (modalTitle) modalTitle.textContent = 'New Announcement';
+    if (announceTitle) announceTitle.value = '';
+    if (announceBody) announceBody.value = '';
+    
+    await fetchAllSectionsForAnnouncements();
+    renderAudienceCheckboxes([]);
+    
+    openModal('modal-announcement');
+  });
+}
+
+const cancelAnnouncementModal = document.getElementById('cancel-announcement-modal');
+if (cancelAnnouncementModal) cancelAnnouncementModal.addEventListener('click', () => closeModal('modal-announcement'));
+const cancelAnnouncementModal2 = document.getElementById('cancel-announcement-modal-2');
+if (cancelAnnouncementModal2) cancelAnnouncementModal2.addEventListener('click', () => closeModal('modal-announcement'));
+
+const saveAnnouncementModal = document.getElementById('save-announcement-modal');
+if (saveAnnouncementModal) {
+  saveAnnouncementModal.addEventListener('click', async () => {
+    const title = document.getElementById('announcement-title-input')?.value.trim();
+    const body = document.getElementById('announcement-body-input')?.value.trim();
+    
+    const checkboxes = document.querySelectorAll('#audience-checkboxes input[type="checkbox"]:checked');
+    const selectedAudiences = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (!title || !body) { 
+      Swal.fire('Error', 'Title and message are required.', 'error'); 
+      return; 
     }
     
-    const data = await response.json();
-    if (response.ok) {
-      closeModal('modal-announcement');
-      Swal.fire('Success', data.message || 'Announcement saved!', 'success');
-      renderAnnouncementsView();
-    } else {
-      Swal.fire('Error', data.message || 'Failed to save.', 'error');
+    if (selectedAudiences.length === 0) {
+      Swal.fire('Error', 'Please select at least one section for the audience.', 'error');
+      return;
     }
-  } catch (err) {
-    Swal.fire('Error', 'Could not connect to server.', 'error');
-  }
-});
+    
+    // Check if "All Classes" is selected
+    let audienceString;
+    if (selectedAudiences.includes('all_classes')) {
+      audienceString = 'All Classes';
+    } else {
+      // Filter only section_ values
+      const sectionValues = selectedAudiences.filter(v => v.startsWith('section_'));
+      audienceString = sectionValues.join(',');
+    }
+    
+    try {
+      let response;
+      
+      if (state.editingAnnouncementId) {
+        response = await fetch(`/api/announcements/${state.editingAnnouncementId}`, {
+          method: 'PUT', 
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, body, audience: audienceString })
+        });
+      } else {
+        response = await fetch('/api/announcements', {
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            teacherId: TEACHER_DATA.profile.id, 
+            title, 
+            body, 
+            audience: audienceString 
+          })
+        });
+      }
+      
+      const data = await response.json();
+      if (response.ok) {
+        closeModal('modal-announcement');
+        Swal.fire('Success', data.message || 'Announcement saved!', 'success');
+        renderAnnouncementsView();
+      } else {
+        Swal.fire('Error', data.message || 'Failed to save.', 'error');
+      }
+    } catch (err) {
+      Swal.fire('Error', 'Could not connect to server.', 'error');
+    }
+  });
+}
 
 // =============================================
 // PROGRESS VIEW
@@ -1898,6 +2415,7 @@ document.getElementById('save-announcement-modal').addEventListener('click', asy
 async function renderProgressView() {
   showView('progress');
   const list = document.getElementById('progress-list');
+  if (!list) return;
   list.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">Loading progress...</div>';
 
   try {
@@ -1959,6 +2477,7 @@ async function renderProgressView() {
       }
     }
   } catch (err) {
+    console.error('Progress view error:', err);
     list.innerHTML = '<div class="empty-state">Failed to load progress.</div>';
   }
 }
@@ -1969,7 +2488,7 @@ async function renderProgressView() {
 async function renderAnnouncementsView() {
   showView('announcements');
   const list = document.getElementById('announcements-list');
-  list.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">Loading announcements...</div>';
+  if (list) list.innerHTML = '<div style="text-align:center;padding:20px;color:#888;">Loading announcements...</div>';
   await fetchAnnouncements();
 }
 
@@ -2036,9 +2555,13 @@ window.editAnnouncementFromList = async function(id) {
   if (!a) return;
   
   state.editingAnnouncementId = id;
-  document.getElementById('announcement-title-input').value = a.title;
-  document.getElementById('announcement-body-input').value = a.body;
-  document.getElementById('modal-announcement-title-text').textContent = 'Edit Announcement';
+  const titleInput = document.getElementById('announcement-title-input');
+  const bodyInput = document.getElementById('announcement-body-input');
+  const modalTitle = document.getElementById('modal-announcement-title-text');
+  
+  if (titleInput) titleInput.value = a.title;
+  if (bodyInput) bodyInput.value = a.body;
+  if (modalTitle) modalTitle.textContent = 'Edit Announcement';
   
   await fetchAllSectionsForAnnouncements();
   
@@ -2067,26 +2590,37 @@ window.deleteAnnouncementFromList = async function(id) {
 // =============================================
 // BACK BUTTONS
 // =============================================
-document.getElementById('back-to-classes').addEventListener('click', fetchAndRenderClasses);
-document.getElementById('back-to-class-detail').addEventListener('click', () => openClassDetail(state.currentClassId));
-document.getElementById('back-to-section-lessons').addEventListener('click', () => { 
-  if (state.currentSectionId) {
-    openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name').textContent); 
-    switchTab('lessons');
-  }
-});
-document.getElementById('back-to-section-quizzes').addEventListener('click', () => { 
-  if (state.currentSectionId) {
-    openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name').textContent); 
-    switchTab('quizzes');
-  }
-});
-document.getElementById('back-to-section-assignments').addEventListener('click', () => { 
-  if (state.currentSectionId) {
-    openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name').textContent); 
-    switchTab('assignments');
-  }
-});
+const backToClasses = document.getElementById('back-to-classes');
+if (backToClasses) backToClasses.addEventListener('click', fetchAndRenderClasses);
+const backToClassDetail = document.getElementById('back-to-class-detail');
+if (backToClassDetail) backToClassDetail.addEventListener('click', () => openClassDetail(state.currentClassId));
+const backToSectionLessons = document.getElementById('back-to-section-lessons');
+if (backToSectionLessons) {
+  backToSectionLessons.addEventListener('click', () => { 
+    if (state.currentSectionId) {
+      openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name')?.textContent || ''); 
+      switchTab('lessons');
+    }
+  });
+}
+const backToSectionQuizzes = document.getElementById('back-to-section-quizzes');
+if (backToSectionQuizzes) {
+  backToSectionQuizzes.addEventListener('click', () => { 
+    if (state.currentSectionId) {
+      openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name')?.textContent || ''); 
+      switchTab('quizzes');
+    }
+  });
+}
+const backToSectionAssignments = document.getElementById('back-to-section-assignments');
+if (backToSectionAssignments) {
+  backToSectionAssignments.addEventListener('click', () => { 
+    if (state.currentSectionId) {
+      openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name')?.textContent || ''); 
+      switchTab('assignments');
+    }
+  });
+}
 
 // =============================================
 // PROFILE FUNCTIONS
@@ -2107,6 +2641,13 @@ function refreshTeacherProfileDisplay() {
   setVal('edit-lastname', p.lastName || '');
   setVal('edit-username', p.username || '');
   setVal('edit-email', p.email || '');
+
+  // ✅ ADD THIS - sync class count badge
+  const badgeEl = document.getElementById('profile-badge-classes');
+  if (badgeEl) {
+    const count = TEACHER_DATA.classes.length;
+    badgeEl.textContent = `${count} Class${count !== 1 ? 'es' : ''}`;
+  }
   
   updateTeacherProfilePicture();
 }
@@ -2121,155 +2662,173 @@ function showTeacherProfilePanel(panel) {
   if (passwordPanel) passwordPanel.style.display = (panel === 'change-password') ? 'block' : 'none';
 }
 
-document.getElementById('btn-edit-profile').addEventListener('click', () => showTeacherProfilePanel('edit-info'));
-document.getElementById('btn-cancel-edit').addEventListener('click', () => showTeacherProfilePanel('main'));
+const editProfileBtn = document.getElementById('btn-edit-profile');
+if (editProfileBtn) editProfileBtn.addEventListener('click', () => showTeacherProfilePanel('edit-info'));
+const cancelEditBtn = document.getElementById('btn-cancel-edit');
+if (cancelEditBtn) cancelEditBtn.addEventListener('click', () => showTeacherProfilePanel('main'));
 
-document.getElementById('btn-save-profile').addEventListener('click', async () => {
-  const updated = {
-    userId: TEACHER_DATA.profile.id,
-    firstName: document.getElementById('edit-firstname').value.trim(),
-    lastName: document.getElementById('edit-lastname').value.trim(),
-    username: document.getElementById('edit-username').value.trim(),
-    email: document.getElementById('edit-email').value.trim()
-  };
-  if (!updated.firstName || !updated.lastName || !updated.username || !updated.email) {
-    Swal.fire('Missing', 'All fields are required.', 'warning');
-    return;
-  }
-  try {
-    const response = await fetch('/api/update-profile', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updated)
-    });
-    const data = await response.json();
-    if (response.ok) {
-      const savedUser = { 
-        id: updated.userId, 
-        first_name: updated.firstName, 
-        last_name: updated.lastName, 
-        username: updated.username, 
-        email: updated.email, 
-        role: TEACHER_DATA.profile.role 
-      };
-      localStorage.setItem('eduhub_user', JSON.stringify(savedUser));
-      await fetchTeacherProfile();
-      refreshTeacherProfileDisplay();
-      showTeacherProfilePanel('main');
-      Swal.fire('Saved', 'Profile updated successfully.', 'success');
-    } else {
-      Swal.fire('Error', data.message || 'Failed to update profile.', 'error');
+const saveProfileBtn = document.getElementById('btn-save-profile');
+if (saveProfileBtn) {
+  saveProfileBtn.addEventListener('click', async () => {
+    const updated = {
+      userId: TEACHER_DATA.profile.id,
+      firstName: document.getElementById('edit-firstname')?.value.trim(),
+      lastName: document.getElementById('edit-lastname')?.value.trim(),
+      username: document.getElementById('edit-username')?.value.trim(),
+      email: document.getElementById('edit-email')?.value.trim()
+    };
+    if (!updated.firstName || !updated.lastName || !updated.username || !updated.email) {
+      Swal.fire('Missing', 'All fields are required.', 'warning');
+      return;
     }
-  } catch (error) {
-    Swal.fire('Error', 'Could not connect to server.', 'error');
-  }
-});
-
-document.getElementById('btn-change-password').addEventListener('click', () => {
-  showTeacherProfilePanel('change-password');
-  const pwNew = document.getElementById('pw-new');
-  const pwConfirm = document.getElementById('pw-confirm');
-  const pwCode = document.getElementById('pw-verification-code');
-  const vcSection = document.getElementById('verification-code-section');
-  const sendBtn = document.getElementById('btn-send-code');
-  const saveBtn = document.getElementById('btn-save-password');
-  
-  if (pwNew) pwNew.value = '';
-  if (pwConfirm) pwConfirm.value = '';
-  if (pwCode) pwCode.value = '';
-  if (vcSection) vcSection.style.display = 'none';
-  if (sendBtn) sendBtn.style.display = 'block';
-  if (saveBtn) saveBtn.style.display = 'none';
-});
-
-document.getElementById('btn-cancel-password').addEventListener('click', () => showTeacherProfilePanel('main'));
-
-document.getElementById('btn-send-code').addEventListener('click', async () => {
-  try {
-    const response = await fetch('/api/send-change-password-code', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: TEACHER_DATA.profile.id })
-    });
-    const data = await response.json();
-    if (response.ok) {
-      Swal.fire('Code Sent', 'A verification code has been sent to your email.', 'success');
-      const vcSection = document.getElementById('verification-code-section');
-      const sendBtn = document.getElementById('btn-send-code');
-      const saveBtn = document.getElementById('btn-save-password');
-      if (vcSection) vcSection.style.display = 'block';
-      if (sendBtn) sendBtn.style.display = 'none';
-      if (saveBtn) saveBtn.style.display = 'block';
-    } else {
-      Swal.fire('Error', data.message, 'error');
-    }
-  } catch (error) {
-    Swal.fire('Error', 'Could not connect to server.', 'error');
-  }
-});
-
-document.getElementById('btn-save-password').addEventListener('click', async () => {
-  const code = document.getElementById('pw-verification-code').value.trim();
-  const newPw = document.getElementById('pw-new').value.trim();
-  const confirm = document.getElementById('pw-confirm').value.trim();
-  if (!code || !newPw || !confirm) { 
-    Swal.fire('Missing', 'All fields are required.', 'warning'); 
-    return; 
-  }
-  if (code.length !== 6) { 
-    Swal.fire('Invalid', 'Please enter the 6-digit verification code.', 'warning'); 
-    return; 
-  }
-  if (newPw !== confirm) { 
-    Swal.fire('Mismatch', 'New passwords do not match.', 'error'); 
-    return; 
-  }
-  try {
-    const response = await fetch('/api/change-password', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: TEACHER_DATA.profile.id, code, newPassword: newPw })
-    });
-    const data = await response.json();
-    if (response.ok) {
-      Swal.fire('Updated', 'Password changed successfully.', 'success');
-      const pwNew = document.getElementById('pw-new');
-      const pwConfirm = document.getElementById('pw-confirm');
-      const pwCode = document.getElementById('pw-verification-code');
-      if (pwNew) pwNew.value = '';
-      if (pwConfirm) pwConfirm.value = '';
-      if (pwCode) pwCode.value = '';
-      showTeacherProfilePanel('main');
-    } else {
-      Swal.fire('Error', data.message || 'Failed to change password.', 'error');
-    }
-  } catch (error) {
-    Swal.fire('Error', 'Could not connect to server.', 'error');
-  }
-});
-
-document.getElementById('btn-logout').addEventListener('click', () => {
-  Swal.fire({
-    title: 'Are you sure?', 
-    text: 'You will be logged out of your account.', 
-    icon: 'warning',
-    showCancelButton: true, 
-    confirmButtonText: 'Yes, logout!', 
-    cancelButtonText: 'Cancel', 
-    confirmButtonColor: '#dc2626'
-  }).then((result) => {
-    if (result.isConfirmed) {
-      localStorage.removeItem('eduhub_user');
-      sessionStorage.clear();
-      Swal.fire({ 
-        title: 'Logged out', 
-        text: 'You have been logged out successfully.', 
-        icon: 'success', 
-        timer: 1500, 
-        showConfirmButton: false 
-      }).then(() => { 
-        window.location.href = '/login/login.html'; 
+    try {
+      const response = await fetch('/api/update-profile', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
       });
+      const data = await response.json();
+      if (response.ok) {
+        const savedUser = { 
+          id: updated.userId, 
+          first_name: updated.firstName, 
+          last_name: updated.lastName, 
+          username: updated.username, 
+          email: updated.email, 
+          role: TEACHER_DATA.profile.role 
+        };
+        localStorage.setItem('eduhub_user', JSON.stringify(savedUser));
+        await fetchTeacherProfile();
+        refreshTeacherProfileDisplay();
+        showTeacherProfilePanel('main');
+        Swal.fire('Saved', 'Profile updated successfully.', 'success');
+      } else {
+        Swal.fire('Error', data.message || 'Failed to update profile.', 'error');
+      }
+    } catch (error) {
+      Swal.fire('Error', 'Could not connect to server.', 'error');
     }
   });
-});
+}
+
+const changePasswordBtn = document.getElementById('btn-change-password');
+if (changePasswordBtn) {
+  changePasswordBtn.addEventListener('click', () => {
+    showTeacherProfilePanel('change-password');
+    const pwNew = document.getElementById('pw-new');
+    const pwConfirm = document.getElementById('pw-confirm');
+    const pwCode = document.getElementById('pw-verification-code');
+    const vcSection = document.getElementById('verification-code-section');
+    const sendBtn = document.getElementById('btn-send-code');
+    const saveBtn = document.getElementById('btn-save-password');
+    
+    if (pwNew) pwNew.value = '';
+    if (pwConfirm) pwConfirm.value = '';
+    if (pwCode) pwCode.value = '';
+    if (vcSection) vcSection.style.display = 'none';
+    if (sendBtn) sendBtn.style.display = 'block';
+    if (saveBtn) saveBtn.style.display = 'none';
+  });
+}
+
+const cancelPasswordBtn = document.getElementById('btn-cancel-password');
+if (cancelPasswordBtn) cancelPasswordBtn.addEventListener('click', () => showTeacherProfilePanel('main'));
+
+const sendCodeBtn = document.getElementById('btn-send-code');
+if (sendCodeBtn) {
+  sendCodeBtn.addEventListener('click', async () => {
+    try {
+      const response = await fetch('/api/send-change-password-code', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: TEACHER_DATA.profile.id })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        Swal.fire('Code Sent', 'A verification code has been sent to your email.', 'success');
+        const vcSection = document.getElementById('verification-code-section');
+        const sendBtn = document.getElementById('btn-send-code');
+        const saveBtn = document.getElementById('btn-save-password');
+        if (vcSection) vcSection.style.display = 'block';
+        if (sendBtn) sendBtn.style.display = 'none';
+        if (saveBtn) saveBtn.style.display = 'block';
+      } else {
+        Swal.fire('Error', data.message, 'error');
+      }
+    } catch (error) {
+      Swal.fire('Error', 'Could not connect to server.', 'error');
+    }
+  });
+}
+
+const savePasswordBtn = document.getElementById('btn-save-password');
+if (savePasswordBtn) {
+  savePasswordBtn.addEventListener('click', async () => {
+    const code = document.getElementById('pw-verification-code')?.value.trim();
+    const newPw = document.getElementById('pw-new')?.value.trim();
+    const confirm = document.getElementById('pw-confirm')?.value.trim();
+    if (!code || !newPw || !confirm) { 
+      Swal.fire('Missing', 'All fields are required.', 'warning'); 
+      return; 
+    }
+    if (code.length !== 6) { 
+      Swal.fire('Invalid', 'Please enter the 6-digit verification code.', 'warning'); 
+      return; 
+    }
+    if (newPw !== confirm) { 
+      Swal.fire('Mismatch', 'New passwords do not match.', 'error'); 
+      return; 
+    }
+    try {
+      const response = await fetch('/api/change-password', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: TEACHER_DATA.profile.id, code, newPassword: newPw })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        Swal.fire('Updated', 'Password changed successfully.', 'success');
+        const pwNew = document.getElementById('pw-new');
+        const pwConfirm = document.getElementById('pw-confirm');
+        const pwCode = document.getElementById('pw-verification-code');
+        if (pwNew) pwNew.value = '';
+        if (pwConfirm) pwConfirm.value = '';
+        if (pwCode) pwCode.value = '';
+        showTeacherProfilePanel('main');
+      } else {
+        Swal.fire('Error', data.message || 'Failed to change password.', 'error');
+      }
+    } catch (error) {
+      Swal.fire('Error', 'Could not connect to server.', 'error');
+    }
+  });
+}
+
+const logoutBtn = document.getElementById('btn-logout');
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', () => {
+    Swal.fire({
+      title: 'Are you sure?', 
+      text: 'You will be logged out of your account.', 
+      icon: 'warning',
+      showCancelButton: true, 
+      confirmButtonText: 'Yes, logout!', 
+      cancelButtonText: 'Cancel', 
+      confirmButtonColor: '#dc2626'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.removeItem('eduhub_user');
+        sessionStorage.clear();
+        Swal.fire({ 
+          title: 'Logged out', 
+          text: 'You have been logged out successfully.', 
+          icon: 'success', 
+          timer: 1500, 
+          showConfirmButton: false 
+        }).then(() => { 
+          window.location.href = '/login/login.html'; 
+        });
+      }
+    });
+  });
+}
 
 // =============================================
 // DATE HELPERS
@@ -2300,8 +2859,10 @@ function escHtml(str) {
 // INITIALIZATION
 // =============================================
 (async function init() {
+  console.log('Initializing teacher dashboard...');
   await fetchTeacherProfile();
   refreshTeacherProfileDisplay();
   initFileUploads();
   await fetchAndRenderClasses();
+  console.log('Teacher dashboard initialized');
 })();

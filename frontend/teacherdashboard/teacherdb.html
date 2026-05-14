@@ -784,26 +784,45 @@
   </div>
 
   <!-- New Announcement Modal -->
-  <div class="modal-overlay hidden" id="modal-announcement">
-    <div class="modal-container">
-      <div class="modal-header">
-        <h2><i class="fa-solid fa-bullhorn"></i> <span id="modal-announcement-title-text">New Announcement</span></h2>
-        <span class="close-modal" id="cancel-announcement-modal">&times;</span>
-      </div>
-      <div class="form-group"><label>Title</label><input type="text" id="announcement-title-input" placeholder="Announcement title"></div>
-      <div class="form-group"><label>Message</label><textarea id="announcement-body-input" placeholder="Write your announcement here..." style="min-height:100px"></textarea></div>
-      <div class="form-group">
-        <label>Audience</label>
-        <select id="announcement-audience-input">
-          <option value="All Classes">All Classes</option>
-        </select>
-      </div>
-      <div class="modal-buttons">
-        <button class="btn-secondary" id="cancel-announcement-modal-2">Cancel</button>
-        <button class="btn-primary" id="save-announcement-modal">Post</button>
+<div class="modal-overlay hidden" id="modal-announcement">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h2><i class="fa-solid fa-bullhorn"></i> <span id="modal-announcement-title-text">New Announcement</span></h2>
+      <span class="close-modal" id="cancel-announcement-modal">&times;</span>
+    </div>
+    <div class="form-group">
+      <label>Title</label>
+      <input type="text" id="announcement-title-input" placeholder="Announcement title">
+    </div>
+    <div class="form-group">
+      <label>Message</label>
+      <textarea id="announcement-body-input" placeholder="Write your announcement here..." style="min-height:100px"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Audience</label>
+      <div
+        style="
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          max-height: 260px;
+          overflow-y: auto;
+          padding: 14px;
+          background: #fff;
+        "
+      >
+        <div id="audience-checkboxes">
+          <div style="text-align:center; color:#888; padding:20px;">
+            Loading classes...
+          </div>
+        </div>
       </div>
     </div>
+    <div class="modal-buttons">
+      <button class="btn-secondary" id="cancel-announcement-modal-2">Cancel</button>
+      <button class="btn-primary" id="save-announcement-modal">Post</button>
+    </div>
   </div>
+</div>
 
   <script src="/teacherdashboard/teacherdb.js"></script>
 </body>

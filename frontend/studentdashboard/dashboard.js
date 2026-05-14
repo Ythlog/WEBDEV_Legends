@@ -1,9 +1,11 @@
 /* =============================================================
-   Student Dashboard - Complete Working Version
+   Student Dashboard - Complete Working Version WITH SCORES
 ============================================================= */
 
 // ── DATA OBJECT ──────────────────────────────────────────────────
 const DATA = {
+  archivedClasses: [],
+  archivedLoaded: false,
   profileLoaded: false,
   announcements: [],
   announcementsLoaded: false,
@@ -17,7 +19,8 @@ const DATA = {
     email: '',
     role: '',
     profilePicture: null
-  }
+  },
+  scores: {} // Cache for scores by item
 };
 
 // ── STATE ────────────────────────────────────────────────────────
@@ -41,13 +44,13 @@ function formatAnnouncementTime(dateVal) {
   if (isNaN(d.getTime())) return null;
   const now = new Date();
   const diffMs = now - d;
-  const diffMins  = Math.floor(diffMs / (1000 * 60));
+  const diffMins = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays  = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffMins < 1)   return 'Just now';
-  if (diffMins < 60)  return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
   if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
-  if (diffDays < 7)   return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
@@ -64,6 +67,40 @@ function formatDueDate(dateVal) {
 function escapeHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ── FETCH SCORES FROM SERVER ─────────────────────────────────────
+
+async function fetchStudentScores() {
+  if (!DATA.profile.id) return;
+
+  try {
+    const response = await fetch(`/api/student/scores/${DATA.profile.id}`);
+    if (!response.ok) throw new Error('Failed to fetch scores');
+    const scores = await response.json();
+
+    // Clear and repopulate scores cache
+    DATA.scores = {};
+    scores.forEach(score => {
+      const key = completionKey(score.item_type, score.item_id);
+      DATA.scores[key] = {
+        score: score.score,
+        completed_at: score.completed_at,
+        item_title: score.item_title
+      };
+
+      // If there's a score, automatically mark as done
+      if (score.score !== null && !state.done.has(key)) {
+        state.done.add(key);
+      }
+    });
+
+    console.log('Scores loaded:', DATA.scores);
+    return scores;
+  } catch (err) {
+    console.error('Error fetching scores:', err);
+    return [];
+  }
 }
 
 // ── HOME VIEW CARD BUILDERS ──────────────────────────────────────
@@ -88,6 +125,13 @@ function buildAnnouncementCard(title, body, timeAgo, isUnread = false) {
 function buildHomeTodoCard(item) {
   const d = document.createElement('div');
   d.className = 'todo-card';
+
+  // Check if this item has a score
+  const key = completionKey(item.type, item.item.id);
+  const scoreData = DATA.scores[key];
+  const hasScore = scoreData && scoreData.score !== null;
+  const scoreDisplay = hasScore ? `<span class="todo-score">⭐ Score: ${scoreData.score}/100</span>` : '';
+
   d.innerHTML = `
     <div class="todo-avatar">
       <i class="fa-solid fa-list-check" aria-hidden="true"></i>
@@ -96,14 +140,15 @@ function buildHomeTodoCard(item) {
       <p class="todo-title">${escapeHtml(item.title)}</p>
       <p class="todo-due">Due: ${formatDueDate(item.dueDate) || 'No due date'}</p>
       <p class="todo-class">${escapeHtml(item.className)}</p>
+      ${scoreDisplay}
     </div>
   `;
   d.addEventListener('click', () => {
     setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
     openClassDetail(item.cls);
-    if (item.type === 'material')        openMaterialDetail(item.item, item.cls.title);
+    if (item.type === 'material') openMaterialDetail(item.item, item.cls.title);
     else if (item.type === 'assignment') openAssignmentDetail(item.item, item.cls.title);
-    else                                 openQuizDetail(item.item, item.cls.title);
+    else openQuizDetail(item.item, item.cls.title);
   });
   return d;
 }
@@ -128,13 +173,13 @@ async function fetchProfile() {
   if (savedUser) {
     try {
       const user = JSON.parse(savedUser);
-      DATA.profile.id          = user.id || null;
-      DATA.profile.firstName   = user.first_name || user.username || 'Student';
-      DATA.profile.lastName    = user.last_name || '';
-      DATA.profile.username    = user.username || 'student';
-      DATA.profile.email       = user.email || '';
-      DATA.profile.role        = user.role || 'student';
-      DATA.profileLoaded       = true;
+      DATA.profile.id = user.id || null;
+      DATA.profile.firstName = user.first_name || user.username || 'Student';
+      DATA.profile.lastName = user.last_name || '';
+      DATA.profile.username = user.username || 'student';
+      DATA.profile.email = user.email || '';
+      DATA.profile.role = user.role || 'student';
+      DATA.profileLoaded = true;
       await fetchProfilePicture();
       return;
     } catch (e) {
@@ -169,13 +214,13 @@ function updateProfilePictureDisplay() {
   if (DATA.profile.profilePicture) {
     const timestamp = new Date().getTime();
     const imgUrl = `/uploads/profile-pictures/${DATA.profile.profilePicture}?t=${timestamp}`;
-    
+
     if (profileImg) {
       profileImg.src = imgUrl;
       profileImg.style.display = 'block';
     }
     if (profileIcon) profileIcon.style.display = 'none';
-    
+
     if (topBarAvatar) {
       topBarAvatar.style.backgroundImage = `url(${imgUrl})`;
       topBarAvatar.style.backgroundSize = 'cover';
@@ -183,7 +228,7 @@ function updateProfilePictureDisplay() {
       topBarAvatar.style.backgroundColor = 'transparent';
       topBarAvatar.innerHTML = '';
     }
-    
+
     if (sidebarAvatar) {
       sidebarAvatar.style.backgroundImage = `url(${imgUrl})`;
       sidebarAvatar.style.backgroundSize = 'cover';
@@ -197,14 +242,14 @@ function updateProfilePictureDisplay() {
       profileImg.style.display = 'block';
     }
     if (profileIcon) profileIcon.style.display = 'none';
-    
+
     if (topBarAvatar) {
       topBarAvatar.style.backgroundImage = `url(${defaultAvatar})`;
       topBarAvatar.style.backgroundSize = 'cover';
       topBarAvatar.style.backgroundPosition = 'center';
       topBarAvatar.innerHTML = '';
     }
-    
+
     if (sidebarAvatar) {
       sidebarAvatar.style.backgroundImage = `url(${defaultAvatar})`;
       sidebarAvatar.style.backgroundSize = 'cover';
@@ -216,10 +261,10 @@ function updateProfilePictureDisplay() {
 
 async function fetchAnnouncements() {
   if (!DATA.profile.id) return;
-  
+
   try {
     const res = await fetch(`/api/student/announcements?studentId=${DATA.profile.id}`);
-    
+
     if (!res.ok) {
       console.log('Student endpoint failed, using fallback');
       const fallbackRes = await fetch('/api/announcements');
@@ -234,7 +279,7 @@ async function fetchAnnouncements() {
       DATA.announcements = Array.isArray(data) ? data : (data.announcements || []);
       console.log(`Loaded ${DATA.announcements.length} announcements for student`);
     }
-    
+
     DATA.announcementsLoaded = true;
   } catch (err) {
     console.error('fetchAnnouncements error:', err);
@@ -248,12 +293,17 @@ async function fetchClasses() {
   try {
     const response = await fetch(`/api/my-classes?studentId=${DATA.profile.id}`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const json        = await response.json();
-    DATA.classes      = json;
+    const json = await response.json();
+    DATA.classes = json;
     DATA.classesLoaded = true;
+
+    // ✅ ADD THIS - update the profile badge
+    const badgeEl = document.getElementById('profile-badge-classes');
+    if (badgeEl) badgeEl.textContent = `${json.length} Class${json.length !== 1 ? 'es' : ''}`;
+
   } catch (error) {
     console.error('[fetchClasses] Error:', error);
-    DATA.classes       = [];
+    DATA.classes = [];
     DATA.classesLoaded = false;
   }
 }
@@ -266,6 +316,9 @@ async function fetchCompletions() {
     const items = await res.json();
     state.done.clear();
     items.forEach(item => state.done.add(completionKey(item.item_type, item.item_id)));
+
+    // Also fetch scores - they may add additional completions
+    await fetchStudentScores();
   } catch (err) {
     console.error('fetchCompletions error:', err);
   }
@@ -310,7 +363,7 @@ async function joinSection(code) {
     });
     const data = await response.json();
     return response.ok
-      ? { success: true,  message: data.message }
+      ? { success: true, message: data.message }
       : { success: false, message: data.message };
   } catch (error) {
     console.error('Join section error:', error);
@@ -363,16 +416,16 @@ function setupJoinButton() {
   const codeInput = document.getElementById('enrollment-code-input');
   if (codeInput) {
     codeInput.oninput = async () => {
-      const code             = codeInput.value.trim().toUpperCase();
+      const code = codeInput.value.trim().toUpperCase();
       const previewContainer = document.getElementById('preview-container');
-      const confirmBtn       = document.getElementById('confirm-join');
+      const confirmBtn = document.getElementById('confirm-join');
       if (code.length >= 6) {
         const result = await checkEnrollmentCode(code);
         if (result && !result.error) {
-          document.getElementById('preview-class-title').textContent   = result.class_title;
-          document.getElementById('preview-section-name').textContent  = result.section_name;
-          document.getElementById('preview-professor').textContent     = result.professor;
-          document.getElementById('preview-subject').textContent       = result.subject_code || 'N/A';
+          document.getElementById('preview-class-title').textContent = result.class_title;
+          document.getElementById('preview-section-name').textContent = result.section_name;
+          document.getElementById('preview-professor').textContent = result.professor;
+          document.getElementById('preview-subject').textContent = result.subject_code || 'N/A';
           previewContainer.style.display = 'block';
           confirmBtn.disabled = false;
         } else {
@@ -402,8 +455,8 @@ function showView(viewId) {
 
 function goBackToClasses() {
   state.currentClass = null;
-  state.currentItem  = null;
-  state.currentType  = null;
+  state.currentItem = null;
+  state.currentType = null;
   renderClasses();
   showView('classes');
 }
@@ -443,17 +496,17 @@ async function renderFullAnnouncements() {
   if (!DATA.announcementsLoaded) {
     await fetchAnnouncements();
   }
-  
+
   const listEl = document.getElementById('announcements-full-list');
   if (!listEl) return;
-  
+
   listEl.innerHTML = '';
-  
+
   if (!DATA.announcements || DATA.announcements.length === 0) {
     listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon-wrap"><i class="fa-regular fa-bell"></i></div><p class="empty-state-title">No announcements</p><p class="empty-state-sub">Nothing new from your teachers yet.</p></div>';
     return;
   }
-  
+
   DATA.announcements.forEach(a => {
     const timeAgo = a.created_at ? formatAnnouncementTime(new Date(a.created_at)) : '';
     listEl.appendChild(buildAnnouncementCard(a.title, a.body, timeAgo, a.unread));
@@ -463,9 +516,10 @@ async function renderFullAnnouncements() {
 // ── RENDER HOME ──────────────────────────────────────────────────
 
 async function renderHome() {
-  if (!DATA.profileLoaded)       await fetchProfile();
-  if (!DATA.classesLoaded)       await fetchClasses();
+  if (!DATA.profileLoaded) await fetchProfile();
+  if (!DATA.classesLoaded) await fetchClasses();
   if (!DATA.announcementsLoaded) await fetchAnnouncements();
+  await fetchStudentScores(); // Ensure scores are loaded
 
   const welcomeHeading = document.querySelector('#view-home .welcome-heading');
   if (welcomeHeading) {
@@ -474,16 +528,17 @@ async function renderHome() {
 
   const now = new Date();
   let completedCount = 0;
-  let pendingCount   = 0;
+  let pendingCount = 0;
 
   DATA.classes.forEach(cls => {
     const allItems = [
-      ...(cls.materials   || []).map(m => ({ item: m, type: 'material' })),
-      ...(cls.quizzes     || []).map(q => ({ item: q, type: 'quiz' })),
+      ...(cls.materials || []).map(m => ({ item: m, type: 'material' })),
+      ...(cls.quizzes || []).map(q => ({ item: q, type: 'quiz' })),
       ...(cls.assignments || []).map(a => ({ item: a, type: 'assignment' }))
     ];
     allItems.forEach(({ item, type }) => {
-      if (state.done.has(completionKey(type, item.id))) {
+      const key = completionKey(type, item.id);
+      if (state.done.has(key) || DATA.scores[key]?.score !== null) {
         completedCount++;
       } else {
         const due = item.due_date ? new Date(item.due_date) : null;
@@ -492,12 +547,12 @@ async function renderHome() {
     });
   });
 
-  const statClasses   = document.getElementById('stat-classes');
+  const statClasses = document.getElementById('stat-classes');
   const statCompleted = document.getElementById('stat-completed');
-  const statPending   = document.getElementById('stat-pending');
-  if (statClasses)   statClasses.textContent   = DATA.classes.length;
+  const statPending = document.getElementById('stat-pending');
+  if (statClasses) statClasses.textContent = DATA.classes.length;
   if (statCompleted) statCompleted.textContent = completedCount;
-  if (statPending)   statPending.textContent   = pendingCount;
+  if (statPending) statPending.textContent = pendingCount;
 
   const annContainer = document.getElementById('announcements-container');
   if (annContainer) {
@@ -520,7 +575,7 @@ async function renderHome() {
     todoContainer.innerHTML = '';
 
     const dayOfWeek = now.getDay();
-    const monday    = new Date(now);
+    const monday = new Date(now);
     monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7));
     monday.setHours(0, 0, 0, 0);
     const sunday = new Date(monday);
@@ -531,21 +586,22 @@ async function renderHome() {
 
     DATA.classes.forEach(cls => {
       [
-        ...(cls.materials   || []).map(m => ({ ...m, type: 'material',   cls })),
-        ...(cls.quizzes     || []).map(q => ({ ...q, type: 'quiz',       cls })),
+        ...(cls.materials || []).map(m => ({ ...m, type: 'material', cls })),
+        ...(cls.quizzes || []).map(q => ({ ...q, type: 'quiz', cls })),
         ...(cls.assignments || []).map(a => ({ ...a, type: 'assignment', cls }))
       ].forEach(entry => {
-        if (state.done.has(completionKey(entry.type, entry.id))) return;
+        const key = completionKey(entry.type, entry.id);
+        if (state.done.has(key) || DATA.scores[key]?.score !== null) return;
         const due = entry.due_date ? new Date(entry.due_date) : null;
         if (!due || isNaN(due)) return;
         if (due >= now && due >= monday && due <= sunday) {
           pendingItems.push({
-            title:     entry.title,
-            dueDate:   due,
+            title: entry.title,
+            dueDate: due,
             className: entry.cls.title,
-            type:      entry.type,
-            item:      entry,
-            cls:       entry.cls
+            type: entry.type,
+            item: entry,
+            cls: entry.cls
           });
         }
       });
@@ -582,6 +638,7 @@ async function renderHome() {
 
 async function renderClasses() {
   const grid = document.getElementById('classes-grid');
+  const archivedGrid = document.getElementById('archived-classes-grid');
   if (!grid) return;
 
   if (!DATA.classesLoaded) {
@@ -589,8 +646,12 @@ async function renderClasses() {
     await fetchClasses();
   }
 
-  grid.innerHTML = '';
+  if (!DATA.archivedLoaded) {
+    await fetchArchivedClasses();
+  }
 
+  // ── Active classes ──
+  grid.innerHTML = '';
   if (DATA.classes.length === 0) {
     grid.innerHTML = `
       <div class="empty-state" style="padding:48px 20px;">
@@ -600,121 +661,123 @@ async function renderClasses() {
         <p class="empty-state-title">No classes yet</p>
         <p class="empty-state-sub">Join a class using an enrollment code from your teacher.</p>
       </div>`;
-    return;
+  } else {
+    DATA.classes.forEach(cls => {
+      const card = document.createElement('div');
+      card.className = 'class-card';
+      card.style.position = 'relative';
+      card.innerHTML = `
+        <div class="class-card-icon">
+          <i class="fa-solid fa-book-open"></i>
+        </div>
+        <div class="class-card-info">
+          <p class="class-card-title">${escapeHtml(cls.title)}</p>
+          <p class="class-card-prof">${escapeHtml(cls.professor)}</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="class-card-action">
+            View Class <i class="fa-solid fa-arrow-right"></i>
+          </div>
+          <button class="archive-class-btn" title="Archive class" style="
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 6px 10px;
+            cursor: pointer;
+            color: #64748b;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+          ">
+            <i class="fa-solid fa-box-archive"></i>
+          </button>
+        </div>
+      `;
+
+      card.querySelector('.class-card-action').addEventListener('click', (e) => {
+        e.stopPropagation();
+        openClassDetail(cls);
+      });
+
+      card.querySelector('.archive-class-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        archiveClass(cls);
+      });
+
+      card.addEventListener('click', () => openClassDetail(cls));
+      grid.appendChild(card);
+    });
   }
 
-  DATA.classes.forEach(cls => {
-    const card = document.createElement('div');
-    card.className = 'class-card';
-    card.innerHTML = `
-      <div class="class-card-icon">
-        <i class="fa-solid fa-book-open"></i>
-      </div>
-      <div class="class-card-info">
-        <p class="class-card-title">${escapeHtml(cls.title)}</p>
-        <p class="class-card-prof">${escapeHtml(cls.professor)}</p>
-      </div>
-      <div class="class-card-action">
-        View Class <i class="fa-solid fa-arrow-right"></i>
-      </div>
-    `;
-    card.addEventListener('click', () => openClassDetail(cls));
-    grid.appendChild(card);
-  });
-}
-
-// ── CLASS DETAIL ─────────────────────────────────────────────────
-
-function buildDetailCard(item, type, clickHandler) {
-  const key    = completionKey(type, item.id);
-  const isDone = state.done.has(key);
-
-  const iconMap = {
-    material:   'fa-solid fa-book-open',
-    quiz:       'fa-solid fa-clipboard-question',
-    assignment: 'fa-solid fa-file-lines'
-  };
-  const icon = iconMap[type] || 'fa-solid fa-file';
-
-  let subText = '';
-  if (item.due_date) subText = `Due ${formatDueDate(item.due_date)}`;
-  else if (item.points !== undefined) subText = `${item.points} pts`;
-
-  const el = document.createElement('div');
-  el.className = (type === 'material' ? 'material-item' : 'quiz-item') + (isDone ? ' done' : '');
-  el._itemId   = item.id;
-
-  el.innerHTML = `
-    <div class="item-card-icon">
-      <i class="${icon}"></i>
-    </div>
-    <div class="item-card-body">
-      <p class="item-card-title">${escapeHtml(item.title)}</p>
-      ${subText ? `<p class="item-card-sub">${subText}</p>` : ''}
-    </div>
-    ${isDone ? '<span class="item-card-badge"><i class="fa-solid fa-check"></i> Done</span>' : ''}
-  `;
-
-  el.addEventListener('click', clickHandler);
-  return el;
-}
-
-function openClassDetail(cls) {
-  state.currentClass = cls;
-
-  const detailClassName = document.getElementById('detail-class-name');
-  if (detailClassName) detailClassName.textContent = cls.title;
-
-  const detailMeta = document.getElementById('detail-class-meta');
-  if (detailMeta) detailMeta.textContent = cls.professor || '';
-
-  const matList = document.getElementById('materials-list');
-  if (matList) {
-    matList.innerHTML = '';
-    const materials = cls.materials || [];
-    if (materials.length === 0) {
-      matList.innerHTML = '<p class="detail-empty-msg">No lessons yet.</p>';
+  // ── Archived classes ──
+  if (archivedGrid) {
+    archivedGrid.innerHTML = '';
+    if (DATA.archivedClasses.length === 0) {
+      archivedGrid.innerHTML = `
+        <div class="empty-state" style="padding:24px 20px;">
+          <p class="empty-state-title" style="font-size:13px;">No archived classes</p>
+        </div>`;
     } else {
-      materials.forEach(mat => {
-        matList.appendChild(
-          buildDetailCard(mat, 'material', () => openMaterialDetail(mat, cls.title))
-        );
+      DATA.archivedClasses.forEach(cls => {
+        const card = document.createElement('div');
+        card.className = 'class-card';
+        card.style.cssText = 'opacity:0.7; position:relative;';
+        card.innerHTML = `
+          <div class="class-card-icon" style="background:#f1f5f9;">
+            <i class="fa-solid fa-box-archive" style="color:#94a3b8;"></i>
+          </div>
+          <div class="class-card-info">
+            <p class="class-card-title">${escapeHtml(cls.title)}</p>
+            <p class="class-card-prof">${escapeHtml(cls.professor)}</p>
+          </div>
+          <button class="archive-class-btn" title="Unarchive class" style="
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 6px 10px;
+            cursor: pointer;
+            color: #16a34a;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+          ">
+            <i class="fa-solid fa-rotate-left"></i> Unarchive
+          </button>
+        `;
+
+        card.querySelector('.archive-class-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          unarchiveClass(cls);
+        });
+
+        archivedGrid.appendChild(card);
       });
     }
   }
 
-  const assignmentsList = document.getElementById('assignments-list');
-  if (assignmentsList) {
-    assignmentsList.innerHTML = '';
-    const assignments = cls.assignments || [];
-    if (assignments.length === 0) {
-      assignmentsList.innerHTML = '<p class="detail-empty-msg">No assignments yet.</p>';
-    } else {
-      assignments.forEach(assign => {
-        assignmentsList.appendChild(
-          buildDetailCard(assign, 'assignment', () => openAssignmentDetail(assign, cls.title))
-        );
-      });
-    }
+  // ── Archived toggle ──
+  const toggle = document.getElementById('archived-toggle');
+  const chevron = document.getElementById('archived-chevron');
+  if (toggle && archivedGrid) {
+    // Remove old listeners by cloning
+    const newToggle = toggle.cloneNode(true);
+    toggle.parentNode.replaceChild(newToggle, toggle);
+    let isOpen = false;
+    newToggle.addEventListener('click', () => {
+      isOpen = !isOpen;
+      archivedGrid.style.display = isOpen ? 'grid' : 'none';
+      const ch = document.getElementById('archived-chevron');
+      if (ch) ch.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+    });
   }
-
-  const quizList = document.getElementById('quizzes-list');
-  if (quizList) {
-    quizList.innerHTML = '';
-    const quizzes = cls.quizzes || [];
-    if (quizzes.length === 0) {
-      quizList.innerHTML = '<p class="detail-empty-msg">No quizzes yet.</p>';
-    } else {
-      quizzes.forEach(quiz => {
-        quizList.appendChild(
-          buildDetailCard(quiz, 'quiz', () => openQuizDetail(quiz, cls.title))
-        );
-      });
-    }
-  }
-
-  switchDetailTab('materials');
-  showView('class-detail');
 }
 
 // ── MATERIAL DETAIL ──────────────────────────────────────────────
@@ -725,19 +788,19 @@ function openMaterialDetail(mat, className) {
 
   const titleEl = document.getElementById('mat-title');
   if (titleEl) titleEl.textContent = mat.title;
-  
+
   const classNameEl = document.getElementById('mat-class-name');
   if (classNameEl) classNameEl.textContent = className;
-  
+
   const pdfLinkEl = document.getElementById('mat-pdf-link');
   if (pdfLinkEl) pdfLinkEl.href = mat.pdf_url || '#';
-  
+
   const descEl = document.getElementById('mat-description');
   if (descEl) descEl.textContent = mat.description || 'No description available.';
 
   const matDueEl = document.getElementById('mat-due-text');
   if (matDueEl) {
-    matDueEl.textContent   = mat.due_date ? 'Due ' + formatDueDate(mat.due_date) : '';
+    matDueEl.textContent = mat.due_date ? 'Due ' + formatDueDate(mat.due_date) : '';
     matDueEl.style.display = mat.due_date ? 'block' : 'none';
   }
 
@@ -756,6 +819,109 @@ function openMaterialDetail(mat, className) {
 
   showView('material-detail');
 }
+async function fetchArchivedClasses() {
+  if (!DATA.profile.id) return;
+  try {
+    const response = await fetch(`/api/my-classes/archived?studentId=${DATA.profile.id}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    DATA.archivedClasses = await response.json();
+    DATA.archivedLoaded = true;
+  } catch (error) {
+    console.error('[fetchArchivedClasses] Error:', error);
+    DATA.archivedClasses = [];
+  }
+}
+
+async function archiveClass(cls) {
+  const result = await Swal.fire({
+    title: 'Archive this class?',
+    text: `"${cls.title}" will be moved to your archived classes.`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, archive it',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#0f1f4b'
+  });
+
+  if (!result.isConfirmed) return;
+
+  try {
+    const response = await fetch('/api/archive-class', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        studentId: DATA.profile.id,
+        sectionId: cls.section_id
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Archived!',
+        text: `"${cls.title}" has been archived.`,
+        timer: 1500,
+        showConfirmButton: false
+      });
+      // Move from active to archived locally
+      DATA.classes = DATA.classes.filter(c => c.section_id !== cls.section_id);
+      DATA.archivedClasses.push(cls);
+      await renderClasses();
+    } else {
+      Swal.fire('Error', data.message || 'Could not archive class', 'error');
+    }
+  } catch (err) {
+    console.error('Archive error:', err);
+    Swal.fire('Error', 'Could not connect to server', 'error');
+  }
+}
+
+async function unarchiveClass(cls) {
+  const result = await Swal.fire({
+    title: 'Unarchive this class?',
+    text: `"${cls.title}" will be moved back to your active classes.`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, unarchive',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#0f1f4b'
+  });
+
+  if (!result.isConfirmed) return;
+
+  try {
+    const response = await fetch('/api/unarchive-class', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        studentId: DATA.profile.id,
+        sectionId: cls.section_id
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Unarchived!',
+        text: `"${cls.title}" is back in your active classes.`,
+        timer: 1500,
+        showConfirmButton: false
+      });
+      DATA.archivedClasses = DATA.archivedClasses.filter(c => c.section_id !== cls.section_id);
+      DATA.classes.push(cls);
+      await renderClasses();
+    } else {
+      Swal.fire('Error', data.message || 'Could not unarchive class', 'error');
+    }
+  } catch (err) {
+    console.error('Unarchive error:', err);
+    Swal.fire('Error', 'Could not connect to server', 'error');
+  }
+}
 
 // ── QUIZ DETAIL ──────────────────────────────────────────────────
 
@@ -765,16 +931,16 @@ function openQuizDetail(quiz, className) {
 
   const titleEl = document.getElementById('quiz-title');
   if (titleEl) titleEl.textContent = quiz.title;
-  
+
   const classNameEl = document.getElementById('quiz-class-name');
   if (classNameEl) classNameEl.textContent = className;
-  
+
   const linkEl = document.getElementById('quiz-link');
   if (linkEl) {
     linkEl.href = quiz.link || '#';
     linkEl.textContent = quiz.link_label || 'Open Quiz';
   }
-  
+
   const descEl = document.getElementById('quiz-description');
   if (descEl) descEl.textContent = quiz.description || 'No description available.';
 
@@ -784,17 +950,32 @@ function openQuizDetail(quiz, className) {
     quizDueEl.style.display = quiz.due_date ? 'block' : 'none';
   }
 
+  // Check for score
+  const key = completionKey('quiz', quiz.id);
+  const scoreData = DATA.scores[key];
+  const hasScore = scoreData && scoreData.score !== null;
+
+  const scoreDisplayEl = document.getElementById('quiz-score-display');
+  if (scoreDisplayEl) {
+    if (hasScore) {
+      scoreDisplayEl.innerHTML = `<div class="score-badge">⭐ Your Score: ${scoreData.score}/100</div>`;
+      scoreDisplayEl.style.display = 'block';
+    } else {
+      scoreDisplayEl.style.display = 'none';
+    }
+  }
+
   const btn = document.getElementById('quiz-mark-btn');
   if (btn) {
-    const key      = completionKey('quiz', quiz.id);
-    const dueDate  = quiz.due_date ? new Date(quiz.due_date) : null;
+    const dueDate = quiz.due_date ? new Date(quiz.due_date) : null;
     const isOverdue = dueDate && new Date() > dueDate;
+    const isDone = state.done.has(key) || hasScore;
 
-    if (state.done.has(key)) {
-      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Marked as done';
+    if (isDone) {
+      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Completed';
       btn.className = 'mark-done-btn done-state';
-      btn.disabled = false;
-      btn.onclick = () => markDone('quiz');
+      btn.disabled = true;
+      btn.onclick = null;
     } else if (isOverdue) {
       btn.innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Past due date';
       btn.className = 'mark-done-btn dark';
@@ -819,13 +1000,13 @@ function openAssignmentDetail(assign, className) {
 
   const titleEl = document.getElementById('assignment-title');
   if (titleEl) titleEl.textContent = assign.title;
-  
+
   const classNameEl = document.getElementById('assignment-class-name');
   if (classNameEl) classNameEl.textContent = className;
-  
+
   const linkEl = document.getElementById('assignment-link');
   if (linkEl) linkEl.href = assign.link || '#';
-  
+
   const descEl = document.getElementById('assignment-description');
   if (descEl) descEl.textContent = assign.description || '';
 
@@ -834,17 +1015,47 @@ function openAssignmentDetail(assign, className) {
     dueEl.textContent = assign.due_date ? 'Due ' + formatDueDate(assign.due_date) : '';
   }
 
+  // Check for score
+  const key = completionKey('assignment', assign.id);
+  const scoreData = DATA.scores[key];
+  const hasScore = scoreData && scoreData.score !== null;
+
+  const scoreDisplayEl = document.getElementById('assignment-score-display');
+  const gradeBadge = document.getElementById('assignment-grade-badge');
+
+  if (scoreDisplayEl) {
+    if (hasScore) {
+      scoreDisplayEl.innerHTML = `<div class="score-badge">⭐ Your Grade: ${scoreData.score}/100</div>`;
+      scoreDisplayEl.style.display = 'block';
+    } else {
+      scoreDisplayEl.style.display = 'none';
+    }
+  }
+
+  if (gradeBadge) {
+    if (hasScore) {
+      gradeBadge.innerHTML = `<span class="grade-chip">Graded: ${scoreData.score}/100</span>`;
+      gradeBadge.style.display = 'block';
+    } else {
+      gradeBadge.style.display = 'none';
+    }
+  }
+
   const btn = document.getElementById('assignment-mark-btn');
   if (btn) {
-    const key = completionKey('assignment', assign.id);
-    if (state.done.has(key)) {
-      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Marked as done';
+    const isDone = state.done.has(key) || hasScore;
+
+    if (isDone) {
+      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Completed';
       btn.className = 'mark-done-btn done-state';
+      btn.disabled = true;
+      btn.onclick = null;
     } else {
       btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> Mark as done';
       btn.className = 'mark-done-btn dark';
+      btn.disabled = false;
+      btn.onclick = () => markDone('assignment');
     }
-    btn.onclick = () => markDone('assignment');
   }
 
   showView('assignment-detail');
@@ -854,7 +1065,7 @@ function openAssignmentDetail(assign, className) {
 
 async function markDone(type) {
   if (!state.currentItem) return;
-  const id  = state.currentItem.id;
+  const id = state.currentItem.id;
   const key = completionKey(type, id);
   const btnId = type === 'material' ? 'mat-mark-btn' : type === 'assignment' ? 'assignment-mark-btn' : 'quiz-mark-btn';
   const btn = document.getElementById(btnId);
@@ -881,7 +1092,7 @@ async function markDone(type) {
         }
         updateItemDisplay(type, id, false);
         if (state.currentView === 'progress') renderProgress();
-        if (state.currentView === 'home')     renderHome();
+        if (state.currentView === 'home') renderHome();
       } catch (error) {
         Swal.fire('Error', 'Could not update the database.', 'error');
         if (btn) btn.disabled = false;
@@ -905,7 +1116,7 @@ async function markDone(type) {
       }
       updateItemDisplay(type, id, true);
       if (state.currentView === 'progress') renderProgress();
-      if (state.currentView === 'home')     renderHome();
+      if (state.currentView === 'home') renderHome();
     } catch (error) {
       Swal.fire('Error', 'Could not save to the database.', 'error');
     } finally {
@@ -951,25 +1162,26 @@ function renderTodo() {
   if (DATA.classes && DATA.classes.length > 0) {
     DATA.classes.forEach(cls => {
       [
-        ...(cls.materials   || []).map(m => ({ ...m, type: 'material',   cls })),
-        ...(cls.quizzes     || []).map(q => ({ ...q, type: 'quiz',       cls })),
+        ...(cls.materials || []).map(m => ({ ...m, type: 'material', cls })),
+        ...(cls.quizzes || []).map(q => ({ ...q, type: 'quiz', cls })),
         ...(cls.assignments || []).map(a => ({ ...a, type: 'assignment', cls }))
       ].forEach(entry => {
-        if (state.done.has(completionKey(entry.type, entry.id))) return;
+        const key = completionKey(entry.type, entry.id);
+        if (state.done.has(key) || DATA.scores[key]?.score !== null) return;
         if (!entry.due_date) return;
         allTodos.push({
-          title:   entry.title,
+          title: entry.title,
           dueDate: new Date(entry.due_date),
-          type:    entry.type,
-          item:    entry,
-          cls:     entry.cls
+          type: entry.type,
+          item: entry,
+          cls: entry.cls
         });
       });
     });
   }
 
   const assigned = allTodos.filter(t => t.dueDate >= now).sort((a, b) => a.dueDate - b.dueDate);
-  const missing  = allTodos.filter(t => t.dueDate <  now).sort((a, b) => a.dueDate - b.dueDate);
+  const missing = allTodos.filter(t => t.dueDate < now).sort((a, b) => a.dueDate - b.dueDate);
 
   const assignedList = document.getElementById('todo-assigned-list');
   if (assignedList) {
@@ -988,9 +1200,9 @@ function renderTodo() {
         card.addEventListener('click', () => {
           setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
           openClassDetail(t.cls);
-          if (t.type === 'material')        openMaterialDetail(t.item, t.cls.title);
+          if (t.type === 'material') openMaterialDetail(t.item, t.cls.title);
           else if (t.type === 'assignment') openAssignmentDetail(t.item, t.cls.title);
-          else                              openQuizDetail(t.item, t.cls.title);
+          else openQuizDetail(t.item, t.cls.title);
         });
         assignedList.appendChild(card);
       });
@@ -1014,9 +1226,9 @@ function renderTodo() {
         card.addEventListener('click', () => {
           setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
           openClassDetail(t.cls);
-          if (t.type === 'material')        openMaterialDetail(t.item, t.cls.title);
+          if (t.type === 'material') openMaterialDetail(t.item, t.cls.title);
           else if (t.type === 'assignment') openAssignmentDetail(t.item, t.cls.title);
-          else                              openQuizDetail(t.item, t.cls.title);
+          else openQuizDetail(t.item, t.cls.title);
         });
         missingList.appendChild(card);
       });
@@ -1026,31 +1238,29 @@ function renderTodo() {
 
 // ── RENDER PROGRESS ──────────────────────────────────────────────
 
-// ── RENDER PROGRESS (UPDATED - CLICKABLE CARDS) ─────────────────
-
 function renderProgress() {
-  const list    = document.getElementById('progress-list');
+  const list = document.getElementById('progress-list');
   const summary = document.getElementById('progress-summary');
   if (list) list.innerHTML = '';
 
   let totalCompleted = 0;
-  let totalItems     = 0;
+  let totalItems = 0;
 
   DATA.classes.forEach(cls => {
-    const materials   = cls.materials   || [];
-    const quizzes     = cls.quizzes     || [];
+    const materials = cls.materials || [];
+    const quizzes = cls.quizzes || [];
     const assignments = cls.assignments || [];
-    const classTotal  = materials.length + quizzes.length + assignments.length;
+    const classTotal = materials.length + quizzes.length + assignments.length;
     const classCompleted = [
-      ...materials.map(m   => completionKey('material',   m.id)),
-      ...quizzes.map(q     => completionKey('quiz',        q.id)),
-      ...assignments.map(a => completionKey('assignment',  a.id))
-    ].filter(key => state.done.has(key)).length;
+      ...materials.map(m => completionKey('material', m.id)),
+      ...quizzes.map(q => completionKey('quiz', q.id)),
+      ...assignments.map(a => completionKey('assignment', a.id))
+    ].filter(key => state.done.has(key) || DATA.scores[key]?.score !== null).length;
 
     totalCompleted += classCompleted;
-    totalItems     += classTotal;
+    totalItems += classTotal;
 
-    const pct  = classTotal > 0 ? Math.round((classCompleted / classTotal) * 100) : 0;
+    const pct = classTotal > 0 ? Math.round((classCompleted / classTotal) * 100) : 0;
     const card = document.createElement('div');
     card.className = 'progress-card';
     card.innerHTML = `
@@ -1068,12 +1278,11 @@ function renderProgress() {
         </div>
       </div>
     `;
-    
-    // Make card clickable - open scores detail
+
     card.addEventListener('click', () => {
       openScoresModal(cls);
     });
-    
+
     if (list) list.appendChild(card);
   });
 
@@ -1103,40 +1312,40 @@ async function openScoresModal(cls) {
   const modal = document.getElementById('scores-modal-overlay');
   const title = document.getElementById('scores-modal-title');
   const body = document.getElementById('scores-modal-body');
-  
+
   if (!modal || !body) return;
-  
+
   title.textContent = cls.title + ' - Your Progress';
   body.innerHTML = '<div style="text-align:center;padding:40px;color:#888;">Loading scores...</div>';
   modal.classList.add('active');
 
-    console.log('Opening scores modal for class:', cls.title);
-    console.log('Student ID:', DATA.profile.id);  // <-- ADD THIS
-    
-    if (!DATA.profile.id) {
-        body.innerHTML = `
-            <div class="scores-empty">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-                <p>Unable to load scores. Please try logging out and back in.</p>
-            </div>
-        `;
-        modal.classList.add('active');
-        return;
-    }
-  
+  console.log('Opening scores modal for class:', cls.title);
+  console.log('Student ID:', DATA.profile.id);
+
+  if (!DATA.profile.id) {
+    body.innerHTML = `
+      <div class="scores-empty">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <p>Unable to load scores. Please try logging out and back in.</p>
+      </div>
+    `;
+    modal.classList.add('active');
+    return;
+  }
+
   try {
     // Fetch scores from the API
     const response = await fetch(`/api/student/scores/${DATA.profile.id}`);
     if (!response.ok) throw new Error('Failed to fetch scores');
     const allScores = await response.json();
-    
+
     // Get completed items for this class
     const completedItems = [];
-    
+
     // Check materials
     (cls.materials || []).forEach(m => {
       if (state.done.has(completionKey('material', m.id))) {
-        const scoreData = allScores.find(s => 
+        const scoreData = allScores.find(s =>
           s.item_type === 'material' && s.item_id === m.id
         );
         completedItems.push({
@@ -1150,11 +1359,11 @@ async function openScoresModal(cls) {
         });
       }
     });
-    
+
     // Check quizzes
     (cls.quizzes || []).forEach(q => {
       if (state.done.has(completionKey('quiz', q.id))) {
-        const scoreData = allScores.find(s => 
+        const scoreData = allScores.find(s =>
           s.item_type === 'quiz' && s.item_id === q.id
         );
         completedItems.push({
@@ -1168,11 +1377,11 @@ async function openScoresModal(cls) {
         });
       }
     });
-    
+
     // Check assignments
     (cls.assignments || []).forEach(a => {
       if (state.done.has(completionKey('assignment', a.id))) {
-        const scoreData = allScores.find(s => 
+        const scoreData = allScores.find(s =>
           s.item_type === 'assignment' && s.item_id === a.id
         );
         completedItems.push({
@@ -1186,16 +1395,16 @@ async function openScoresModal(cls) {
         });
       }
     });
-    
+
     // Calculate average score
     const scoredItems = completedItems.filter(i => i.score !== null);
-    const avgScore = scoredItems.length > 0 
-      ? Math.round(scoredItems.reduce((sum, i) => sum + parseFloat(i.score), 0) / scoredItems.length) 
+    const avgScore = scoredItems.length > 0
+      ? Math.round(scoredItems.reduce((sum, i) => sum + parseFloat(i.score), 0) / scoredItems.length)
       : null;
-    
+
     // Build the modal body
     let html = '';
-    
+
     if (avgScore !== null) {
       html += `
         <div class="scores-summary">
@@ -1206,7 +1415,7 @@ async function openScoresModal(cls) {
         </div>
       `;
     }
-    
+
     if (completedItems.length === 0) {
       html += `
         <div class="scores-empty">
@@ -1216,16 +1425,16 @@ async function openScoresModal(cls) {
       `;
     } else {
       completedItems.forEach(item => {
-        const dateStr = item.completedAt 
-          ? new Date(item.completedAt).toLocaleDateString('en-US', { 
-              month: 'short', day: 'numeric', year: 'numeric' 
-            })
+        const dateStr = item.completedAt
+          ? new Date(item.completedAt).toLocaleDateString('en-US', {
+            month: 'short', day: 'numeric', year: 'numeric'
+          })
           : '';
-        
-        const scoreDisplay = item.score !== null 
-          ? `<div class="score-item-value">${item.score}<span class="score-item-max">/100</span></div>`
+
+        const scoreDisplay = item.score !== null
+          ? `<div class="score-item-value ${item.score >= 75 ? 'score-pass' : 'score-fail'}">${item.score}<span class="score-item-max">/100</span></div>`
           : `<div class="score-item-value no-score">Not yet graded</div>`;
-        
+
         html += `
           <div class="score-item-card">
             <div class="${item.iconClass}">
@@ -1241,9 +1450,9 @@ async function openScoresModal(cls) {
         `;
       });
     }
-    
+
     body.innerHTML = html;
-    
+
   } catch (err) {
     console.error('Error loading scores:', err);
     body.innerHTML = `
@@ -1286,20 +1495,27 @@ function renderProfile() {
 
 function refreshProfileDisplay() {
   const p = DATA.profile;
-  const set    = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
 
-  set('display-firstname',        p.firstName);
-  set('display-lastname',         p.lastName);
-  set('display-username',         p.username);
-  set('display-email',            p.email);
+  set('display-firstname', p.firstName);
+  set('display-lastname', p.lastName);
+  set('display-username', p.username);
+  set('display-email', p.email);
   set('profile-username-display', p.username);
-  set('profile-role-display',     p.role || 'student');
-  setVal('pw-username-display',   p.username  || 'student');
-  setVal('edit-firstname',        p.firstName || '');
-  setVal('edit-lastname',         p.lastName  || '');
-  setVal('edit-username',         p.username  || '');
-  setVal('edit-email',            p.email     || '');
+  set('profile-role-display', p.role || 'student');
+  setVal('pw-username-display', p.username || 'student');
+  setVal('edit-firstname', p.firstName || '');
+  setVal('edit-lastname', p.lastName || '');
+  setVal('edit-username', p.username || '');
+  setVal('edit-email', p.email || '');
+
+  // ✅ ADD THIS - sync class count badge
+  const badgeEl = document.getElementById('profile-badge-classes');
+  if (badgeEl) {
+    const count = DATA.classes.length;
+    badgeEl.textContent = `${count} Class${count !== 1 ? 'es' : ''}`;
+  }
 
   updateProfilePictureDisplay();
 }
@@ -1310,9 +1526,9 @@ function showProfilePanel(panel) {
     if (el) el.style.display = 'none';
   });
   const active = document.getElementById(
-    panel === 'main'       ? 'profile-main'            :
-    panel === 'edit-info'  ? 'profile-edit-info'       :
-                             'profile-change-password'
+    panel === 'main' ? 'profile-main' :
+      panel === 'edit-info' ? 'profile-edit-info' :
+        'profile-change-password'
   );
   if (active) active.style.display = 'block';
 }
@@ -1326,12 +1542,12 @@ document.querySelectorAll('.nav-item').forEach(link => {
     const view = this.getAttribute('data-view');
     if (!view) return;
     switch (view) {
-      case 'home':          await renderHome();              showView('home');          break;
-      case 'classes':       await renderClasses();           showView('classes');       break;
-      case 'progress':      renderProgress();                showView('progress');      break;
-      case 'todo':          renderTodo();                    showView('todo');          break;
+      case 'home': await renderHome(); showView('home'); break;
+      case 'classes': await renderClasses(); showView('classes'); break;
+      case 'progress': renderProgress(); showView('progress'); break;
+      case 'todo': renderTodo(); showView('todo'); break;
       case 'announcements': await renderFullAnnouncements(); showView('announcements'); break;
-      case 'profile':       renderProfile();                 showView('profile');       break;
+      case 'profile': renderProfile(); showView('profile'); break;
     }
   });
 });
@@ -1339,10 +1555,10 @@ document.querySelectorAll('.nav-item').forEach(link => {
 // ── BACK BUTTONS ─────────────────────────────────────────────────
 
 document.addEventListener('click', async e => {
-  if (e.target.closest('#back-to-classes'))              { goBackToClasses();    return; }
-  if (e.target.closest('#back-to-class-from-material'))  { goBackToClassDetail(); return; }
-  if (e.target.closest('#back-to-class-from-assignment')){ goBackToClassDetail(); return; }
-  if (e.target.closest('#back-to-class-from-quiz'))      { goBackToClassDetail(); return; }
+  if (e.target.closest('#back-to-classes')) { goBackToClasses(); return; }
+  if (e.target.closest('#back-to-class-from-material')) { goBackToClassDetail(); return; }
+  if (e.target.closest('#back-to-class-from-assignment')) { goBackToClassDetail(); return; }
+  if (e.target.closest('#back-to-class-from-quiz')) { goBackToClassDetail(); return; }
 });
 
 // ── FILE UPLOAD ──────────────────────────────────────────────────
@@ -1386,7 +1602,7 @@ document.addEventListener('click', async e => {
       confirmButtonText: 'Remove',
       cancelButtonText: 'Cancel'
     });
-    
+
     if (result.isConfirmed) {
       try {
         const response = await fetch('/api/remove-profile-picture', {
@@ -1394,7 +1610,7 @@ document.addEventListener('click', async e => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: DATA.profile.id })
         });
-        
+
         if (response.ok) {
           DATA.profile.profilePicture = null;
           updateProfilePictureDisplay();
@@ -1416,8 +1632,8 @@ document.addEventListener('click', async e => {
     document.getElementById('profile-picture-input').click();
   }
 
-  if (e.target.id === 'btn-edit-profile')    showProfilePanel('edit-info');
-  if (e.target.id === 'btn-cancel-edit')     showProfilePanel('main');
+  if (e.target.id === 'btn-edit-profile') showProfilePanel('edit-info');
+  if (e.target.id === 'btn-cancel-edit') showProfilePanel('main');
   if (e.target.id === 'btn-cancel-password') showProfilePanel('main');
 
   if (e.target.id === 'btn-change-password') {
@@ -1426,11 +1642,11 @@ document.addEventListener('click', async e => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     const vcSection = document.getElementById('verification-code-section');
-    const sendBtn   = document.getElementById('btn-send-code');
-    const saveBtn   = document.getElementById('btn-save-password');
+    const sendBtn = document.getElementById('btn-send-code');
+    const saveBtn = document.getElementById('btn-save-password');
     if (vcSection) vcSection.style.display = 'none';
-    if (sendBtn)   sendBtn.style.display   = 'block';
-    if (saveBtn)   saveBtn.style.display   = 'none';
+    if (sendBtn) sendBtn.style.display = 'block';
+    if (saveBtn) saveBtn.style.display = 'none';
   }
 
   if (e.target.id === 'btn-send-code') {
@@ -1443,8 +1659,8 @@ document.addEventListener('click', async e => {
       if (response.ok) {
         Swal.fire('Code Sent', 'Verification code sent to your email', 'success');
         document.getElementById('verification-code-section').style.display = 'block';
-        document.getElementById('btn-send-code').style.display             = 'none';
-        document.getElementById('btn-save-password').style.display         = 'block';
+        document.getElementById('btn-send-code').style.display = 'none';
+        document.getElementById('btn-save-password').style.display = 'block';
       } else {
         Swal.fire('Error', data.message, 'error');
       }
@@ -1455,11 +1671,11 @@ document.addEventListener('click', async e => {
 
   if (e.target.id === 'btn-save-profile') {
     const updated = {
-      userId:    DATA.profile.id,
+      userId: DATA.profile.id,
       firstName: document.getElementById('edit-firstname').value.trim(),
-      lastName:  document.getElementById('edit-lastname').value.trim(),
-      username:  document.getElementById('edit-username').value.trim(),
-      email:     document.getElementById('edit-email').value.trim()
+      lastName: document.getElementById('edit-lastname').value.trim(),
+      username: document.getElementById('edit-username').value.trim(),
+      email: document.getElementById('edit-email').value.trim()
     };
     if (!updated.firstName || !updated.lastName || !updated.username || !updated.email) {
       Swal.fire('Missing', 'All fields are required', 'warning'); return;
@@ -1488,12 +1704,12 @@ document.addEventListener('click', async e => {
   }
 
   if (e.target.id === 'btn-save-password') {
-    const code    = document.getElementById('pw-verification-code').value.trim();
-    const newPw   = document.getElementById('pw-new').value.trim();
+    const code = document.getElementById('pw-verification-code').value.trim();
+    const newPw = document.getElementById('pw-new').value.trim();
     const confirm = document.getElementById('pw-confirm').value.trim();
     if (!code || !newPw || !confirm) { Swal.fire('Missing', 'All fields are required', 'warning'); return; }
-    if (code.length !== 6)           { Swal.fire('Invalid', 'Enter 6-digit code', 'warning');      return; }
-    if (newPw !== confirm)           { Swal.fire('Mismatch', 'Passwords do not match', 'error');   return; }
+    if (code.length !== 6) { Swal.fire('Invalid', 'Enter 6-digit code', 'warning'); return; }
+    if (newPw !== confirm) { Swal.fire('Mismatch', 'Passwords do not match', 'error'); return; }
     try {
       const response = await fetch('/api/change-password', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -1530,7 +1746,7 @@ document.addEventListener('click', async e => {
 // ── SEARCH ───────────────────────────────────────────────────────
 
 (function setupSearch() {
-  const input    = document.getElementById('search-input');
+  const input = document.getElementById('search-input');
   const dropdown = document.getElementById('search-dropdown');
   if (!input || !dropdown) return;
 
@@ -1607,15 +1823,14 @@ document.addEventListener('click', async e => {
 })();
 
 // ── INIT ─────────────────────────────────────────────────────────
-
 (async function init() {
   await fetchProfile();
   await fetchClasses();
+  await fetchArchivedClasses(); // ✅ ADD THIS
   await fetchAnnouncements();
   await fetchCompletions();
 
   setupJoinButton();
-  
   updateProfilePictureDisplay();
 
   const homeNav = document.querySelector('.nav-item[data-view="home"]');
@@ -1626,7 +1841,7 @@ document.addEventListener('click', async e => {
 })();
 
 // ===== ASSIGNMENT SUBMISSION FILE UPLOAD =====
-(function() {
+(function () {
   const submitFileZone = document.getElementById('assignment-submit-file-zone');
   const submitFileInput = document.getElementById('assignment-submit-file-input');
   const submitBrowseBtn = document.getElementById('assignment-submit-browse-btn');
@@ -1641,24 +1856,24 @@ document.addEventListener('click', async e => {
 
   // Toggle between File and Link upload types
   if (submitFileTypeBtn && submitLinkTypeBtn) {
-    submitFileTypeBtn.addEventListener('click', function() {
+    submitFileTypeBtn.addEventListener('click', function () {
       submitFileTypeBtn.classList.add('active');
       submitLinkTypeBtn.classList.remove('active');
-      submitFileZone.classList.remove('hidden');
-      submitLinkGroup.classList.add('hidden');
+      if (submitFileZone) submitFileZone.classList.remove('hidden');
+      if (submitLinkGroup) submitLinkGroup.classList.add('hidden');
     });
 
-    submitLinkTypeBtn.addEventListener('click', function() {
+    submitLinkTypeBtn.addEventListener('click', function () {
       submitLinkTypeBtn.classList.add('active');
       submitFileTypeBtn.classList.remove('active');
-      submitLinkGroup.classList.remove('hidden');
-      submitFileZone.classList.add('hidden');
+      if (submitLinkGroup) submitLinkGroup.classList.remove('hidden');
+      if (submitFileZone) submitFileZone.classList.add('hidden');
     });
   }
 
   // Browse button
   if (submitBrowseBtn && submitFileInput) {
-    submitBrowseBtn.addEventListener('click', function(e) {
+    submitBrowseBtn.addEventListener('click', function (e) {
       e.stopPropagation();
       submitFileInput.click();
     });
@@ -1666,22 +1881,22 @@ document.addEventListener('click', async e => {
 
   // Click on zone to browse
   if (submitFileZone && submitFileInput) {
-    submitFileZone.addEventListener('click', function() {
+    submitFileZone.addEventListener('click', function () {
       submitFileInput.click();
     });
 
     // Drag & drop
-    submitFileZone.addEventListener('dragover', function(e) {
+    submitFileZone.addEventListener('dragover', function (e) {
       e.preventDefault();
       submitFileZone.classList.add('drag-over');
     });
 
-    submitFileZone.addEventListener('dragleave', function(e) {
+    submitFileZone.addEventListener('dragleave', function (e) {
       e.preventDefault();
       submitFileZone.classList.remove('drag-over');
     });
 
-    submitFileZone.addEventListener('drop', function(e) {
+    submitFileZone.addEventListener('drop', function (e) {
       e.preventDefault();
       submitFileZone.classList.remove('drag-over');
       const files = e.dataTransfer.files;
@@ -1693,7 +1908,7 @@ document.addEventListener('click', async e => {
 
   // File input change
   if (submitFileInput) {
-    submitFileInput.addEventListener('change', function() {
+    submitFileInput.addEventListener('change', function () {
       if (submitFileInput.files.length > 0) {
         handleFileSelection(submitFileInput.files[0]);
       }
@@ -1717,7 +1932,7 @@ document.addEventListener('click', async e => {
         </div>
         <button class="file-preview-remove" title="Remove file">&times;</button>
       `;
-      item.querySelector('.file-preview-remove').addEventListener('click', function(e) {
+      item.querySelector('.file-preview-remove').addEventListener('click', function (e) {
         e.stopPropagation();
         selectedFile = null;
         submitFilePreview.innerHTML = '';
@@ -1745,9 +1960,14 @@ document.addEventListener('click', async e => {
 
   // Submit button handler
   if (submitBtn) {
-    submitBtn.addEventListener('click', function() {
+    submitBtn.addEventListener('click', async function () {
       const isLinkMode = submitLinkTypeBtn && submitLinkTypeBtn.classList.contains('active');
-      
+
+      if (!state.currentItem) {
+        Swal.fire('Error', 'No assignment selected', 'error');
+        return;
+      }
+
       if (isLinkMode) {
         const linkInput = document.getElementById('assignment-submit-link-input');
         if (!linkInput || !linkInput.value.trim()) {
@@ -1759,8 +1979,8 @@ document.addEventListener('click', async e => {
           });
           return;
         }
-        // Here you would send the link to your backend
-        console.log('Submitting link:', linkInput.value.trim());
+        // Submit link to backend
+        await submitAssignmentSubmission(linkInput.value.trim(), null);
       } else {
         if (!selectedFile) {
           Swal.fire({
@@ -1771,22 +1991,66 @@ document.addEventListener('click', async e => {
           });
           return;
         }
-        // Here you would upload the file to your backend
-        console.log('Submitting file:', selectedFile.name);
+        // Submit file to backend
+        await submitAssignmentSubmission(null, selectedFile);
       }
+    });
+  }
 
-      // Simulate successful submission (replace with actual API call)
-      Swal.fire({
-        icon: 'success',
-        title: 'Submitted!',
-        text: 'Your assignment has been submitted successfully.',
-        confirmButtonColor: '#0f1f4b'
+  async function submitAssignmentSubmission(link, file) {
+    const formData = new FormData();
+    formData.append('studentId', DATA.profile.id);
+    formData.append('assignmentId', state.currentItem.id);
+    formData.append('sectionId', state.currentClass?.section_id || '');
+    if (link) formData.append('submissionLink', link);
+    if (file) formData.append('submissionFile', file);
+
+    try {
+      const response = await fetch('/api/submit-assignment', {
+        method: 'POST',
+        body: formData
       });
 
-      // Show success message
-      if (successMsg) successMsg.classList.remove('hidden');
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted';
-    });
+      const data = await response.json();
+
+      if (response.ok) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Submitted!',
+          text: 'Your assignment has been submitted successfully.',
+          confirmButtonColor: '#0f1f4b'
+        });
+
+        // Mark as done automatically
+        await fetch('/api/mark-done', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: DATA.profile.id,
+            itemType: 'assignment',
+            itemId: state.currentItem.id
+          })
+        });
+
+        // Update local state
+        const key = completionKey('assignment', state.currentItem.id);
+        state.done.add(key);
+
+        if (successMsg) successMsg.classList.remove('hidden');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted';
+        }
+
+        // Refresh the display
+        updateItemDisplay('assignment', state.currentItem.id, true);
+
+      } else {
+        Swal.fire('Error', data.message || 'Submission failed', 'error');
+      }
+    } catch (err) {
+      console.error('Submission error:', err);
+      Swal.fire('Error', 'Could not connect to server', 'error');
+    }
   }
 })();

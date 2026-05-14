@@ -138,20 +138,35 @@
       </div>
 
       <!-- ===== CLASSES VIEW ===== -->
-      <div class="page-body hidden" id="view-classes">
-        <div class="classes-header">
-          <div>
-            <h1 class="page-heading">Continue learning with your courses!</h1>
-            <p class="page-subheading">Access all your enrolled classes and materials</p>
-          </div>
-          <button class="join-class-btn" id="join-class-btn">
-            <i class="fa-solid fa-plus"></i> Join Class
-          </button>
-        </div>
-        <p class="classes-section-label">Enrolled Classes</p>
-        <div class="classes-grid" id="classes-grid"></div>
-      </div>
+<div class="page-body hidden" id="view-classes">
+  <div class="classes-header">
+    <div>
+      <h1 class="page-heading">Continue learning with your courses!</h1>
+      <p class="page-subheading">Access all your enrolled classes and materials</p>
+    </div>
+    <button class="join-class-btn" id="join-class-btn">
+      <i class="fa-solid fa-plus"></i> Join Class
+    </button>
+  </div>
 
+  <!-- Active Classes -->
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+    <p class="classes-section-label" style="margin-bottom:0">Enrolled Classes</p>
+  </div>
+  <div class="classes-grid" id="classes-grid"></div>
+
+  <!-- Archived Classes -->
+  <div style="margin-top:32px;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; cursor:pointer;" id="archived-toggle">
+      <div style="width:32px;height:32px;background:#f1f5f9;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+        <i class="fa-solid fa-box-archive" style="color:#64748b;font-size:14px;"></i>
+      </div>
+      <p class="classes-section-label" style="margin-bottom:0">Archived Classes</p>
+      <i class="fa-solid fa-chevron-down" id="archived-chevron" style="color:#94a3b8;font-size:12px;margin-left:4px;transition:transform 0.2s;"></i>
+    </div>
+    <div id="archived-classes-grid" class="classes-grid" style="display:none;"></div>
+  </div>
+</div>
       <!-- ===== ANNOUNCEMENTS VIEW ===== -->
       <div class="page-body hidden" id="view-announcements">
         <div class="announcements-full-header">

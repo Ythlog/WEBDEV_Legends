@@ -84,7 +84,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "..", "..", "frontend")));
 
 // =====================================================
-// FIXED: SERVE ALL MATERIAL FILES INLINE (NOT AS DOWNLOAD)
+// SERVE ALL MATERIAL FILES INLINE
 // =====================================================
 
 const MIME_MAP = {
@@ -267,35 +267,33 @@ app.get("/api/my-classes", async (req, res) => {
     let conn;
     try {
         conn = await pool.getConnection();
-        
+
         const enrollments = await conn.query(
             `SELECT DISTINCT c.id as class_id, c.title, c.subject_code, c.professor, c.class_code,
                     s.id as section_id, s.name as section_name, s.code as section_code
              FROM classes c
              JOIN sections s ON c.id = s.class_id
              JOIN section_students ss ON s.id = ss.section_id
-             WHERE ss.student_id = ?
+             WHERE ss.student_id = ? AND (ss.is_archived = 0 OR ss.is_archived IS NULL)
              ORDER BY c.id`,
             [studentId]
         );
-        
+
         const classesWithData = [];
         for (const enrollment of enrollments) {
             const materials = await conn.query(
                 "SELECT id, title, description, pdf_url, due_date FROM materials WHERE section_id = ? ORDER BY sort_order",
                 [enrollment.section_id]
             );
-            
             const quizzes = await conn.query(
                 "SELECT id, title, description, link, link_label, due_date FROM quizzes WHERE section_id = ? ORDER BY id",
                 [enrollment.section_id]
             );
-
             const assignments = await conn.query(
                 "SELECT id, title, description, link, due_date, points FROM assignments WHERE section_id = ? ORDER BY id",
                 [enrollment.section_id]
             );
-            
+
             classesWithData.push({
                 id: enrollment.class_id,
                 title: enrollment.title,
@@ -305,12 +303,12 @@ app.get("/api/my-classes", async (req, res) => {
                 section_id: enrollment.section_id,
                 section_name: enrollment.section_name,
                 section_code: enrollment.section_code,
-                materials: materials,
-                quizzes: quizzes,
-                assignments: assignments
+                materials,
+                quizzes,
+                assignments
             });
         }
-        
+
         res.json(classesWithData);
     } catch (err) {
         console.error("Get my classes error:", err);
@@ -345,7 +343,8 @@ app.get("/api/completions", async (req, res) => {
 });
 
 app.post("/api/mark-done", async (req, res) => {
-    const { userId, itemType, itemId } = req.body;
+    const { userId, itemType, itemId, submissionUrl } = req.body;
+    
     if (!userId || !itemType || !itemId) {
         return res.status(400).json({ message: "Missing fields" });
     }
@@ -353,16 +352,42 @@ app.post("/api/mark-done", async (req, res) => {
     let conn;
     try {
         conn = await pool.getConnection();
-        await conn.query(
-            `INSERT INTO task_completions (user_id, item_type, item_id)
-             VALUES (?, ?, ?)
-             ON DUPLICATE KEY UPDATE completed_at = NOW()`,
+        
+        const existing = await conn.query(
+            "SELECT id FROM task_completions WHERE user_id = ? AND item_type = ? AND item_id = ?",
             [userId, itemType, itemId]
         );
+        
+        if (existing.length > 0) {
+            if (submissionUrl) {
+                await conn.query(
+                    "UPDATE task_completions SET completed_at = NOW(), submission_url = ? WHERE user_id = ? AND item_type = ? AND item_id = ?",
+                    [submissionUrl, userId, itemType, itemId]
+                );
+            } else {
+                await conn.query(
+                    "UPDATE task_completions SET completed_at = NOW() WHERE user_id = ? AND item_type = ? AND item_id = ?",
+                    [userId, itemType, itemId]
+                );
+            }
+        } else {
+            if (submissionUrl) {
+                await conn.query(
+                    "INSERT INTO task_completions (user_id, item_type, item_id, completed_at, submission_url) VALUES (?, ?, ?, NOW(), ?)",
+                    [userId, itemType, itemId, submissionUrl]
+                );
+            } else {
+                await conn.query(
+                    "INSERT INTO task_completions (user_id, item_type, item_id, completed_at) VALUES (?, ?, ?, NOW())",
+                    [userId, itemType, itemId]
+                );
+            }
+        }
+        
         res.json({ success: true });
     } catch (err) {
         console.error("mark-done error:", err);
-        res.status(500).json({ message: "Server error" });
+        res.status(500).json({ message: "Server error: " + err.message });
     } finally {
         if (conn) conn.release();
     }
@@ -1026,25 +1051,50 @@ app.get("/api/my-sections", async (req, res) => {
 // TEACHER: ALL SECTIONS FOR ANNOUNCEMENTS
 // =====================================================
 
+// =====================================================
+// TEACHER: GET ALL SECTIONS FOR ANNOUNCEMENTS
+// =====================================================
 app.get("/api/teacher/all-sections", async (req, res) => {
     const { teacherId } = req.query;
     if (!teacherId) return res.status(400).json({ message: "Missing teacherId" });
-    
+
     let conn;
     try {
         conn = await pool.getConnection();
-        
+
         const sections = await conn.query(
-            `SELECT s.id as section_id, s.name as section_name, s.code, s.enrollment_code,
-                    c.id as class_id, c.title as class_title
+            `SELECT 
+                s.id as section_id, 
+                s.name as section_name, 
+                s.code as section_code,
+                s.enrollment_code,
+                c.id as class_id, 
+                c.title as class_title
              FROM sections s
              JOIN classes c ON s.class_id = c.id
              WHERE c.teacher_id = ?
              ORDER BY c.title, s.name`,
             [teacherId]
         );
-        
-        res.json(sections);
+
+        // Group by class for the frontend
+        const grouped = {};
+        sections.forEach(row => {
+            if (!grouped[row.class_id]) {
+                grouped[row.class_id] = {
+                    classId: row.class_id,
+                    className: row.class_title,
+                    sections: []
+                };
+            }
+            grouped[row.class_id].sections.push({
+                sectionId: row.section_id,
+                sectionName: row.section_name,
+                sectionCode: row.enrollment_code || row.section_code
+            });
+        });
+
+        res.json(Object.values(grouped));
     } catch (err) {
         console.error("Get teacher sections error:", err);
         res.status(500).json({ message: "Server error" });
@@ -1161,7 +1211,111 @@ app.delete("/api/teacher/classes/:id", async (req, res) => {
 // =====================================================
 // TEACHER: SECTIONS API
 // =====================================================
+// =====================================================
+// STUDENT: ARCHIVE / UNARCHIVE CLASS
+// =====================================================
 
+app.post("/api/archive-class", async (req, res) => {
+    const { studentId, sectionId } = req.body;
+    if (!studentId || !sectionId) {
+        return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query(
+            "UPDATE section_students SET is_archived = 1 WHERE student_id = ? AND section_id = ?",
+            [studentId, sectionId]
+        );
+        res.json({ success: true, message: "Class archived successfully" });
+    } catch (err) {
+        console.error("Archive class error:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+app.post("/api/unarchive-class", async (req, res) => {
+    const { studentId, sectionId } = req.body;
+    if (!studentId || !sectionId) {
+        return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        await conn.query(
+            "UPDATE section_students SET is_archived = 0 WHERE student_id = ? AND section_id = ?",
+            [studentId, sectionId]
+        );
+        res.json({ success: true, message: "Class unarchived successfully" });
+    } catch (err) {
+        console.error("Unarchive class error:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+app.get("/api/my-classes/archived", async (req, res) => {
+    const { studentId } = req.query;
+    if (!studentId) return res.status(400).json({ message: "Student ID is required" });
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+
+        const enrollments = await conn.query(
+            `SELECT DISTINCT c.id as class_id, c.title, c.subject_code, c.professor, c.class_code,
+                    s.id as section_id, s.name as section_name, s.code as section_code
+             FROM classes c
+             JOIN sections s ON c.id = s.class_id
+             JOIN section_students ss ON s.id = ss.section_id
+             WHERE ss.student_id = ? AND ss.is_archived = 1
+             ORDER BY c.id`,
+            [studentId]
+        );
+
+        const classesWithData = [];
+        for (const enrollment of enrollments) {
+            const materials = await conn.query(
+                "SELECT id, title, description, pdf_url, due_date FROM materials WHERE section_id = ? ORDER BY sort_order",
+                [enrollment.section_id]
+            );
+            const quizzes = await conn.query(
+                "SELECT id, title, description, link, link_label, due_date FROM quizzes WHERE section_id = ? ORDER BY id",
+                [enrollment.section_id]
+            );
+            const assignments = await conn.query(
+                "SELECT id, title, description, link, due_date, points FROM assignments WHERE section_id = ? ORDER BY id",
+                [enrollment.section_id]
+            );
+
+            classesWithData.push({
+                id: enrollment.class_id,
+                title: enrollment.title,
+                subject_code: enrollment.subject_code,
+                professor: enrollment.professor,
+                class_code: enrollment.class_code,
+                section_id: enrollment.section_id,
+                section_name: enrollment.section_name,
+                section_code: enrollment.section_code,
+                materials,
+                quizzes,
+                assignments
+            });
+        }
+
+        res.json(classesWithData);
+    } catch (err) {
+        console.error("Get archived classes error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
 app.get("/api/teacher/sections", async (req, res) => {
     const { classId } = req.query;
     if (!classId) return res.status(400).json({ message: "Missing classId" });
@@ -1571,6 +1725,205 @@ app.delete("/api/teacher/assignments/:id", async (req, res) => {
 });
 
 // =====================================================
+// STUDENT: GET COMPLETION STATUS WITH SCORE
+// =====================================================
+// =====================================================
+// TEACHER: GET ALL CLASSES AND SECTIONS FOR ANNOUNCEMENTS
+// =====================================================
+
+app.get("/api/teacher/announcement-sections", async (req, res) => {
+    const { teacherId } = req.query;
+    if (!teacherId) return res.status(400).json({ message: "Missing teacherId" });
+    
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        
+        // Get all classes with their sections for this teacher
+        const classes = await conn.query(
+            `SELECT 
+                c.id as class_id, 
+                c.title as class_title,
+                s.id as section_id,
+                s.name as section_name,
+                s.code as section_code
+             FROM classes c
+             LEFT JOIN sections s ON c.id = s.class_id
+             WHERE c.teacher_id = ?
+             ORDER BY c.title, s.name`,
+            [teacherId]
+        );
+        
+        // Group sections by class
+        const groupedData = {};
+        classes.forEach(item => {
+            if (!groupedData[item.class_id]) {
+                groupedData[item.class_id] = {
+                    class_id: item.class_id,
+                    class_title: item.class_title,
+                    sections: []
+                };
+            }
+            if (item.section_id) {
+                groupedData[item.class_id].sections.push({
+                    section_id: item.section_id,
+                    section_name: item.section_name,
+                    section_code: item.section_code
+                });
+            }
+        });
+        
+        res.json(Object.values(groupedData));
+    } catch (err) {
+        console.error("Get announcement sections error:", err);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+app.get("/api/student/completion-status", async (req, res) => {
+    const { userId, itemType, itemId } = req.query;
+    
+    if (!userId || !itemType || !itemId) {
+        return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        
+        const result = await conn.query(
+            `SELECT completed_at, score 
+             FROM task_completions 
+             WHERE user_id = ? AND item_type = ? AND item_id = ?`,
+            [userId, itemType, itemId]
+        );
+        
+        if (result.length > 0) {
+            res.json({
+                completed_at: result[0].completed_at,
+                score: result[0].score,
+                is_graded: result[0].score !== null
+            });
+        } else {
+            res.json({
+                completed_at: null,
+                score: null,
+                is_graded: false
+            });
+        }
+    } catch (error) {
+        console.error("Error fetching completion status:", error);
+        res.status(500).json({ message: "Server error" });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// =====================================================
+// STUDENT: SUBMIT ASSIGNMENT (COMPLETE FIXED VERSION)
+// =====================================================
+
+const assignmentSubmissionStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = path.join(__dirname, "..", "..", "frontend", "uploads", "submissions");
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, 'submission-' + uniqueSuffix + ext);
+    }
+});
+
+const uploadSubmission = multer({ storage: assignmentSubmissionStorage });
+
+app.post("/api/submit-assignment", uploadSubmission.single('submissionFile'), async (req, res) => {
+    const { studentId, assignmentId, sectionId, submissionLink } = req.body;
+    
+    console.log('📝 Assignment submission received:', { 
+        studentId, 
+        assignmentId, 
+        sectionId, 
+        submissionLink, 
+        hasFile: !!req.file,
+        fileInfo: req.file ? req.file.filename : null
+    });
+    
+    if (!studentId || !assignmentId) {
+        console.log('❌ Missing required fields');
+        return res.status(400).json({ 
+            success: false,
+            message: "Missing required fields: studentId and assignmentId are required" 
+        });
+    }
+    
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        
+        let submissionUrl = null;
+        if (req.file) {
+            submissionUrl = `/uploads/submissions/${req.file.filename}`;
+        } else if (submissionLink) {
+            submissionUrl = submissionLink;
+        }
+        
+        const existing = await conn.query(
+            "SELECT id, score FROM task_completions WHERE user_id = ? AND item_type = 'assignment' AND item_id = ?",
+            [studentId, assignmentId]
+        );
+        
+        if (existing.length > 0) {
+            if (submissionUrl) {
+                await conn.query(
+                    "UPDATE task_completions SET completed_at = NOW(), submission_url = ? WHERE user_id = ? AND item_type = 'assignment' AND item_id = ?",
+                    [submissionUrl, studentId, assignmentId]
+                );
+            } else {
+                await conn.query(
+                    "UPDATE task_completions SET completed_at = NOW() WHERE user_id = ? AND item_type = 'assignment' AND item_id = ?",
+                    [studentId, assignmentId]
+                );
+            }
+            console.log('✅ Updated existing submission for assignment:', assignmentId);
+        } else {
+            if (submissionUrl) {
+                await conn.query(
+                    "INSERT INTO task_completions (user_id, item_type, item_id, completed_at, submission_url) VALUES (?, 'assignment', ?, NOW(), ?)",
+                    [studentId, assignmentId, submissionUrl]
+                );
+            } else {
+                await conn.query(
+                    "INSERT INTO task_completions (user_id, item_type, item_id, completed_at) VALUES (?, 'assignment', ?, NOW())",
+                    [studentId, assignmentId]
+                );
+            }
+            console.log('✅ Created new submission for assignment:', assignmentId);
+        }
+        
+        res.json({ 
+            success: true,
+            message: "Assignment submitted successfully",
+            submissionUrl: submissionUrl,
+            assignmentId: assignmentId
+        });
+        
+    } catch (error) {
+        console.error('❌ Assignment submission error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: "Server error: " + error.message 
+        });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// =====================================================
 // TEACHER: STUDENTS API
 // =====================================================
 
@@ -1591,6 +1944,7 @@ app.get("/api/teacher/students", async (req, res) => {
                 u.first_name, 
                 u.last_name, 
                 u.email, 
+                u.profile_picture,
                 ss.status, 
                 ss.enrolled_at
              FROM section_students ss 
@@ -1659,7 +2013,7 @@ app.get("/api/teacher/class-students", async (req, res) => {
 });
 
 // =====================================================
-// TEACHER: COMPLETIONS API (UPDATED WITH SCORES)
+// TEACHER: COMPLETIONS API (WITH SCORES)
 // =====================================================
 
 app.get("/api/teacher/completions", async (req, res) => {
@@ -1670,8 +2024,8 @@ app.get("/api/teacher/completions", async (req, res) => {
     try {
         conn = await pool.getConnection();
         const completions = await conn.query(
-            `SELECT u.id, u.first_name, u.last_name, u.email, 
-                    CASE WHEN tc.id IS NOT NULL THEN tc.completed_at ELSE NULL END as completed_at,
+            `SELECT u.id, u.first_name, u.last_name, u.email, u.profile_picture,
+                    tc.completed_at,
                     tc.score
              FROM section_students ss
              JOIN users u ON ss.student_id = u.id
@@ -1690,16 +2044,20 @@ app.get("/api/teacher/completions", async (req, res) => {
 });
 
 // =====================================================
-// TEACHER: SAVE/UPDATE STUDENT SCORE
+// TEACHER: SAVE STUDENT SCORE - FIXED VERSION
 // =====================================================
-// FIND the /api/teacher/scores PUT endpoint and replace with:
+
 app.put("/api/teacher/scores", async (req, res) => {
     const { studentId, itemType, itemId, sectionId, score } = req.body;
     
-    console.log('Score save request:', { studentId, itemType, itemId, sectionId, score });
+    console.log('📝 Score save request received:', { studentId, itemType, itemId, sectionId, score });
     
     if (!studentId || !itemType || !itemId) {
-        return res.status(400).json({ message: 'Missing required fields (studentId, itemType, itemId)' });
+        console.log('❌ Missing required fields');
+        return res.status(400).json({ 
+            success: false,
+            message: 'Missing required fields (studentId, itemType, itemId)' 
+        });
     }
 
     let conn;
@@ -1707,46 +2065,82 @@ app.put("/api/teacher/scores", async (req, res) => {
         conn = await pool.getConnection();
 
         const existing = await conn.query(
-            `SELECT id FROM task_completions 
+            `SELECT id, score FROM task_completions 
              WHERE user_id = ? AND item_type = ? AND item_id = ?`,
             [studentId, itemType, itemId]
         );
 
         if (existing.length > 0) {
-            if (score === null) {
+            if (score === null || score === '') {
                 await conn.query(
                     `UPDATE task_completions 
-                     SET score = NULL, updated_at = NOW() 
+                     SET score = NULL 
                      WHERE user_id = ? AND item_type = ? AND item_id = ?`,
                     [studentId, itemType, itemId]
                 );
+                console.log('✅ Score cleared for student:', studentId);
             } else {
                 await conn.query(
                     `UPDATE task_completions 
-                     SET score = ?, updated_at = NOW() 
+                     SET score = ? 
                      WHERE user_id = ? AND item_type = ? AND item_id = ?`,
                     [score, studentId, itemType, itemId]
                 );
+                console.log('✅ Score updated for student:', studentId, 'Score:', score);
             }
         } else {
             await conn.query(
-                `INSERT INTO task_completions (user_id, item_type, item_id, score, completed_at, updated_at) 
-                 VALUES (?, ?, ?, ?, NOW(), NOW())`,
+                `INSERT INTO task_completions (user_id, item_type, item_id, completed_at, score) 
+                 VALUES (?, ?, ?, NOW(), ?)`,
                 [studentId, itemType, itemId, score]
             );
+            console.log('✅ New completion record created with score for student:', studentId);
         }
 
-        console.log('Score saved successfully');
         res.json({ 
+            success: true,
             message: 'Score saved successfully',
-            studentId: studentId,
-            itemType: itemType,
-            itemId: itemId,
-            score: score
+            data: { studentId, itemType, itemId, score }
         });
+        
     } catch (error) {
-        console.error('Error saving score:', error);
-        // IMPORTANT: Always return JSON even on error
+        console.error('❌ Error saving score:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Server error: ' + error.message 
+        });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+
+// =====================================================
+// GET TEACHER SECTIONS FOR SCORE SAVING
+// =====================================================
+
+app.get("/api/teacher/student-sections/:studentId", async (req, res) => {
+    const { studentId } = req.params;
+    
+    if (!studentId) {
+        return res.status(400).json({ message: 'Student ID is required' });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+        
+        const sections = await conn.query(
+            `SELECT s.id, s.name, s.code, c.id as class_id, c.title as class_title
+             FROM section_students ss
+             JOIN sections s ON ss.section_id = s.id
+             JOIN classes c ON s.class_id = c.id
+             WHERE ss.student_id = ? AND ss.status = 'enrolled'`,
+            [studentId]
+        );
+        
+        res.json(sections);
+    } catch (error) {
+        console.error('Error fetching student sections:', error);
         res.status(500).json({ message: 'Server error: ' + error.message });
     } finally {
         if (conn) conn.release();
@@ -1754,12 +2148,13 @@ app.put("/api/teacher/scores", async (req, res) => {
 });
 
 // =====================================================
-// STUDENT: GET SCORES (For student dashboard)
+// STUDENT: GET SCORES
 // =====================================================
+
 app.get("/api/student/scores/:studentId", async (req, res) => {
     const { studentId } = req.params;
 
-     console.log('Fetching scores for student:', studentId);
+    console.log('Fetching scores for student:', studentId);
     
     if (!studentId) {
         return res.status(400).json({ message: 'Student ID is required' });
@@ -1780,19 +2175,11 @@ app.get("/api/student/scores/:studentId", async (req, res) => {
                     WHEN tc.item_type = 'material' THEN m.section_id
                     WHEN tc.item_type = 'quiz' THEN q.section_id
                     WHEN tc.item_type = 'assignment' THEN a.section_id
-                END as section_id,
-                s.class_id
+                END as section_id
              FROM task_completions tc
              LEFT JOIN materials m ON tc.item_type = 'material' AND tc.item_id = m.id
              LEFT JOIN quizzes q ON tc.item_type = 'quiz' AND tc.item_id = q.id
              LEFT JOIN assignments a ON tc.item_type = 'assignment' AND tc.item_id = a.id
-             LEFT JOIN sections s ON s.id = (
-                 CASE 
-                     WHEN tc.item_type = 'material' THEN m.section_id
-                     WHEN tc.item_type = 'quiz' THEN q.section_id
-                     WHEN tc.item_type = 'assignment' THEN a.section_id
-                 END
-             )
              WHERE tc.user_id = ? AND tc.completed_at IS NOT NULL
              ORDER BY tc.completed_at DESC`,
             [studentId]
@@ -1808,8 +2195,9 @@ app.get("/api/student/scores/:studentId", async (req, res) => {
 });
 
 // =====================================================
-// STUDENT: GET SCORES BY CLASS (For progress modal)
+// STUDENT: GET SCORES BY CLASS
 // =====================================================
+
 app.get("/api/student/scores-by-class/:studentId/:classId", async (req, res) => {
     const { studentId, classId } = req.params;
     
@@ -1821,7 +2209,6 @@ app.get("/api/student/scores-by-class/:studentId/:classId", async (req, res) => 
     try {
         conn = await pool.getConnection();
         
-        // First get all sections for this class
         const sections = await conn.query(
             "SELECT id FROM sections WHERE class_id = ?",
             [classId]
