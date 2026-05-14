@@ -635,6 +635,106 @@ async function renderHome() {
 }
 
 // ── RENDER CLASSES ───────────────────────────────────────────────
+// ── CLASS DETAIL ─────────────────────────────────────────────────
+
+function openClassDetail(cls) {
+  state.currentClass = cls;
+
+  const detailClassName = document.getElementById('detail-class-name');
+  if (detailClassName) detailClassName.textContent = cls.title;
+
+  const detailMeta = document.getElementById('detail-class-meta');
+  if (detailMeta) detailMeta.textContent = cls.professor || '';
+
+  const matList = document.getElementById('materials-list');
+  if (matList) {
+    matList.innerHTML = '';
+    const materials = cls.materials || [];
+    if (materials.length === 0) {
+      matList.innerHTML = '<p class="detail-empty-msg">No lessons yet.</p>';
+    } else {
+      materials.forEach(mat => {
+        matList.appendChild(
+          buildDetailCard(mat, 'material', () => openMaterialDetail(mat, cls.title))
+        );
+      });
+    }
+  }
+
+  const assignmentsList = document.getElementById('assignments-list');
+  if (assignmentsList) {
+    assignmentsList.innerHTML = '';
+    const assignments = cls.assignments || [];
+    if (assignments.length === 0) {
+      assignmentsList.innerHTML = '<p class="detail-empty-msg">No assignments yet.</p>';
+    } else {
+      assignments.forEach(assign => {
+        assignmentsList.appendChild(
+          buildDetailCard(assign, 'assignment', () => openAssignmentDetail(assign, cls.title))
+        );
+      });
+    }
+  }
+
+  const quizList = document.getElementById('quizzes-list');
+  if (quizList) {
+    quizList.innerHTML = '';
+    const quizzes = cls.quizzes || [];
+    if (quizzes.length === 0) {
+      quizList.innerHTML = '<p class="detail-empty-msg">No quizzes yet.</p>';
+    } else {
+      quizzes.forEach(quiz => {
+        quizList.appendChild(
+          buildDetailCard(quiz, 'quiz', () => openQuizDetail(quiz, cls.title))
+        );
+      });
+    }
+  }
+
+  switchDetailTab('materials');
+  showView('class-detail');
+}
+
+function buildDetailCard(item, type, clickHandler) {
+  const key    = completionKey(type, item.id);
+  const isDone = state.done.has(key) || (DATA.scores[key] && DATA.scores[key].score !== null);
+  const score  = DATA.scores[key]?.score;
+  const hasScore = score !== null && score !== undefined;
+
+  const iconMap = {
+    material:   'fa-solid fa-book-open',
+    quiz:       'fa-solid fa-clipboard-question',
+    assignment: 'fa-solid fa-file-lines'
+  };
+  const icon = iconMap[type] || 'fa-solid fa-file';
+
+  let subText = '';
+  if (item.due_date) subText = `Due ${formatDueDate(item.due_date)}`;
+  else if (item.points !== undefined) subText = `${item.points} pts`;
+  if (hasScore && type !== 'material') {
+    subText += (subText ? ' • ' : '') + `⭐ Score: ${score}/100`;
+  }
+
+  const el = document.createElement('div');
+  el.className = (type === 'material' ? 'material-item' : 'quiz-item') + (isDone ? ' done' : '');
+  el._itemId = item.id;
+
+  el.innerHTML = `
+    <div class="item-card-icon">
+      <i class="${icon}"></i>
+    </div>
+    <div class="item-card-body">
+      <p class="item-card-title">${escapeHtml(item.title)}</p>
+      ${subText ? `<p class="item-card-sub">${subText}</p>` : ''}
+    </div>
+    ${isDone ? '<span class="item-card-badge"><i class="fa-solid fa-check"></i> Done</span>' : ''}
+  `;
+
+  el.addEventListener('click', clickHandler);
+  return el;
+}
+
+// ── RENDER CLASSES ───────────────────────────────────────────────
 
 async function renderClasses() {
   const grid = document.getElementById('classes-grid');
@@ -679,20 +779,10 @@ async function renderClasses() {
             View Class <i class="fa-solid fa-arrow-right"></i>
           </div>
           <button class="archive-class-btn" title="Archive class" style="
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 6px 10px;
-            cursor: pointer;
-            color: #64748b;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            transition: all 0.2s;
-            white-space: nowrap;
-            flex-shrink: 0;
-          ">
+            background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;
+            padding:6px 10px;cursor:pointer;color:#64748b;font-size:13px;
+            display:flex;align-items:center;gap:5px;transition:all 0.2s;
+            white-space:nowrap;flex-shrink:0;">
             <i class="fa-solid fa-box-archive"></i>
           </button>
         </div>
@@ -709,9 +799,9 @@ async function renderClasses() {
       });
 
       card.addEventListener('click', () => openClassDetail(cls));
-      grid.appendChild(card);
-    });
-  }
+      grid.appendChild(card); // ✅ was missing
+    }); // ✅ closes forEach
+  } // ✅ closes else
 
   // ── Archived classes ──
   if (archivedGrid) {
@@ -725,7 +815,7 @@ async function renderClasses() {
       DATA.archivedClasses.forEach(cls => {
         const card = document.createElement('div');
         card.className = 'class-card';
-        card.style.cssText = 'opacity:0.7; position:relative;';
+        card.style.cssText = 'opacity:0.7;position:relative;';
         card.innerHTML = `
           <div class="class-card-icon" style="background:#f1f5f9;">
             <i class="fa-solid fa-box-archive" style="color:#94a3b8;"></i>
@@ -735,20 +825,10 @@ async function renderClasses() {
             <p class="class-card-prof">${escapeHtml(cls.professor)}</p>
           </div>
           <button class="archive-class-btn" title="Unarchive class" style="
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            border-radius: 8px;
-            padding: 6px 10px;
-            cursor: pointer;
-            color: #16a34a;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            transition: all 0.2s;
-            white-space: nowrap;
-            flex-shrink: 0;
-          ">
+            background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;
+            padding:6px 10px;cursor:pointer;color:#16a34a;font-size:13px;
+            display:flex;align-items:center;gap:5px;transition:all 0.2s;
+            white-space:nowrap;flex-shrink:0;">
             <i class="fa-solid fa-rotate-left"></i> Unarchive
           </button>
         `;
@@ -765,9 +845,7 @@ async function renderClasses() {
 
   // ── Archived toggle ──
   const toggle = document.getElementById('archived-toggle');
-  const chevron = document.getElementById('archived-chevron');
   if (toggle && archivedGrid) {
-    // Remove old listeners by cloning
     const newToggle = toggle.cloneNode(true);
     toggle.parentNode.replaceChild(newToggle, toggle);
     let isOpen = false;
@@ -779,7 +857,6 @@ async function renderClasses() {
     });
   }
 }
-
 // ── MATERIAL DETAIL ──────────────────────────────────────────────
 
 function openMaterialDetail(mat, className) {
