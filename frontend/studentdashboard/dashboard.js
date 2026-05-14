@@ -1624,3 +1624,169 @@ document.addEventListener('click', async e => {
   await renderHome();
   showView('home');
 })();
+
+// ===== ASSIGNMENT SUBMISSION FILE UPLOAD =====
+(function() {
+  const submitFileZone = document.getElementById('assignment-submit-file-zone');
+  const submitFileInput = document.getElementById('assignment-submit-file-input');
+  const submitBrowseBtn = document.getElementById('assignment-submit-browse-btn');
+  const submitFilePreview = document.getElementById('assignment-submit-file-preview');
+  const submitFileTypeBtn = document.getElementById('assign-submit-file-type-btn');
+  const submitLinkTypeBtn = document.getElementById('assign-submit-link-type-btn');
+  const submitLinkGroup = document.getElementById('assignment-submit-link-group');
+  const submitBtn = document.getElementById('btn-submit-assignment');
+  const successMsg = document.getElementById('submission-success-msg');
+
+  let selectedFile = null;
+
+  // Toggle between File and Link upload types
+  if (submitFileTypeBtn && submitLinkTypeBtn) {
+    submitFileTypeBtn.addEventListener('click', function() {
+      submitFileTypeBtn.classList.add('active');
+      submitLinkTypeBtn.classList.remove('active');
+      submitFileZone.classList.remove('hidden');
+      submitLinkGroup.classList.add('hidden');
+    });
+
+    submitLinkTypeBtn.addEventListener('click', function() {
+      submitLinkTypeBtn.classList.add('active');
+      submitFileTypeBtn.classList.remove('active');
+      submitLinkGroup.classList.remove('hidden');
+      submitFileZone.classList.add('hidden');
+    });
+  }
+
+  // Browse button
+  if (submitBrowseBtn && submitFileInput) {
+    submitBrowseBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      submitFileInput.click();
+    });
+  }
+
+  // Click on zone to browse
+  if (submitFileZone && submitFileInput) {
+    submitFileZone.addEventListener('click', function() {
+      submitFileInput.click();
+    });
+
+    // Drag & drop
+    submitFileZone.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      submitFileZone.classList.add('drag-over');
+    });
+
+    submitFileZone.addEventListener('dragleave', function(e) {
+      e.preventDefault();
+      submitFileZone.classList.remove('drag-over');
+    });
+
+    submitFileZone.addEventListener('drop', function(e) {
+      e.preventDefault();
+      submitFileZone.classList.remove('drag-over');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFileSelection(files[0]);
+      }
+    });
+  }
+
+  // File input change
+  if (submitFileInput) {
+    submitFileInput.addEventListener('change', function() {
+      if (submitFileInput.files.length > 0) {
+        handleFileSelection(submitFileInput.files[0]);
+      }
+    });
+  }
+
+  function handleFileSelection(file) {
+    selectedFile = file;
+    // Clear preview
+    if (submitFilePreview) {
+      submitFilePreview.innerHTML = '';
+      const item = document.createElement('div');
+      item.className = 'file-preview-item';
+      item.innerHTML = `
+        <div class="file-preview-item-left">
+          <i class="fa-solid fa-file" style="color: var(--accent);"></i>
+          <div>
+            <div class="file-preview-name">${escapeHTML(file.name)}</div>
+            <div class="file-preview-size">${formatFileSize(file.size)}</div>
+          </div>
+        </div>
+        <button class="file-preview-remove" title="Remove file">&times;</button>
+      `;
+      item.querySelector('.file-preview-remove').addEventListener('click', function(e) {
+        e.stopPropagation();
+        selectedFile = null;
+        submitFilePreview.innerHTML = '';
+        submitFileInput.value = '';
+      });
+      submitFilePreview.appendChild(item);
+    }
+    // Hide success message on new file selection
+    if (successMsg) successMsg.classList.add('hidden');
+  }
+
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  function escapeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // Submit button handler
+  if (submitBtn) {
+    submitBtn.addEventListener('click', function() {
+      const isLinkMode = submitLinkTypeBtn && submitLinkTypeBtn.classList.contains('active');
+      
+      if (isLinkMode) {
+        const linkInput = document.getElementById('assignment-submit-link-input');
+        if (!linkInput || !linkInput.value.trim()) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Missing Link',
+            text: 'Please paste a submission link.',
+            confirmButtonColor: '#0f1f4b'
+          });
+          return;
+        }
+        // Here you would send the link to your backend
+        console.log('Submitting link:', linkInput.value.trim());
+      } else {
+        if (!selectedFile) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'No File Selected',
+            text: 'Please select a file to submit.',
+            confirmButtonColor: '#0f1f4b'
+          });
+          return;
+        }
+        // Here you would upload the file to your backend
+        console.log('Submitting file:', selectedFile.name);
+      }
+
+      // Simulate successful submission (replace with actual API call)
+      Swal.fire({
+        icon: 'success',
+        title: 'Submitted!',
+        text: 'Your assignment has been submitted successfully.',
+        confirmButtonColor: '#0f1f4b'
+      });
+
+      // Show success message
+      if (successMsg) successMsg.classList.remove('hidden');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted';
+    });
+  }
+})();

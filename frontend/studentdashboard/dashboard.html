@@ -271,7 +271,7 @@
         </div>
       </div>
 
-      <!-- ===== ASSIGNMENT DETAIL VIEW ===== -->
+            <!-- ===== ASSIGNMENT DETAIL VIEW ===== -->
       <div class="page-body hidden" id="view-assignment-detail">
         <button class="back-btn" id="back-to-class-from-assignment">
           <i class="fa-solid fa-arrow-left"></i> Back to Class
@@ -341,6 +341,58 @@
           </a>
         </div>
 
+        <!-- ===== SUBMISSION AREA ===== -->
+        <div class="submission-area" id="submission-area">
+          <div class="submission-header">
+            <div class="section-header-icon-wrap">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+            <h3 class="submission-title">Submit Your Work</h3>
+          </div>
+
+          <!-- Upload Type Selection -->
+          <div class="upload-type-selector">
+            <button class="upload-type-btn active" data-upload-type="file" id="assign-submit-file-type-btn">
+              <i class="fa-solid fa-file-arrow-up"></i> Upload File
+            </button>
+            <button class="upload-type-btn" data-upload-type="link" id="assign-submit-link-type-btn">
+              <i class="fa-solid fa-link"></i> Paste Link
+            </button>
+          </div>
+
+          <!-- File Upload Zone -->
+          <div class="file-upload-zone" id="assignment-submit-file-zone">
+            <input type="file" id="assignment-submit-file-input" style="display:none" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.zip">
+            <div class="file-upload-icon">
+              <i class="fa-solid fa-cloud-arrow-up" style="font-size: 40px; color: var(--text-muted);"></i>
+            </div>
+            <p class="file-upload-title">Drag & drop your file here</p>
+            <p class="file-upload-sub">or click to browse (PDF, DOC, PPT, images, ZIP)</p>
+            <button class="btn-browse" id="assignment-submit-browse-btn">
+              <i class="fa-solid fa-folder-open"></i> Browse Files
+            </button>
+            <div class="file-preview-list" id="assignment-submit-file-preview"></div>
+          </div>
+
+          <!-- Link Input -->
+          <div class="form-group hidden" id="assignment-submit-link-group">
+            <label>Submission Link</label>
+            <input type="text" id="assignment-submit-link-input" placeholder="https://drive.google.com/... or https://...">
+          </div>
+
+          <!-- Submit Button -->
+          <button class="submit-assignment-btn" id="btn-submit-assignment">
+            <i class="fa-solid fa-paper-plane"></i> Submit Assignment
+          </button>
+
+          <!-- Submitted status (hidden by default) -->
+          <div class="submission-success-msg hidden" id="submission-success-msg">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>Assignment submitted successfully!</span>
+          </div>
+        </div>
+        <!-- ===== END SUBMISSION AREA ===== -->
+
         <!-- Mark as done -->
         <div class="mark-done-row">
           <button class="mark-done-btn dark" id="assignment-mark-btn">
@@ -354,7 +406,7 @@
           <div id="assignment-class-tag"></div>
         </div>
       </div>
-
+      
       <!-- ===== QUIZ DETAIL VIEW ===== -->
       <div class="page-body hidden" id="view-quiz-detail">
         <button class="back-btn" id="back-to-class-from-quiz">
