@@ -4,6 +4,7 @@
    1. Mark as Done button now correctly shows "✓ Finished" state
    2. Student must open/download PDF or link before marking done
    3. Progress analytics only counts genuinely submitted/marked items
+   4. Status badge (Pending/Finished) now reliably updates on mark done/undo
 ============================================================= */
 
 // ── DATA OBJECT ──────────────────────────────────────────────────
@@ -24,7 +25,7 @@ const DATA = {
     role: '',
     profilePicture: null
   },
-  scores: {} // Cache for scores by item
+  scores: {}
 };
 
 // ── STATE ────────────────────────────────────────────────────────
@@ -34,7 +35,6 @@ const state = {
   currentItem: null,
   currentType: null,
   done: new Set(),
-  // FIX #2: Track which items the student has opened/downloaded this session
   opened: new Set()
 };
 
@@ -75,8 +75,7 @@ function escapeHtml(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// ── FIX #2: OPEN-GATE HELPERS ────────────────────────────────────
-// Call this whenever the student opens/downloads the content
+// ── OPEN-GATE HELPERS ────────────────────────────────────────────
 
 function markAsOpened(type, id) {
   state.opened.add(completionKey(type, id));
@@ -86,10 +85,6 @@ function hasOpened(type, id) {
   return state.opened.has(completionKey(type, id));
 }
 
-/**
- * Returns a tooltip/warning message if the student hasn't opened the content yet.
- * Returns null if they are allowed to mark done.
- */
 function getOpenGateMessage(type) {
   const labels = {
     material: 'You must download or view the PDF before marking this lesson as done.',
@@ -99,17 +94,86 @@ function getOpenGateMessage(type) {
   return labels[type] || 'Please open the content first.';
 }
 
+// ── STATUS BADGE HELPERS ─────────────────────────────────────────
+
+/**
+ * FIX #4: Reliably finds and updates the Pending/Finished status badge
+ * in the currently visible detail view.
+ */
+function updateStatusBadge(isDone) {
+  const activeView = document.querySelector('.page-body:not(.hidden)');
+  if (!activeView) return;
+
+  let badge = null;
+
+  // 1. Try known IDs
+  const knownIds = [
+    'assignment-status-badge', 'quiz-status-badge', 'mat-status-badge',
+    'material-status-badge', 'item-status-badge', 'status-badge',
+    'mat-pending-badge', 'quiz-pending-badge', 'assignment-pending-badge'
+  ];
+  for (const id of knownIds) {
+    const el = document.getElementById(id);
+    if (el) { badge = el; break; }
+  }
+
+  // 2. Try class selectors within the active view
+  if (!badge) {
+    const classSelectors = [
+      '.detail-status-badge', '.status-badge', '.pending-badge',
+      '[data-status-badge]', '.item-status', '.status-pill'
+    ];
+    for (const sel of classSelectors) {
+      const el = activeView.querySelector(sel);
+      if (el) { badge = el; break; }
+    }
+  }
+
+  // 3. Scan by inline background color used for the pending/done pill
+  if (!badge) {
+    const allEls = activeView.querySelectorAll('span, div');
+    for (const el of allEls) {
+      if (el.offsetWidth === 0 || el.offsetWidth >= 250) continue;
+      const style = el.getAttribute('style') || '';
+      const txt = el.textContent.trim();
+      if (
+        style.includes('#fef3c7') || style.includes('#dcfce7') ||
+        style.includes('fcd34d') || style.includes('86efac') ||
+        txt === 'Pending' || txt === 'Done' || txt === 'Finished'
+      ) {
+        badge = el;
+        break;
+      }
+    }
+  }
+
+  if (!badge) return;
+  updateStatusBadgeEl(badge, isDone);
+}
+
+function updateStatusBadgeEl(el, isDone) {
+  if (!el) return;
+  if (isDone) {
+    el.innerHTML = '<i class="fa-solid fa-circle-check" style="color:#16a34a;margin-right:4px;"></i><span style="color:#16a34a;font-weight:600;">Finished</span>';
+    el.style.background = '#dcfce7';
+    el.style.border = '1.5px solid #86efac';
+    el.style.color = '#16a34a';
+  } else {
+    el.innerHTML = '<i class="fa-regular fa-circle" style="color:#d97706;margin-right:4px;"></i><span style="color:#d97706;font-weight:600;">Pending</span>';
+    el.style.background = '#fef3c7';
+    el.style.border = '1.5px solid #fcd34d';
+    el.style.color = '#d97706';
+  }
+}
+
 // ── FETCH SCORES FROM SERVER ─────────────────────────────────────
 
 async function fetchStudentScores() {
   if (!DATA.profile.id) return;
-
   try {
     const response = await fetch(`/api/student/scores/${DATA.profile.id}`);
     if (!response.ok) throw new Error('Failed to fetch scores');
     const scores = await response.json();
-
-    // Clear and repopulate scores cache
     DATA.scores = {};
     scores.forEach(score => {
       const key = completionKey(score.item_type, score.item_id);
@@ -118,16 +182,10 @@ async function fetchStudentScores() {
         completed_at: score.completed_at,
         item_title: score.item_title
       };
-
-      // FIX #3: Only mark as done in state if score is actually present (graded)
-      // Do NOT add to state.done here — completions are loaded separately via fetchCompletions
-      // Scores with null value should not count as complete
       if (score.score !== null && score.score !== undefined) {
         state.done.add(key);
       }
     });
-
-    console.log('Scores loaded:', DATA.scores);
     return scores;
   } catch (err) {
     console.error('Error fetching scores:', err);
@@ -157,14 +215,10 @@ function buildAnnouncementCard(title, body, timeAgo, isUnread = false) {
 function buildHomeTodoCard(item) {
   const d = document.createElement('div');
   d.className = 'todo-card';
-
   const key = completionKey(item.type, item.item.id);
   const scoreData = DATA.scores[key];
-  // FIX #3: only show score badge if score is a real number
   const hasScore = scoreData && scoreData.score !== null && scoreData.score !== undefined;
   const scoreDisplay = hasScore ? `<span class="todo-score">⭐ Score: ${scoreData.score}/100</span>` : '';
-
-  // FIX #1: Show "Finished" if the item is in state.done
   const isDone = state.done.has(key);
   const statusBadge = isDone
     ? `<span class="todo-done-badge" style="
@@ -174,7 +228,6 @@ function buildHomeTodoCard(item) {
         <i class="fa-solid fa-check"></i> Finished
       </span>`
     : '';
-
   d.innerHTML = `
     <div class="todo-avatar">
       <i class="fa-solid fa-list-check" aria-hidden="true"></i>
@@ -252,19 +305,13 @@ function updateProfilePictureDisplay() {
   const profileIcon = document.getElementById('profile-picture-icon');
   const sidebarAvatar = document.querySelector('.sidebar .avatar');
   const topBarAvatar = document.getElementById('top-bar-avatar');
-
   const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(DATA.profile.firstName + ' ' + DATA.profile.lastName)}&background=6366f1&color=fff`;
 
   if (DATA.profile.profilePicture) {
     const timestamp = new Date().getTime();
     const imgUrl = `/uploads/profile-pictures/${DATA.profile.profilePicture}?t=${timestamp}`;
-
-    if (profileImg) {
-      profileImg.src = imgUrl;
-      profileImg.style.display = 'block';
-    }
+    if (profileImg) { profileImg.src = imgUrl; profileImg.style.display = 'block'; }
     if (profileIcon) profileIcon.style.display = 'none';
-
     if (topBarAvatar) {
       topBarAvatar.style.backgroundImage = `url(${imgUrl})`;
       topBarAvatar.style.backgroundSize = 'cover';
@@ -272,7 +319,6 @@ function updateProfilePictureDisplay() {
       topBarAvatar.style.backgroundColor = 'transparent';
       topBarAvatar.innerHTML = '';
     }
-
     if (sidebarAvatar) {
       sidebarAvatar.style.backgroundImage = `url(${imgUrl})`;
       sidebarAvatar.style.backgroundSize = 'cover';
@@ -281,19 +327,14 @@ function updateProfilePictureDisplay() {
       sidebarAvatar.innerHTML = '';
     }
   } else {
-    if (profileImg) {
-      profileImg.src = defaultAvatar;
-      profileImg.style.display = 'block';
-    }
+    if (profileImg) { profileImg.src = defaultAvatar; profileImg.style.display = 'block'; }
     if (profileIcon) profileIcon.style.display = 'none';
-
     if (topBarAvatar) {
       topBarAvatar.style.backgroundImage = `url(${defaultAvatar})`;
       topBarAvatar.style.backgroundSize = 'cover';
       topBarAvatar.style.backgroundPosition = 'center';
       topBarAvatar.innerHTML = '';
     }
-
     if (sidebarAvatar) {
       sidebarAvatar.style.backgroundImage = `url(${defaultAvatar})`;
       sidebarAvatar.style.backgroundSize = 'cover';
@@ -305,12 +346,9 @@ function updateProfilePictureDisplay() {
 
 async function fetchAnnouncements() {
   if (!DATA.profile.id) return;
-
   try {
     const res = await fetch(`/api/student/announcements?studentId=${DATA.profile.id}`);
-
     if (!res.ok) {
-      console.log('Student endpoint failed, using fallback');
       const fallbackRes = await fetch('/api/announcements');
       if (fallbackRes.ok) {
         const data = await fallbackRes.json();
@@ -321,9 +359,7 @@ async function fetchAnnouncements() {
     } else {
       const data = await res.json();
       DATA.announcements = Array.isArray(data) ? data : (data.announcements || []);
-      console.log(`Loaded ${DATA.announcements.length} announcements for student`);
     }
-
     DATA.announcementsLoaded = true;
   } catch (err) {
     console.error('fetchAnnouncements error:', err);
@@ -340,10 +376,8 @@ async function fetchClasses() {
     const json = await response.json();
     DATA.classes = json;
     DATA.classesLoaded = true;
-
     const badgeEl = document.getElementById('profile-badge-classes');
     if (badgeEl) badgeEl.textContent = `${json.length} Class${json.length !== 1 ? 'es' : ''}`;
-
   } catch (error) {
     console.error('[fetchClasses] Error:', error);
     DATA.classes = [];
@@ -358,10 +392,7 @@ async function fetchCompletions() {
     if (!res.ok) return;
     const items = await res.json();
     state.done.clear();
-    // FIX #3: Only load completions that were explicitly marked done by the student
     items.forEach(item => state.done.add(completionKey(item.item_type, item.item_id)));
-
-    // Now load scores separately — only items with a real score value get added to done
     await fetchStudentScores();
   } catch (err) {
     console.error('fetchCompletions error:', err);
@@ -393,7 +424,6 @@ async function checkEnrollmentCode(code) {
     }
     return await response.json();
   } catch (error) {
-    console.error('Error checking code:', error);
     return { error: 'Network error' };
   }
 }
@@ -410,7 +440,6 @@ async function joinSection(code) {
       ? { success: true, message: data.message }
       : { success: false, message: data.message };
   } catch (error) {
-    console.error('Join section error:', error);
     return { success: false, message: 'Could not connect to server' };
   }
 }
@@ -422,16 +451,12 @@ function setupJoinButton() {
     joinBtn.parentNode.replaceChild(newJoinBtn, joinBtn);
     newJoinBtn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); showJoinModal(); });
   }
-
   const closeModalBtn = document.querySelector('#join-modal .close-modal');
   if (closeModalBtn) closeModalBtn.onclick = closeJoinModal;
-
   const cancelBtn = document.getElementById('cancel-join');
   if (cancelBtn) cancelBtn.onclick = closeJoinModal;
-
   const modalOverlay = document.getElementById('join-modal');
   if (modalOverlay) modalOverlay.onclick = e => { if (e.target === modalOverlay) closeJoinModal(); };
-
   const confirmBtn = document.getElementById('confirm-join');
   if (confirmBtn) {
     confirmBtn.onclick = async () => {
@@ -456,7 +481,6 @@ function setupJoinButton() {
       }
     };
   }
-
   const codeInput = document.getElementById('enrollment-code-input');
   if (codeInput) {
     codeInput.oninput = async () => {
@@ -516,7 +540,7 @@ function setActiveNav(el) {
   el.classList.add('active');
 }
 
-// ── TAB SWITCHING (class detail) ─────────────────────────────────
+// ── TAB SWITCHING ────────────────────────────────────────────────
 
 function switchDetailTab(tabName) {
   document.querySelectorAll('.detail-tab').forEach(btn => {
@@ -529,28 +553,20 @@ function switchDetailTab(tabName) {
 
 document.addEventListener('click', e => {
   const tab = e.target.closest('.detail-tab');
-  if (tab && tab.dataset.tab) {
-    switchDetailTab(tab.dataset.tab);
-  }
+  if (tab && tab.dataset.tab) switchDetailTab(tab.dataset.tab);
 });
 
-// ── RENDER ANNOUNCEMENTS (FULL VIEW) ─────────────────────────────
+// ── RENDER ANNOUNCEMENTS ─────────────────────────────────────────
 
 async function renderFullAnnouncements() {
-  if (!DATA.announcementsLoaded) {
-    await fetchAnnouncements();
-  }
-
+  if (!DATA.announcementsLoaded) await fetchAnnouncements();
   const listEl = document.getElementById('announcements-full-list');
   if (!listEl) return;
-
   listEl.innerHTML = '';
-
   if (!DATA.announcements || DATA.announcements.length === 0) {
     listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon-wrap"><i class="fa-regular fa-bell"></i></div><p class="empty-state-title">No announcements</p><p class="empty-state-sub">Nothing new from your teachers yet.</p></div>';
     return;
   }
-
   DATA.announcements.forEach(a => {
     const timeAgo = a.created_at ? formatAnnouncementTime(new Date(a.created_at)) : '';
     listEl.appendChild(buildAnnouncementCard(a.title, a.body, timeAgo, a.unread));
@@ -582,7 +598,6 @@ async function renderHome() {
     ];
     allItems.forEach(({ item, type }) => {
       const key = completionKey(type, item.id);
-      // FIX #3: Count as complete ONLY if explicitly in state.done (includes graded scores)
       if (state.done.has(key)) {
         completedCount++;
       } else {
@@ -603,10 +618,7 @@ async function renderHome() {
   if (annContainer) {
     annContainer.innerHTML = '';
     if (!DATA.announcements || DATA.announcements.length === 0) {
-      annContainer.appendChild(
-        buildEmptyState('fa-regular fa-bell', 'No announcements',
-          'Nothing new from your teachers yet. Check back later.')
-      );
+      annContainer.appendChild(buildEmptyState('fa-regular fa-bell', 'No announcements', 'Nothing new from your teachers yet. Check back later.'));
     } else {
       DATA.announcements.forEach(a => {
         const timeAgo = a.created_at ? formatAnnouncementTime(new Date(a.created_at)) : '';
@@ -618,7 +630,6 @@ async function renderHome() {
   const todoContainer = document.getElementById('home-todo-container');
   if (todoContainer) {
     todoContainer.innerHTML = '';
-
     const dayOfWeek = now.getDay();
     const monday = new Date(now);
     monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7));
@@ -628,15 +639,12 @@ async function renderHome() {
     sunday.setHours(23, 59, 59, 999);
 
     const pendingItems = [];
-
     DATA.classes.forEach(cls => {
       [
         ...(cls.materials || []).map(m => ({ ...m, type: 'material', cls })),
         ...(cls.quizzes || []).map(q => ({ ...q, type: 'quiz', cls })),
         ...(cls.assignments || []).map(a => ({ ...a, type: 'assignment', cls }))
       ].forEach(entry => {
-        const key = completionKey(entry.type, entry.id);
-        // FIX #1: Show items that are done too (with "Finished" badge), only hide truly irrelevant ones
         const due = entry.due_date ? new Date(entry.due_date) : null;
         if (!due || isNaN(due)) return;
         if (due >= monday && due <= sunday) {
@@ -655,10 +663,7 @@ async function renderHome() {
     pendingItems.sort((a, b) => a.dueDate - b.dueDate);
 
     if (pendingItems.length === 0) {
-      todoContainer.appendChild(
-        buildEmptyState('fa-regular fa-calendar-check', 'All caught up!',
-          'No tasks this week. Enjoy your free time!')
-      );
+      todoContainer.appendChild(buildEmptyState('fa-regular fa-calendar-check', 'All caught up!', 'No tasks this week. Enjoy your free time!'));
     } else {
       pendingItems.forEach(item => todoContainer.appendChild(buildHomeTodoCard(item)));
     }
@@ -679,7 +684,6 @@ async function renderHome() {
   });
 }
 
-// ── RENDER CLASSES ───────────────────────────────────────────────
 // ── CLASS DETAIL ─────────────────────────────────────────────────
 
 function openClassDetail(cls) {
@@ -699,9 +703,7 @@ function openClassDetail(cls) {
       matList.innerHTML = '<p class="detail-empty-msg">No lessons yet.</p>';
     } else {
       materials.forEach(mat => {
-        matList.appendChild(
-          buildDetailCard(mat, 'material', () => openMaterialDetail(mat, cls.title))
-        );
+        matList.appendChild(buildDetailCard(mat, 'material', () => openMaterialDetail(mat, cls.title)));
       });
     }
   }
@@ -714,9 +716,7 @@ function openClassDetail(cls) {
       assignmentsList.innerHTML = '<p class="detail-empty-msg">No assignments yet.</p>';
     } else {
       assignments.forEach(assign => {
-        assignmentsList.appendChild(
-          buildDetailCard(assign, 'assignment', () => openAssignmentDetail(assign, cls.title))
-        );
+        assignmentsList.appendChild(buildDetailCard(assign, 'assignment', () => openAssignmentDetail(assign, cls.title)));
       });
     }
   }
@@ -729,9 +729,7 @@ function openClassDetail(cls) {
       quizList.innerHTML = '<p class="detail-empty-msg">No quizzes yet.</p>';
     } else {
       quizzes.forEach(quiz => {
-        quizList.appendChild(
-          buildDetailCard(quiz, 'quiz', () => openQuizDetail(quiz, cls.title))
-        );
+        quizList.appendChild(buildDetailCard(quiz, 'quiz', () => openQuizDetail(quiz, cls.title)));
       });
     }
   }
@@ -741,15 +739,14 @@ function openClassDetail(cls) {
 }
 
 function buildDetailCard(item, type, clickHandler) {
-  const key    = completionKey(type, item.id);
-  // FIX #3: Only mark done if explicitly in state.done (which already accounts for graded scores)
+  const key = completionKey(type, item.id);
   const isDone = state.done.has(key);
-  const score  = DATA.scores[key]?.score;
+  const score = DATA.scores[key]?.score;
   const hasScore = score !== null && score !== undefined;
 
   const iconMap = {
-    material:   'fa-solid fa-book-open',
-    quiz:       'fa-solid fa-clipboard-question',
+    material: 'fa-solid fa-book-open',
+    quiz: 'fa-solid fa-clipboard-question',
     assignment: 'fa-solid fa-file-lines'
   };
   const icon = iconMap[type] || 'fa-solid fa-file';
@@ -764,8 +761,6 @@ function buildDetailCard(item, type, clickHandler) {
   const el = document.createElement('div');
   el.className = (type === 'material' ? 'material-item' : 'quiz-item') + (isDone ? ' done' : '');
   el._itemId = item.id;
-
-  // FIX #1: Show "Finished" badge text instead of just "Done"
   el.innerHTML = `
     <div class="item-card-icon">
       <i class="${icon}"></i>
@@ -776,7 +771,6 @@ function buildDetailCard(item, type, clickHandler) {
     </div>
     ${isDone ? '<span class="item-card-badge"><i class="fa-solid fa-check"></i> Finished</span>' : ''}
   `;
-
   el.addEventListener('click', clickHandler);
   return el;
 }
@@ -792,19 +786,13 @@ async function renderClasses() {
     grid.innerHTML = '<p style="color:var(--text-muted);padding:20px;">Loading classes...</p>';
     await fetchClasses();
   }
+  if (!DATA.archivedLoaded) await fetchArchivedClasses();
 
-  if (!DATA.archivedLoaded) {
-    await fetchArchivedClasses();
-  }
-
-  // ── Active classes ──
   grid.innerHTML = '';
   if (DATA.classes.length === 0) {
     grid.innerHTML = `
       <div class="empty-state" style="padding:48px 20px;">
-        <div class="empty-state-icon-wrap">
-          <i class="fa-solid fa-chalkboard-user"></i>
-        </div>
+        <div class="empty-state-icon-wrap"><i class="fa-solid fa-chalkboard-user"></i></div>
         <p class="empty-state-title">No classes yet</p>
         <p class="empty-state-sub">Join a class using an enrollment code from your teacher.</p>
       </div>`;
@@ -814,17 +802,13 @@ async function renderClasses() {
       card.className = 'class-card';
       card.style.position = 'relative';
       card.innerHTML = `
-        <div class="class-card-icon">
-          <i class="fa-solid fa-book-open"></i>
-        </div>
+        <div class="class-card-icon"><i class="fa-solid fa-book-open"></i></div>
         <div class="class-card-info">
           <p class="class-card-title">${escapeHtml(cls.title)}</p>
           <p class="class-card-prof">${escapeHtml(cls.professor)}</p>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <div class="class-card-action">
-            View Class <i class="fa-solid fa-arrow-right"></i>
-          </div>
+          <div class="class-card-action">View Class <i class="fa-solid fa-arrow-right"></i></div>
           <button class="archive-class-btn" title="Archive class" style="
             background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;
             padding:6px 10px;cursor:pointer;color:#64748b;font-size:13px;
@@ -834,39 +818,24 @@ async function renderClasses() {
           </button>
         </div>
       `;
-
-      card.querySelector('.class-card-action').addEventListener('click', (e) => {
-        e.stopPropagation();
-        openClassDetail(cls);
-      });
-
-      card.querySelector('.archive-class-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        archiveClass(cls);
-      });
-
+      card.querySelector('.class-card-action').addEventListener('click', e => { e.stopPropagation(); openClassDetail(cls); });
+      card.querySelector('.archive-class-btn').addEventListener('click', e => { e.stopPropagation(); archiveClass(cls); });
       card.addEventListener('click', () => openClassDetail(cls));
       grid.appendChild(card);
     });
   }
 
-  // ── Archived classes ──
   if (archivedGrid) {
     archivedGrid.innerHTML = '';
     if (DATA.archivedClasses.length === 0) {
-      archivedGrid.innerHTML = `
-        <div class="empty-state" style="padding:24px 20px;">
-          <p class="empty-state-title" style="font-size:13px;">No archived classes</p>
-        </div>`;
+      archivedGrid.innerHTML = `<div class="empty-state" style="padding:24px 20px;"><p class="empty-state-title" style="font-size:13px;">No archived classes</p></div>`;
     } else {
       DATA.archivedClasses.forEach(cls => {
         const card = document.createElement('div');
         card.className = 'class-card';
         card.style.cssText = 'opacity:0.7;position:relative;';
         card.innerHTML = `
-          <div class="class-card-icon" style="background:#f1f5f9;">
-            <i class="fa-solid fa-box-archive" style="color:#94a3b8;"></i>
-          </div>
+          <div class="class-card-icon" style="background:#f1f5f9;"><i class="fa-solid fa-box-archive" style="color:#94a3b8;"></i></div>
           <div class="class-card-info">
             <p class="class-card-title">${escapeHtml(cls.title)}</p>
             <p class="class-card-prof">${escapeHtml(cls.professor)}</p>
@@ -879,18 +848,12 @@ async function renderClasses() {
             <i class="fa-solid fa-rotate-left"></i> Unarchive
           </button>
         `;
-
-        card.querySelector('.archive-class-btn').addEventListener('click', (e) => {
-          e.stopPropagation();
-          unarchiveClass(cls);
-        });
-
+        card.querySelector('.archive-class-btn').addEventListener('click', e => { e.stopPropagation(); unarchiveClass(cls); });
         archivedGrid.appendChild(card);
       });
     }
   }
 
-  // ── Archived toggle ──
   const toggle = document.getElementById('archived-toggle');
   if (toggle && archivedGrid) {
     const newToggle = toggle.cloneNode(true);
@@ -917,18 +880,24 @@ function openMaterialDetail(mat, className) {
   const classNameEl = document.getElementById('mat-class-name');
   if (classNameEl) classNameEl.textContent = className;
 
-  // FIX #2: Intercept PDF link click to mark as opened
+  const hasPdf = mat.pdf_url && mat.pdf_url.trim() !== '' && mat.pdf_url !== '#';
+  if (!hasPdf) markAsOpened('material', mat.id);
+
   const pdfLinkEl = document.getElementById('mat-pdf-link');
   if (pdfLinkEl) {
-    pdfLinkEl.href = mat.pdf_url || '#';
-    // Clone to remove old listeners
-    const newPdfLink = pdfLinkEl.cloneNode(true);
-    pdfLinkEl.parentNode.replaceChild(newPdfLink, pdfLinkEl);
-    newPdfLink.addEventListener('click', () => {
-      markAsOpened('material', mat.id);
-      // Update the mark-done button state after a short delay
-      setTimeout(() => refreshMarkDoneButton('material', mat.id), 300);
-    });
+    if (hasPdf) {
+      pdfLinkEl.href = mat.pdf_url;
+      pdfLinkEl.style.display = '';
+      const newPdfLink = pdfLinkEl.cloneNode(true);
+      pdfLinkEl.parentNode.replaceChild(newPdfLink, pdfLinkEl);
+      newPdfLink.addEventListener('click', () => {
+        markAsOpened('material', mat.id);
+        setTimeout(() => refreshMarkDoneButton('material', mat.id), 300);
+      });
+    } else {
+      pdfLinkEl.href = '#';
+      pdfLinkEl.style.display = 'none';
+    }
   }
 
   const descEl = document.getElementById('mat-description');
@@ -941,10 +910,180 @@ function openMaterialDetail(mat, className) {
   }
 
   refreshMarkDoneButton('material', mat.id);
+  updateStatusBadge(state.done.has(completionKey('material', mat.id)));
   showView('material-detail');
 }
 
-// ── FIX #2: Centralized button refresh for mark-done ─────────────
+// ── QUIZ DETAIL ──────────────────────────────────────────────────
+
+function openQuizDetail(quiz, className) {
+  state.currentItem = quiz;
+  state.currentType = 'quiz';
+
+  const titleEl = document.getElementById('quiz-title');
+  if (titleEl) titleEl.textContent = quiz.title;
+
+  const classNameEl = document.getElementById('quiz-class-name');
+  if (classNameEl) classNameEl.textContent = className;
+
+  const hasQuizLink = quiz.link && quiz.link.trim() !== '' && quiz.link !== '#';
+  if (!hasQuizLink) markAsOpened('quiz', quiz.id);
+
+  const linkEl = document.getElementById('quiz-link');
+  if (linkEl) {
+    if (hasQuizLink) {
+      linkEl.href = quiz.link;
+      linkEl.textContent = quiz.link_label || 'Open Quiz';
+      linkEl.style.display = '';
+      const newLinkEl = linkEl.cloneNode(true);
+      newLinkEl.textContent = quiz.link_label || 'Open Quiz';
+      linkEl.parentNode.replaceChild(newLinkEl, linkEl);
+      newLinkEl.addEventListener('click', () => {
+        markAsOpened('quiz', quiz.id);
+        setTimeout(() => refreshMarkDoneButton('quiz', quiz.id), 300);
+      });
+    } else {
+      linkEl.style.display = 'none';
+    }
+  }
+
+  const descEl = document.getElementById('quiz-description');
+  if (descEl) descEl.textContent = quiz.description || 'No description available.';
+
+  const quizDueEl = document.getElementById('quiz-due-text');
+  if (quizDueEl) {
+    quizDueEl.textContent = quiz.due_date ? 'Due ' + formatDueDate(quiz.due_date) : '';
+    quizDueEl.style.display = quiz.due_date ? 'block' : 'none';
+  }
+
+  const key = completionKey('quiz', quiz.id);
+  const scoreData = DATA.scores[key];
+  const hasScore = scoreData && scoreData.score !== null && scoreData.score !== undefined;
+
+  const scoreDisplayEl = document.getElementById('quiz-score-display');
+  if (scoreDisplayEl) {
+    if (hasScore) {
+      scoreDisplayEl.innerHTML = `<div class="score-badge">⭐ Your Score: ${scoreData.score}/100</div>`;
+      scoreDisplayEl.style.display = 'block';
+    } else {
+      scoreDisplayEl.style.display = 'none';
+    }
+  }
+
+  const isDone = state.done.has(key) || hasScore;
+
+  const btn = document.getElementById('quiz-mark-btn');
+  if (btn) {
+    const dueDate = quiz.due_date ? new Date(quiz.due_date) : null;
+    const isOverdue = dueDate && new Date() > dueDate;
+
+    if (isDone) {
+      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
+      btn.className = 'mark-done-btn done-state';
+      btn.disabled = false;
+      btn.style.opacity = '';
+      btn.style.cursor = '';
+      btn.onclick = () => markDone('quiz');
+    } else if (isOverdue) {
+      btn.innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Past due date';
+      btn.className = 'mark-done-btn dark';
+      btn.disabled = true;
+      btn.style.opacity = '0.55';
+      btn.onclick = null;
+    } else {
+      refreshMarkDoneButton('quiz', quiz.id);
+    }
+  }
+
+  // FIX #4: Always update badge on open
+  updateStatusBadge(isDone);
+  showView('quiz-detail');
+}
+
+// ── ASSIGNMENT DETAIL ────────────────────────────────────────────
+
+function openAssignmentDetail(assign, className) {
+  state.currentItem = assign;
+  state.currentType = 'assignment';
+
+  const titleEl = document.getElementById('assignment-title');
+  if (titleEl) titleEl.textContent = assign.title;
+
+  const classNameEl = document.getElementById('assignment-class-name');
+  if (classNameEl) classNameEl.textContent = className;
+
+  const hasAssignLink = assign.link && assign.link.trim() !== '' && assign.link !== '#';
+  if (!hasAssignLink) markAsOpened('assignment', assign.id);
+
+  const linkEl = document.getElementById('assignment-link');
+  if (linkEl) {
+    if (hasAssignLink) {
+      linkEl.href = assign.link;
+      linkEl.style.display = '';
+      const newLinkEl = linkEl.cloneNode(true);
+      linkEl.parentNode.replaceChild(newLinkEl, linkEl);
+      newLinkEl.addEventListener('click', () => {
+        markAsOpened('assignment', assign.id);
+        setTimeout(() => refreshMarkDoneButton('assignment', assign.id), 300);
+      });
+    } else {
+      linkEl.href = '#';
+      linkEl.style.display = 'none';
+    }
+  }
+
+  const descEl = document.getElementById('assignment-description');
+  if (descEl) descEl.textContent = assign.description || '';
+
+  const dueEl = document.getElementById('assignment-due-text');
+  if (dueEl) dueEl.textContent = assign.due_date ? 'Due ' + formatDueDate(assign.due_date) : '';
+
+  const key = completionKey('assignment', assign.id);
+  const scoreData = DATA.scores[key];
+  const hasScore = scoreData && scoreData.score !== null && scoreData.score !== undefined;
+
+  const scoreDisplayEl = document.getElementById('assignment-score-display');
+  if (scoreDisplayEl) {
+    if (hasScore) {
+      scoreDisplayEl.innerHTML = `<div class="score-badge">⭐ Your Grade: ${scoreData.score}/100</div>`;
+      scoreDisplayEl.style.display = 'block';
+    } else {
+      scoreDisplayEl.style.display = 'none';
+    }
+  }
+
+  const gradeBadge = document.getElementById('assignment-grade-badge');
+  if (gradeBadge) {
+    if (hasScore) {
+      gradeBadge.innerHTML = `<span class="grade-chip">Graded: ${scoreData.score}/100</span>`;
+      gradeBadge.style.display = 'block';
+    } else {
+      gradeBadge.style.display = 'none';
+    }
+  }
+
+  const isDone = state.done.has(key) || hasScore;
+
+  const btn = document.getElementById('assignment-mark-btn');
+  if (btn) {
+    if (isDone) {
+      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
+      btn.className = 'mark-done-btn done-state';
+      btn.disabled = false;
+      btn.style.opacity = '';
+      btn.style.cursor = '';
+      btn.onclick = () => markDone('assignment');
+    } else {
+      refreshMarkDoneButton('assignment', assign.id);
+    }
+  }
+
+  // FIX #4: Always update badge on open
+  updateStatusBadge(isDone);
+  showView('assignment-detail');
+}
+
+// ── REFRESH MARK-DONE BUTTON ─────────────────────────────────────
 
 function refreshMarkDoneButton(type, itemId) {
   const btnId = type === 'material' ? 'mat-mark-btn'
@@ -958,21 +1097,20 @@ function refreshMarkDoneButton(type, itemId) {
   const opened = hasOpened(type, itemId);
 
   if (isDone) {
-    // FIX #1: Show "✓ Finished" consistently
     btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
     btn.className = 'mark-done-btn done-state';
     btn.disabled = false;
+    btn.style.opacity = '';
+    btn.style.cursor = '';
     btn.title = '';
     btn.onclick = () => markDone(type);
     return;
   }
 
-  // FIX #2: Gate — student must open content first
   if (!opened) {
     const actionLabel = type === 'material' ? 'Download PDF first'
       : type === 'quiz' ? 'Open quiz link first'
       : 'Open assignment link first';
-
     btn.innerHTML = `<i class="fa-solid fa-lock"></i> ${actionLabel}`;
     btn.className = 'mark-done-btn dark';
     btn.disabled = true;
@@ -991,6 +1129,8 @@ function refreshMarkDoneButton(type, itemId) {
   }
 }
 
+// ── ARCHIVE / UNARCHIVE ──────────────────────────────────────────
+
 async function fetchArchivedClasses() {
   if (!DATA.profile.id) return;
   try {
@@ -1008,35 +1148,20 @@ async function archiveClass(cls) {
   const result = await Swal.fire({
     title: 'Archive this class?',
     text: `"${cls.title}" will be moved to your archived classes.`,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Yes, archive it',
-    cancelButtonText: 'Cancel',
+    icon: 'question', showCancelButton: true,
+    confirmButtonText: 'Yes, archive it', cancelButtonText: 'Cancel',
     confirmButtonColor: '#0f1f4b'
   });
-
   if (!result.isConfirmed) return;
-
   try {
     const response = await fetch('/api/archive-class', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        studentId: DATA.profile.id,
-        sectionId: cls.section_id
-      })
+      body: JSON.stringify({ studentId: DATA.profile.id, sectionId: cls.section_id })
     });
-
     const data = await response.json();
-
     if (response.ok) {
-      Swal.fire({
-        icon: 'success',
-        title: 'Archived!',
-        text: `"${cls.title}" has been archived.`,
-        timer: 1500,
-        showConfirmButton: false
-      });
+      Swal.fire({ icon: 'success', title: 'Archived!', text: `"${cls.title}" has been archived.`, timer: 1500, showConfirmButton: false });
       DATA.classes = DATA.classes.filter(c => c.section_id !== cls.section_id);
       DATA.archivedClasses.push(cls);
       await renderClasses();
@@ -1044,7 +1169,6 @@ async function archiveClass(cls) {
       Swal.fire('Error', data.message || 'Could not archive class', 'error');
     }
   } catch (err) {
-    console.error('Archive error:', err);
     Swal.fire('Error', 'Could not connect to server', 'error');
   }
 }
@@ -1053,35 +1177,20 @@ async function unarchiveClass(cls) {
   const result = await Swal.fire({
     title: 'Unarchive this class?',
     text: `"${cls.title}" will be moved back to your active classes.`,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: 'Yes, unarchive',
-    cancelButtonText: 'Cancel',
+    icon: 'question', showCancelButton: true,
+    confirmButtonText: 'Yes, unarchive', cancelButtonText: 'Cancel',
     confirmButtonColor: '#0f1f4b'
   });
-
   if (!result.isConfirmed) return;
-
   try {
     const response = await fetch('/api/unarchive-class', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        studentId: DATA.profile.id,
-        sectionId: cls.section_id
-      })
+      body: JSON.stringify({ studentId: DATA.profile.id, sectionId: cls.section_id })
     });
-
     const data = await response.json();
-
     if (response.ok) {
-      Swal.fire({
-        icon: 'success',
-        title: 'Unarchived!',
-        text: `"${cls.title}" is back in your active classes.`,
-        timer: 1500,
-        showConfirmButton: false
-      });
+      Swal.fire({ icon: 'success', title: 'Unarchived!', text: `"${cls.title}" is back in your active classes.`, timer: 1500, showConfirmButton: false });
       DATA.archivedClasses = DATA.archivedClasses.filter(c => c.section_id !== cls.section_id);
       DATA.classes.push(cls);
       await renderClasses();
@@ -1089,166 +1198,8 @@ async function unarchiveClass(cls) {
       Swal.fire('Error', data.message || 'Could not unarchive class', 'error');
     }
   } catch (err) {
-    console.error('Unarchive error:', err);
     Swal.fire('Error', 'Could not connect to server', 'error');
   }
-}
-
-// ── QUIZ DETAIL ──────────────────────────────────────────────────
-
-function openQuizDetail(quiz, className) {
-  state.currentItem = quiz;
-  state.currentType = 'quiz';
-
-  const titleEl = document.getElementById('quiz-title');
-  if (titleEl) titleEl.textContent = quiz.title;
-
-  const classNameEl = document.getElementById('quiz-class-name');
-  if (classNameEl) classNameEl.textContent = className;
-
-  // FIX #2: Intercept quiz link click to mark as opened
-  const linkEl = document.getElementById('quiz-link');
-  if (linkEl) {
-    linkEl.href = quiz.link || '#';
-    linkEl.textContent = quiz.link_label || 'Open Quiz';
-    const newLinkEl = linkEl.cloneNode(true);
-    newLinkEl.textContent = quiz.link_label || 'Open Quiz';
-    linkEl.parentNode.replaceChild(newLinkEl, linkEl);
-    newLinkEl.addEventListener('click', () => {
-      markAsOpened('quiz', quiz.id);
-      setTimeout(() => refreshMarkDoneButton('quiz', quiz.id), 300);
-    });
-  }
-
-  const descEl = document.getElementById('quiz-description');
-  if (descEl) descEl.textContent = quiz.description || 'No description available.';
-
-  const quizDueEl = document.getElementById('quiz-due-text');
-  if (quizDueEl) {
-    quizDueEl.textContent = quiz.due_date ? 'Due ' + formatDueDate(quiz.due_date) : '';
-    quizDueEl.style.display = quiz.due_date ? 'block' : 'none';
-  }
-
-  // Show score if available
-  const key = completionKey('quiz', quiz.id);
-  const scoreData = DATA.scores[key];
-  const hasScore = scoreData && scoreData.score !== null && scoreData.score !== undefined;
-
-  const scoreDisplayEl = document.getElementById('quiz-score-display');
-  if (scoreDisplayEl) {
-    if (hasScore) {
-      scoreDisplayEl.innerHTML = `<div class="score-badge">⭐ Your Score: ${scoreData.score}/100</div>`;
-      scoreDisplayEl.style.display = 'block';
-    } else {
-      scoreDisplayEl.style.display = 'none';
-    }
-  }
-
-  // Handle overdue state separately from open-gate
-  const btn = document.getElementById('quiz-mark-btn');
-  if (btn) {
-    const dueDate = quiz.due_date ? new Date(quiz.due_date) : null;
-    const isOverdue = dueDate && new Date() > dueDate;
-    const isDone = state.done.has(key) || hasScore;
-
-    if (isDone) {
-      // FIX #1: Consistent "Finished" label
-      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
-      btn.className = 'mark-done-btn done-state';
-      btn.disabled = false;
-      btn.style.opacity = '';
-      btn.style.cursor = '';
-      btn.onclick = () => markDone('quiz');
-    } else if (isOverdue) {
-      btn.innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Past due date';
-      btn.className = 'mark-done-btn dark';
-      btn.disabled = true;
-      btn.style.opacity = '0.55';
-      btn.onclick = null;
-    } else {
-      // Will be set by refreshMarkDoneButton based on open-gate
-      refreshMarkDoneButton('quiz', quiz.id);
-    }
-  }
-
-  showView('quiz-detail');
-}
-
-// ── ASSIGNMENT DETAIL ────────────────────────────────────────────
-
-function openAssignmentDetail(assign, className) {
-  state.currentItem = assign;
-  state.currentType = 'assignment';
-
-  const titleEl = document.getElementById('assignment-title');
-  if (titleEl) titleEl.textContent = assign.title;
-
-  const classNameEl = document.getElementById('assignment-class-name');
-  if (classNameEl) classNameEl.textContent = className;
-
-  // FIX #2: Intercept assignment link click to mark as opened
-  const linkEl = document.getElementById('assignment-link');
-  if (linkEl) {
-    linkEl.href = assign.link || '#';
-    const newLinkEl = linkEl.cloneNode(true);
-    linkEl.parentNode.replaceChild(newLinkEl, linkEl);
-    newLinkEl.addEventListener('click', () => {
-      markAsOpened('assignment', assign.id);
-      setTimeout(() => refreshMarkDoneButton('assignment', assign.id), 300);
-    });
-  }
-
-  const descEl = document.getElementById('assignment-description');
-  if (descEl) descEl.textContent = assign.description || '';
-
-  const dueEl = document.getElementById('assignment-due-text');
-  if (dueEl) {
-    dueEl.textContent = assign.due_date ? 'Due ' + formatDueDate(assign.due_date) : '';
-  }
-
-  // Show score if available
-  const key = completionKey('assignment', assign.id);
-  const scoreData = DATA.scores[key];
-  const hasScore = scoreData && scoreData.score !== null && scoreData.score !== undefined;
-
-  const scoreDisplayEl = document.getElementById('assignment-score-display');
-  const gradeBadge = document.getElementById('assignment-grade-badge');
-
-  if (scoreDisplayEl) {
-    if (hasScore) {
-      scoreDisplayEl.innerHTML = `<div class="score-badge">⭐ Your Grade: ${scoreData.score}/100</div>`;
-      scoreDisplayEl.style.display = 'block';
-    } else {
-      scoreDisplayEl.style.display = 'none';
-    }
-  }
-
-  if (gradeBadge) {
-    if (hasScore) {
-      gradeBadge.innerHTML = `<span class="grade-chip">Graded: ${scoreData.score}/100</span>`;
-      gradeBadge.style.display = 'block';
-    } else {
-      gradeBadge.style.display = 'none';
-    }
-  }
-
-  // FIX #1 + #2: Use refreshMarkDoneButton for consistent state
-  const isDone = state.done.has(key) || hasScore;
-  const btn = document.getElementById('assignment-mark-btn');
-  if (btn) {
-    if (isDone) {
-      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
-      btn.className = 'mark-done-btn done-state';
-      btn.disabled = false;
-      btn.style.opacity = '';
-      btn.style.cursor = '';
-      btn.onclick = () => markDone('assignment');
-    } else {
-      refreshMarkDoneButton('assignment', assign.id);
-    }
-  }
-
-  showView('assignment-detail');
 }
 
 // ── MARK DONE / UNDO ─────────────────────────────────────────────
@@ -1262,7 +1213,7 @@ async function markDone(type) {
   if (btn) btn.disabled = true;
 
   if (state.done.has(key)) {
-    // Undo flow
+    // ── UNDO FLOW ──
     const result = await Swal.fire({
       title: 'Are you sure?', text: 'Do you want to undo marking this as finished?',
       icon: 'warning', showCancelButton: true,
@@ -1277,9 +1228,10 @@ async function markDone(type) {
         });
         state.done.delete(key);
 
-        // FIX #1: After undo, refresh button based on open-gate
-        refreshMarkDoneButton(type, id);
+        // FIX #4: Force badge to Pending immediately
+        updateStatusBadge(false);
 
+        refreshMarkDoneButton(type, id);
         updateItemDisplay(type, id, false);
         if (state.currentView === 'progress') renderProgress();
         if (state.currentView === 'home') renderHome();
@@ -1291,7 +1243,7 @@ async function markDone(type) {
       if (btn) btn.disabled = false;
     }
   } else {
-    // Mark done flow
+    // ── MARK DONE FLOW ──
     try {
       await fetch('/api/mark-done', {
         method: 'POST',
@@ -1300,7 +1252,9 @@ async function markDone(type) {
       });
       state.done.add(key);
 
-      // FIX #1: Show "✓ Finished" immediately and consistently
+      // FIX #4: Force badge to Finished immediately
+      updateStatusBadge(true);
+
       if (btn) {
         btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
         btn.className = 'mark-done-btn done-state';
@@ -1331,12 +1285,10 @@ function updateItemDisplay(type, id, isDone) {
   document.querySelectorAll(selector).forEach(item => {
     if (item._itemId === id) {
       isDone ? item.classList.add('done') : item.classList.remove('done');
-
       const existingBadge = item.querySelector('.item-card-badge');
       if (isDone && !existingBadge) {
         const badge = document.createElement('span');
         badge.className = 'item-card-badge';
-        // FIX #1: Consistent "Finished" label
         badge.innerHTML = '<i class="fa-solid fa-check"></i> Finished';
         item.appendChild(badge);
         const icon = item.querySelector('.item-card-icon');
@@ -1364,7 +1316,6 @@ function renderTodo() {
         ...(cls.assignments || []).map(a => ({ ...a, type: 'assignment', cls }))
       ].forEach(entry => {
         const key = completionKey(entry.type, entry.id);
-        // FIX #3: Only skip if explicitly done
         if (state.done.has(key)) return;
         if (!entry.due_date) return;
         allTodos.push({
@@ -1449,8 +1400,6 @@ function renderProgress() {
     const quizzes = cls.quizzes || [];
     const assignments = cls.assignments || [];
     const classTotal = materials.length + quizzes.length + assignments.length;
-
-    // FIX #3: Only count items that are explicitly in state.done (student actually marked/submitted)
     const classCompleted = [
       ...materials.map(m => completionKey('material', m.id)),
       ...quizzes.map(q => completionKey('quiz', q.id)),
@@ -1464,9 +1413,7 @@ function renderProgress() {
     const card = document.createElement('div');
     card.className = 'progress-card';
     card.innerHTML = `
-      <div class="progress-card-icon">
-        <i class="fa-solid fa-book-open"></i>
-      </div>
+      <div class="progress-card-icon"><i class="fa-solid fa-book-open"></i></div>
       <div class="progress-card-body">
         <div class="progress-card-header">
           <span class="progress-card-name">${escapeHtml(cls.title)}</span>
@@ -1478,11 +1425,7 @@ function renderProgress() {
         </div>
       </div>
     `;
-
-    card.addEventListener('click', () => {
-      openScoresModal(cls);
-    });
-
+    card.addEventListener('click', () => openScoresModal(cls));
     if (list) list.appendChild(card);
   });
 
@@ -1512,7 +1455,6 @@ async function openScoresModal(cls) {
   const modal = document.getElementById('scores-modal-overlay');
   const title = document.getElementById('scores-modal-title');
   const body = document.getElementById('scores-modal-body');
-
   if (!modal || !body) return;
 
   title.textContent = cls.title + ' - Your Progress';
@@ -1520,12 +1462,7 @@ async function openScoresModal(cls) {
   modal.classList.add('active');
 
   if (!DATA.profile.id) {
-    body.innerHTML = `
-      <div class="scores-empty">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-        <p>Unable to load scores. Please try logging out and back in.</p>
-      </div>
-    `;
+    body.innerHTML = `<div class="scores-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>Unable to load scores. Please try logging out and back in.</p></div>`;
     return;
   }
 
@@ -1533,52 +1470,24 @@ async function openScoresModal(cls) {
     const response = await fetch(`/api/student/scores/${DATA.profile.id}`);
     if (!response.ok) throw new Error('Failed to fetch scores');
     const allScores = await response.json();
-
     const completedItems = [];
 
-    // FIX #3: Only show items that are in state.done
     (cls.materials || []).forEach(m => {
       if (state.done.has(completionKey('material', m.id))) {
         const scoreData = allScores.find(s => s.item_type === 'material' && s.item_id === m.id);
-        completedItems.push({
-          title: m.title,
-          type: 'material',
-          typeLabel: 'Lesson',
-          icon: 'fa-solid fa-book-open',
-          iconClass: 'score-item-icon',
-          completedAt: scoreData?.completed_at || null,
-          score: scoreData?.score ?? null
-        });
+        completedItems.push({ title: m.title, type: 'material', typeLabel: 'Lesson', icon: 'fa-solid fa-book-open', iconClass: 'score-item-icon', completedAt: scoreData?.completed_at || null, score: scoreData?.score ?? null });
       }
     });
-
     (cls.quizzes || []).forEach(q => {
       if (state.done.has(completionKey('quiz', q.id))) {
         const scoreData = allScores.find(s => s.item_type === 'quiz' && s.item_id === q.id);
-        completedItems.push({
-          title: q.title,
-          type: 'quiz',
-          typeLabel: 'Quiz',
-          icon: 'fa-solid fa-clipboard-question',
-          iconClass: 'score-item-icon quiz-icon',
-          completedAt: scoreData?.completed_at || null,
-          score: scoreData?.score ?? null
-        });
+        completedItems.push({ title: q.title, type: 'quiz', typeLabel: 'Quiz', icon: 'fa-solid fa-clipboard-question', iconClass: 'score-item-icon quiz-icon', completedAt: scoreData?.completed_at || null, score: scoreData?.score ?? null });
       }
     });
-
     (cls.assignments || []).forEach(a => {
       if (state.done.has(completionKey('assignment', a.id))) {
         const scoreData = allScores.find(s => s.item_type === 'assignment' && s.item_id === a.id);
-        completedItems.push({
-          title: a.title,
-          type: 'assignment',
-          typeLabel: 'Assignment',
-          icon: 'fa-solid fa-file-lines',
-          iconClass: 'score-item-icon assignment-icon',
-          completedAt: scoreData?.completed_at || null,
-          score: scoreData?.score ?? null
-        });
+        completedItems.push({ title: a.title, type: 'assignment', typeLabel: 'Assignment', icon: 'fa-solid fa-file-lines', iconClass: 'score-item-icon assignment-icon', completedAt: scoreData?.completed_at || null, score: scoreData?.score ?? null });
       }
     });
 
@@ -1588,42 +1497,23 @@ async function openScoresModal(cls) {
       : null;
 
     let html = '';
-
     if (avgScore !== null) {
-      html += `
-        <div class="scores-summary">
-          <span class="scores-summary-label">
-            <i class="fa-solid fa-calculator"></i> Average Score
-          </span>
-          <span class="scores-summary-value">${avgScore}%</span>
-        </div>
-      `;
+      html += `<div class="scores-summary"><span class="scores-summary-label"><i class="fa-solid fa-calculator"></i> Average Score</span><span class="scores-summary-value">${avgScore}%</span></div>`;
     }
 
     if (completedItems.length === 0) {
-      html += `
-        <div class="scores-empty">
-          <i class="fa-solid fa-clipboard-list"></i>
-          <p>No finished items yet.<br>Mark quizzes and assignments as done to see your progress here.</p>
-        </div>
-      `;
+      html += `<div class="scores-empty"><i class="fa-solid fa-clipboard-list"></i><p>No finished items yet.<br>Mark quizzes and assignments as done to see your progress here.</p></div>`;
     } else {
       completedItems.forEach(item => {
         const dateStr = item.completedAt
-          ? new Date(item.completedAt).toLocaleDateString('en-US', {
-            month: 'short', day: 'numeric', year: 'numeric'
-          })
+          ? new Date(item.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
           : '';
-
         const scoreDisplay = item.score !== null && item.score !== undefined
           ? `<div class="score-item-value ${item.score >= 75 ? 'score-pass' : 'score-fail'}">${item.score}<span class="score-item-max">/100</span></div>`
           : `<div class="score-item-value no-score">Not yet graded</div>`;
-
         html += `
           <div class="score-item-card">
-            <div class="${item.iconClass}">
-              <i class="${item.icon}"></i>
-            </div>
+            <div class="${item.iconClass}"><i class="${item.icon}"></i></div>
             <div class="score-item-info">
               <div class="score-item-title">${escapeHtml(item.title)}</div>
               <div class="score-item-type">${item.typeLabel}</div>
@@ -1636,37 +1526,21 @@ async function openScoresModal(cls) {
     }
 
     body.innerHTML = html;
-
   } catch (err) {
-    console.error('Error loading scores:', err);
-    body.innerHTML = `
-      <div class="scores-empty">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-        <p>Failed to load scores. Please try again.</p>
-      </div>
-    `;
+    body.innerHTML = `<div class="scores-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>Failed to load scores. Please try again.</p></div>`;
   }
 }
-
-// ── CLOSE SCORES MODAL ───────────────────────────────────────────
 
 function closeScoresModal() {
   const modal = document.getElementById('scores-modal-overlay');
   if (modal) modal.classList.remove('active');
 }
 
-document.addEventListener('click', (e) => {
-  if (e.target.id === 'scores-modal-close' || e.target.closest('#scores-modal-close')) {
-    closeScoresModal();
-  }
-  if (e.target.id === 'scores-modal-overlay') {
-    closeScoresModal();
-  }
+document.addEventListener('click', e => {
+  if (e.target.id === 'scores-modal-close' || e.target.closest('#scores-modal-close')) closeScoresModal();
+  if (e.target.id === 'scores-modal-overlay') closeScoresModal();
 });
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeScoresModal();
-});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeScoresModal(); });
 
 // ── PROFILE ──────────────────────────────────────────────────────
 
@@ -1697,7 +1571,6 @@ function refreshProfileDisplay() {
     const count = DATA.classes.length;
     badgeEl.textContent = `${count} Class${count !== 1 ? 'es' : ''}`;
   }
-
   updateProfilePictureDisplay();
 }
 
@@ -1756,7 +1629,6 @@ document.addEventListener('change', e => {
   const formData = new FormData();
   formData.append('profilePicture', file);
   formData.append('userId', DATA.profile.id);
-
   fetch('/api/upload-profile-picture', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(data => {
@@ -1776,14 +1648,10 @@ document.addEventListener('change', e => {
 document.addEventListener('click', async e => {
   if (e.target.id === 'remove-picture-btn' || e.target.closest('#remove-picture-btn')) {
     const result = await Swal.fire({
-      title: 'Remove picture?',
-      text: 'Your profile picture will be removed.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Remove',
-      cancelButtonText: 'Cancel'
+      title: 'Remove picture?', text: 'Your profile picture will be removed.',
+      icon: 'warning', showCancelButton: true,
+      confirmButtonText: 'Remove', cancelButtonText: 'Cancel'
     });
-
     if (result.isConfirmed) {
       try {
         const response = await fetch('/api/remove-profile-picture', {
@@ -1791,7 +1659,6 @@ document.addEventListener('click', async e => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: DATA.profile.id })
         });
-
         if (response.ok) {
           DATA.profile.profilePicture = null;
           updateProfilePictureDisplay();
@@ -1809,10 +1676,7 @@ document.addEventListener('click', async e => {
 // ── PROFILE BUTTON HANDLERS ──────────────────────────────────────
 
 document.addEventListener('click', async e => {
-  if (e.target.id === 'upload-picture-btn') {
-    document.getElementById('profile-picture-input').click();
-  }
-
+  if (e.target.id === 'upload-picture-btn') document.getElementById('profile-picture-input').click();
   if (e.target.id === 'btn-edit-profile') showProfilePanel('edit-info');
   if (e.target.id === 'btn-cancel-edit') showProfilePanel('main');
   if (e.target.id === 'btn-cancel-password') showProfilePanel('main');
@@ -1937,26 +1801,11 @@ document.addEventListener('click', async e => {
     if (!q) { dropdown.classList.add('hidden'); return; }
 
     const results = [];
-
     DATA.classes.forEach(cls => {
-      if (cls.title.toLowerCase().includes(q)) {
-        results.push({ type: 'class', label: cls.title, sub: cls.professor, cls });
-      }
-      (cls.materials || []).forEach(m => {
-        if (m.title.toLowerCase().includes(q)) {
-          results.push({ type: 'material', label: m.title, sub: cls.title, cls, item: m });
-        }
-      });
-      (cls.quizzes || []).forEach(qz => {
-        if (qz.title.toLowerCase().includes(q)) {
-          results.push({ type: 'quiz', label: qz.title, sub: cls.title, cls, item: qz });
-        }
-      });
-      (cls.assignments || []).forEach(a => {
-        if (a.title.toLowerCase().includes(q)) {
-          results.push({ type: 'assignment', label: a.title, sub: cls.title, cls, item: a });
-        }
-      });
+      if (cls.title.toLowerCase().includes(q)) results.push({ type: 'class', label: cls.title, sub: cls.professor, cls });
+      (cls.materials || []).forEach(m => { if (m.title.toLowerCase().includes(q)) results.push({ type: 'material', label: m.title, sub: cls.title, cls, item: m }); });
+      (cls.quizzes || []).forEach(qz => { if (qz.title.toLowerCase().includes(q)) results.push({ type: 'quiz', label: qz.title, sub: cls.title, cls, item: qz }); });
+      (cls.assignments || []).forEach(a => { if (a.title.toLowerCase().includes(q)) results.push({ type: 'assignment', label: a.title, sub: cls.title, cls, item: a }); });
     });
 
     if (results.length === 0) {
@@ -1977,20 +1826,10 @@ document.addEventListener('click', async e => {
         input.value = '';
         dropdown.classList.add('hidden');
         setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
-        if (r.type === 'class') {
-          renderClasses();
-          showView('classes');
-          openClassDetail(r.cls);
-        } else if (r.type === 'material') {
-          openClassDetail(r.cls);
-          openMaterialDetail(r.item, r.cls.title);
-        } else if (r.type === 'quiz') {
-          openClassDetail(r.cls);
-          openQuizDetail(r.item, r.cls.title);
-        } else if (r.type === 'assignment') {
-          openClassDetail(r.cls);
-          openAssignmentDetail(r.item, r.cls.title);
-        }
+        if (r.type === 'class') { renderClasses(); showView('classes'); openClassDetail(r.cls); }
+        else if (r.type === 'material') { openClassDetail(r.cls); openMaterialDetail(r.item, r.cls.title); }
+        else if (r.type === 'quiz') { openClassDetail(r.cls); openQuizDetail(r.item, r.cls.title); }
+        else if (r.type === 'assignment') { openClassDetail(r.cls); openAssignmentDetail(r.item, r.cls.title); }
       });
       dropdown.appendChild(el);
     });
@@ -2004,24 +1843,23 @@ document.addEventListener('click', async e => {
 })();
 
 // ── INIT ─────────────────────────────────────────────────────────
+
 (async function init() {
   await fetchProfile();
   await fetchClasses();
   await fetchArchivedClasses();
   await fetchAnnouncements();
   await fetchCompletions();
-
   setupJoinButton();
   updateProfilePictureDisplay();
-
   const homeNav = document.querySelector('.nav-item[data-view="home"]');
   if (homeNav) setActiveNav(homeNav);
-
   await renderHome();
   showView('home');
 })();
 
-// ===== ASSIGNMENT SUBMISSION FILE UPLOAD =====
+// ── ASSIGNMENT SUBMISSION ────────────────────────────────────────
+
 (function () {
   const submitFileZone = document.getElementById('assignment-submit-file-zone');
   const submitFileInput = document.getElementById('assignment-submit-file-input');
@@ -2042,7 +1880,6 @@ document.addEventListener('click', async e => {
       if (submitFileZone) submitFileZone.classList.remove('hidden');
       if (submitLinkGroup) submitLinkGroup.classList.add('hidden');
     });
-
     submitLinkTypeBtn.addEventListener('click', function () {
       submitLinkTypeBtn.classList.add('active');
       submitFileTypeBtn.classList.remove('active');
@@ -2052,32 +1889,17 @@ document.addEventListener('click', async e => {
   }
 
   if (submitBrowseBtn && submitFileInput) {
-    submitBrowseBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      submitFileInput.click();
-    });
+    submitBrowseBtn.addEventListener('click', function (e) { e.stopPropagation(); submitFileInput.click(); });
   }
 
   if (submitFileZone && submitFileInput) {
-    submitFileZone.addEventListener('click', function () {
-      submitFileInput.click();
-    });
-
-    submitFileZone.addEventListener('dragover', function (e) {
-      e.preventDefault();
-      submitFileZone.classList.add('drag-over');
-    });
-
-    submitFileZone.addEventListener('dragleave', function (e) {
-      e.preventDefault();
-      submitFileZone.classList.remove('drag-over');
-    });
-
+    submitFileZone.addEventListener('click', function () { submitFileInput.click(); });
+    submitFileZone.addEventListener('dragover', function (e) { e.preventDefault(); submitFileZone.classList.add('drag-over'); });
+    submitFileZone.addEventListener('dragleave', function (e) { e.preventDefault(); submitFileZone.classList.remove('drag-over'); });
     submitFileZone.addEventListener('drop', function (e) {
       e.preventDefault();
       submitFileZone.classList.remove('drag-over');
-      const files = e.dataTransfer.files;
-      if (files.length > 0) handleFileSelection(files[0]);
+      if (e.dataTransfer.files.length > 0) handleFileSelection(e.dataTransfer.files[0]);
     });
   }
 
@@ -2131,12 +1953,7 @@ document.addEventListener('click', async e => {
   if (submitBtn) {
     submitBtn.addEventListener('click', async function () {
       const isLinkMode = submitLinkTypeBtn && submitLinkTypeBtn.classList.contains('active');
-
-      if (!state.currentItem) {
-        Swal.fire('Error', 'No assignment selected', 'error');
-        return;
-      }
-
+      if (!state.currentItem) { Swal.fire('Error', 'No assignment selected', 'error'); return; }
       if (isLinkMode) {
         const linkInput = document.getElementById('assignment-submit-link-input');
         if (!linkInput || !linkInput.value.trim()) {
@@ -2165,26 +1982,17 @@ document.addEventListener('click', async e => {
     try {
       const response = await fetch('/api/submit-assignment', { method: 'POST', body: formData });
       const data = await response.json();
-
       if (response.ok) {
         Swal.fire({ icon: 'success', title: 'Submitted!', text: 'Your assignment has been submitted successfully.', confirmButtonColor: '#0f1f4b' });
-
         await fetch('/api/mark-done', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: DATA.profile.id, itemType: 'assignment', itemId: state.currentItem.id })
         });
-
         const key = completionKey('assignment', state.currentItem.id);
         state.done.add(key);
-
         if (successMsg) successMsg.classList.remove('hidden');
-        if (submitBtn) {
-          submitBtn.disabled = true;
-          submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted';
-        }
-
-        // FIX #1: Update the mark-done button to "Finished"
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted'; }
         const assignMarkBtn = document.getElementById('assignment-mark-btn');
         if (assignMarkBtn) {
           assignMarkBtn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
@@ -2193,19 +2001,20 @@ document.addEventListener('click', async e => {
           assignMarkBtn.style.opacity = '';
           assignMarkBtn.onclick = () => markDone('assignment');
         }
-
+        // FIX #4: Update badge on submission
+        updateStatusBadge(true);
         updateItemDisplay('assignment', state.currentItem.id, true);
       } else {
         Swal.fire('Error', data.message || 'Submission failed', 'error');
       }
     } catch (err) {
-      console.error('Submission error:', err);
       Swal.fire('Error', 'Could not connect to server', 'error');
     }
   }
 })();
 
-// ===== QUIZ SUBMISSION FILE UPLOAD =====
+// ── QUIZ SUBMISSION ──────────────────────────────────────────────
+
 (function () {
   const quizSubmitFileZone = document.getElementById('quiz-submit-file-zone');
   const quizSubmitFileInput = document.getElementById('quiz-submit-file-input');
@@ -2226,7 +2035,6 @@ document.addEventListener('click', async e => {
       if (quizSubmitFileZone) quizSubmitFileZone.classList.remove('hidden');
       if (quizSubmitLinkGroup) quizSubmitLinkGroup.classList.add('hidden');
     });
-
     quizSubmitLinkTypeBtn.addEventListener('click', function () {
       quizSubmitLinkTypeBtn.classList.add('active');
       quizSubmitFileTypeBtn.classList.remove('active');
@@ -2236,32 +2044,17 @@ document.addEventListener('click', async e => {
   }
 
   if (quizSubmitBrowseBtn && quizSubmitFileInput) {
-    quizSubmitBrowseBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      quizSubmitFileInput.click();
-    });
+    quizSubmitBrowseBtn.addEventListener('click', function (e) { e.stopPropagation(); quizSubmitFileInput.click(); });
   }
 
   if (quizSubmitFileZone && quizSubmitFileInput) {
-    quizSubmitFileZone.addEventListener('click', function () {
-      quizSubmitFileInput.click();
-    });
-
-    quizSubmitFileZone.addEventListener('dragover', function (e) {
-      e.preventDefault();
-      quizSubmitFileZone.classList.add('drag-over');
-    });
-
-    quizSubmitFileZone.addEventListener('dragleave', function (e) {
-      e.preventDefault();
-      quizSubmitFileZone.classList.remove('drag-over');
-    });
-
+    quizSubmitFileZone.addEventListener('click', function () { quizSubmitFileInput.click(); });
+    quizSubmitFileZone.addEventListener('dragover', function (e) { e.preventDefault(); quizSubmitFileZone.classList.add('drag-over'); });
+    quizSubmitFileZone.addEventListener('dragleave', function (e) { e.preventDefault(); quizSubmitFileZone.classList.remove('drag-over'); });
     quizSubmitFileZone.addEventListener('drop', function (e) {
       e.preventDefault();
       quizSubmitFileZone.classList.remove('drag-over');
-      const files = e.dataTransfer.files;
-      if (files.length > 0) handleQuizFileSelection(files[0]);
+      if (e.dataTransfer.files.length > 0) handleQuizFileSelection(e.dataTransfer.files[0]);
     });
   }
 
@@ -2315,12 +2108,7 @@ document.addEventListener('click', async e => {
   if (quizSubmitBtn) {
     quizSubmitBtn.addEventListener('click', async function () {
       const isLinkMode = quizSubmitLinkTypeBtn && quizSubmitLinkTypeBtn.classList.contains('active');
-
-      if (!state.currentItem) {
-        Swal.fire('Error', 'No quiz selected', 'error');
-        return;
-      }
-
+      if (!state.currentItem) { Swal.fire('Error', 'No quiz selected', 'error'); return; }
       if (isLinkMode) {
         const linkInput = document.getElementById('quiz-submit-link-input');
         if (!linkInput || !linkInput.value.trim()) {
@@ -2349,28 +2137,17 @@ document.addEventListener('click', async e => {
     try {
       const response = await fetch('/api/submit-quiz', { method: 'POST', body: formData });
       const data = await response.json();
-
       if (response.ok) {
         Swal.fire({ icon: 'success', title: 'Submitted!', text: 'Your quiz has been submitted successfully.', confirmButtonColor: '#0f1f4b' });
-
         await fetch('/api/mark-done', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: DATA.profile.id, itemType: 'quiz', itemId: state.currentItem.id })
         });
-
         const key = completionKey('quiz', state.currentItem.id);
         state.done.add(key);
-
         if (quizSuccessMsg) quizSuccessMsg.classList.remove('hidden');
-        if (quizSubmitBtn) {
-          quizSubmitBtn.disabled = true;
-          quizSubmitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted';
-        }
-
-        updateItemDisplay('quiz', state.currentItem.id, true);
-
-        // FIX #1: Update the mark-done button to "Finished"
+        if (quizSubmitBtn) { quizSubmitBtn.disabled = true; quizSubmitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted'; }
         const quizMarkBtn = document.getElementById('quiz-mark-btn');
         if (quizMarkBtn) {
           quizMarkBtn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
@@ -2379,11 +2156,13 @@ document.addEventListener('click', async e => {
           quizMarkBtn.style.opacity = '';
           quizMarkBtn.onclick = () => markDone('quiz');
         }
+        // FIX #4: Update badge on submission
+        updateStatusBadge(true);
+        updateItemDisplay('quiz', state.currentItem.id, true);
       } else {
         Swal.fire('Error', data.message || 'Submission failed', 'error');
       }
     } catch (err) {
-      console.error('Quiz submission error:', err);
       Swal.fire('Error', 'Could not connect to server', 'error');
     }
   }
