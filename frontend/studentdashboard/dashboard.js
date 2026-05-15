@@ -1,5 +1,9 @@
 /* =============================================================
-   Student Dashboard - Complete Working Version WITH SCORES
+   Student Dashboard - Fixed Version
+   Fixes:
+   1. Mark as Done button now correctly shows "✓ Finished" state
+   2. Student must open/download PDF or link before marking done
+   3. Progress analytics only counts genuinely submitted/marked items
 ============================================================= */
 
 // ── DATA OBJECT ──────────────────────────────────────────────────
@@ -29,7 +33,9 @@ const state = {
   currentClass: null,
   currentItem: null,
   currentType: null,
-  done: new Set()
+  done: new Set(),
+  // FIX #2: Track which items the student has opened/downloaded this session
+  opened: new Set()
 };
 
 // ── HELPER FUNCTIONS ─────────────────────────────────────────────
@@ -69,6 +75,30 @@ function escapeHtml(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// ── FIX #2: OPEN-GATE HELPERS ────────────────────────────────────
+// Call this whenever the student opens/downloads the content
+
+function markAsOpened(type, id) {
+  state.opened.add(completionKey(type, id));
+}
+
+function hasOpened(type, id) {
+  return state.opened.has(completionKey(type, id));
+}
+
+/**
+ * Returns a tooltip/warning message if the student hasn't opened the content yet.
+ * Returns null if they are allowed to mark done.
+ */
+function getOpenGateMessage(type) {
+  const labels = {
+    material: 'You must download or view the PDF before marking this lesson as done.',
+    quiz: 'You must open the quiz link before marking this as done.',
+    assignment: 'You must open the assignment link before marking this as done.'
+  };
+  return labels[type] || 'Please open the content first.';
+}
+
 // ── FETCH SCORES FROM SERVER ─────────────────────────────────────
 
 async function fetchStudentScores() {
@@ -89,8 +119,10 @@ async function fetchStudentScores() {
         item_title: score.item_title
       };
 
-      // If there's a score, automatically mark as done
-      if (score.score !== null && !state.done.has(key)) {
+      // FIX #3: Only mark as done in state if score is actually present (graded)
+      // Do NOT add to state.done here — completions are loaded separately via fetchCompletions
+      // Scores with null value should not count as complete
+      if (score.score !== null && score.score !== undefined) {
         state.done.add(key);
       }
     });
@@ -126,11 +158,22 @@ function buildHomeTodoCard(item) {
   const d = document.createElement('div');
   d.className = 'todo-card';
 
-  // Check if this item has a score
   const key = completionKey(item.type, item.item.id);
   const scoreData = DATA.scores[key];
-  const hasScore = scoreData && scoreData.score !== null;
+  // FIX #3: only show score badge if score is a real number
+  const hasScore = scoreData && scoreData.score !== null && scoreData.score !== undefined;
   const scoreDisplay = hasScore ? `<span class="todo-score">⭐ Score: ${scoreData.score}/100</span>` : '';
+
+  // FIX #1: Show "Finished" if the item is in state.done
+  const isDone = state.done.has(key);
+  const statusBadge = isDone
+    ? `<span class="todo-done-badge" style="
+        display:inline-flex;align-items:center;gap:4px;
+        background:#dcfce7;color:#16a34a;font-size:12px;font-weight:600;
+        padding:2px 8px;border-radius:12px;margin-top:4px;">
+        <i class="fa-solid fa-check"></i> Finished
+      </span>`
+    : '';
 
   d.innerHTML = `
     <div class="todo-avatar">
@@ -141,6 +184,7 @@ function buildHomeTodoCard(item) {
       <p class="todo-due">Due: ${formatDueDate(item.dueDate) || 'No due date'}</p>
       <p class="todo-class">${escapeHtml(item.className)}</p>
       ${scoreDisplay}
+      ${statusBadge}
     </div>
   `;
   d.addEventListener('click', () => {
@@ -297,7 +341,6 @@ async function fetchClasses() {
     DATA.classes = json;
     DATA.classesLoaded = true;
 
-    // ✅ ADD THIS - update the profile badge
     const badgeEl = document.getElementById('profile-badge-classes');
     if (badgeEl) badgeEl.textContent = `${json.length} Class${json.length !== 1 ? 'es' : ''}`;
 
@@ -315,9 +358,10 @@ async function fetchCompletions() {
     if (!res.ok) return;
     const items = await res.json();
     state.done.clear();
+    // FIX #3: Only load completions that were explicitly marked done by the student
     items.forEach(item => state.done.add(completionKey(item.item_type, item.item_id)));
 
-    // Also fetch scores - they may add additional completions
+    // Now load scores separately — only items with a real score value get added to done
     await fetchStudentScores();
   } catch (err) {
     console.error('fetchCompletions error:', err);
@@ -519,7 +563,7 @@ async function renderHome() {
   if (!DATA.profileLoaded) await fetchProfile();
   if (!DATA.classesLoaded) await fetchClasses();
   if (!DATA.announcementsLoaded) await fetchAnnouncements();
-  await fetchStudentScores(); // Ensure scores are loaded
+  await fetchStudentScores();
 
   const welcomeHeading = document.querySelector('#view-home .welcome-heading');
   if (welcomeHeading) {
@@ -538,7 +582,8 @@ async function renderHome() {
     ];
     allItems.forEach(({ item, type }) => {
       const key = completionKey(type, item.id);
-      if (state.done.has(key) || DATA.scores[key]?.score !== null) {
+      // FIX #3: Count as complete ONLY if explicitly in state.done (includes graded scores)
+      if (state.done.has(key)) {
         completedCount++;
       } else {
         const due = item.due_date ? new Date(item.due_date) : null;
@@ -591,10 +636,10 @@ async function renderHome() {
         ...(cls.assignments || []).map(a => ({ ...a, type: 'assignment', cls }))
       ].forEach(entry => {
         const key = completionKey(entry.type, entry.id);
-        if (state.done.has(key) || DATA.scores[key]?.score !== null) return;
+        // FIX #1: Show items that are done too (with "Finished" badge), only hide truly irrelevant ones
         const due = entry.due_date ? new Date(entry.due_date) : null;
         if (!due || isNaN(due)) return;
-        if (due >= now && due >= monday && due <= sunday) {
+        if (due >= monday && due <= sunday) {
           pendingItems.push({
             title: entry.title,
             dueDate: due,
@@ -612,7 +657,7 @@ async function renderHome() {
     if (pendingItems.length === 0) {
       todoContainer.appendChild(
         buildEmptyState('fa-regular fa-calendar-check', 'All caught up!',
-          'No pending tasks this week. Enjoy your free time!')
+          'No tasks this week. Enjoy your free time!')
       );
     } else {
       pendingItems.forEach(item => todoContainer.appendChild(buildHomeTodoCard(item)));
@@ -697,7 +742,8 @@ function openClassDetail(cls) {
 
 function buildDetailCard(item, type, clickHandler) {
   const key    = completionKey(type, item.id);
-  const isDone = state.done.has(key) || (DATA.scores[key] && DATA.scores[key].score !== null);
+  // FIX #3: Only mark done if explicitly in state.done (which already accounts for graded scores)
+  const isDone = state.done.has(key);
   const score  = DATA.scores[key]?.score;
   const hasScore = score !== null && score !== undefined;
 
@@ -719,6 +765,7 @@ function buildDetailCard(item, type, clickHandler) {
   el.className = (type === 'material' ? 'material-item' : 'quiz-item') + (isDone ? ' done' : '');
   el._itemId = item.id;
 
+  // FIX #1: Show "Finished" badge text instead of just "Done"
   el.innerHTML = `
     <div class="item-card-icon">
       <i class="${icon}"></i>
@@ -727,7 +774,7 @@ function buildDetailCard(item, type, clickHandler) {
       <p class="item-card-title">${escapeHtml(item.title)}</p>
       ${subText ? `<p class="item-card-sub">${subText}</p>` : ''}
     </div>
-    ${isDone ? '<span class="item-card-badge"><i class="fa-solid fa-check"></i> Done</span>' : ''}
+    ${isDone ? '<span class="item-card-badge"><i class="fa-solid fa-check"></i> Finished</span>' : ''}
   `;
 
   el.addEventListener('click', clickHandler);
@@ -799,9 +846,9 @@ async function renderClasses() {
       });
 
       card.addEventListener('click', () => openClassDetail(cls));
-      grid.appendChild(card); // ✅ was missing
-    }); // ✅ closes forEach
-  } // ✅ closes else
+      grid.appendChild(card);
+    });
+  }
 
   // ── Archived classes ──
   if (archivedGrid) {
@@ -857,6 +904,7 @@ async function renderClasses() {
     });
   }
 }
+
 // ── MATERIAL DETAIL ──────────────────────────────────────────────
 
 function openMaterialDetail(mat, className) {
@@ -869,8 +917,19 @@ function openMaterialDetail(mat, className) {
   const classNameEl = document.getElementById('mat-class-name');
   if (classNameEl) classNameEl.textContent = className;
 
+  // FIX #2: Intercept PDF link click to mark as opened
   const pdfLinkEl = document.getElementById('mat-pdf-link');
-  if (pdfLinkEl) pdfLinkEl.href = mat.pdf_url || '#';
+  if (pdfLinkEl) {
+    pdfLinkEl.href = mat.pdf_url || '#';
+    // Clone to remove old listeners
+    const newPdfLink = pdfLinkEl.cloneNode(true);
+    pdfLinkEl.parentNode.replaceChild(newPdfLink, pdfLinkEl);
+    newPdfLink.addEventListener('click', () => {
+      markAsOpened('material', mat.id);
+      // Update the mark-done button state after a short delay
+      setTimeout(() => refreshMarkDoneButton('material', mat.id), 300);
+    });
+  }
 
   const descEl = document.getElementById('mat-description');
   if (descEl) descEl.textContent = mat.description || 'No description available.';
@@ -881,21 +940,57 @@ function openMaterialDetail(mat, className) {
     matDueEl.style.display = mat.due_date ? 'block' : 'none';
   }
 
-  const btn = document.getElementById('mat-mark-btn');
-  if (btn) {
-    const key = completionKey('material', mat.id);
-    if (state.done.has(key)) {
-      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Marked as done';
-      btn.className = 'mark-done-btn done-state';
-    } else {
-      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> Mark as done';
-      btn.className = 'mark-done-btn dark';
-    }
-    btn.onclick = () => markDone('material');
-  }
-
+  refreshMarkDoneButton('material', mat.id);
   showView('material-detail');
 }
+
+// ── FIX #2: Centralized button refresh for mark-done ─────────────
+
+function refreshMarkDoneButton(type, itemId) {
+  const btnId = type === 'material' ? 'mat-mark-btn'
+    : type === 'assignment' ? 'assignment-mark-btn'
+    : 'quiz-mark-btn';
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+
+  const key = completionKey(type, itemId);
+  const isDone = state.done.has(key);
+  const opened = hasOpened(type, itemId);
+
+  if (isDone) {
+    // FIX #1: Show "✓ Finished" consistently
+    btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
+    btn.className = 'mark-done-btn done-state';
+    btn.disabled = false;
+    btn.title = '';
+    btn.onclick = () => markDone(type);
+    return;
+  }
+
+  // FIX #2: Gate — student must open content first
+  if (!opened) {
+    const actionLabel = type === 'material' ? 'Download PDF first'
+      : type === 'quiz' ? 'Open quiz link first'
+      : 'Open assignment link first';
+
+    btn.innerHTML = `<i class="fa-solid fa-lock"></i> ${actionLabel}`;
+    btn.className = 'mark-done-btn dark';
+    btn.disabled = true;
+    btn.title = getOpenGateMessage(type);
+    btn.style.opacity = '0.55';
+    btn.style.cursor = 'not-allowed';
+    btn.onclick = null;
+  } else {
+    btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> Mark as done';
+    btn.className = type === 'quiz' ? 'mark-done-btn yellow' : 'mark-done-btn dark';
+    btn.disabled = false;
+    btn.title = '';
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+    btn.onclick = () => markDone(type);
+  }
+}
+
 async function fetchArchivedClasses() {
   if (!DATA.profile.id) return;
   try {
@@ -942,7 +1037,6 @@ async function archiveClass(cls) {
         timer: 1500,
         showConfirmButton: false
       });
-      // Move from active to archived locally
       DATA.classes = DATA.classes.filter(c => c.section_id !== cls.section_id);
       DATA.archivedClasses.push(cls);
       await renderClasses();
@@ -1012,10 +1106,18 @@ function openQuizDetail(quiz, className) {
   const classNameEl = document.getElementById('quiz-class-name');
   if (classNameEl) classNameEl.textContent = className;
 
+  // FIX #2: Intercept quiz link click to mark as opened
   const linkEl = document.getElementById('quiz-link');
   if (linkEl) {
     linkEl.href = quiz.link || '#';
     linkEl.textContent = quiz.link_label || 'Open Quiz';
+    const newLinkEl = linkEl.cloneNode(true);
+    newLinkEl.textContent = quiz.link_label || 'Open Quiz';
+    linkEl.parentNode.replaceChild(newLinkEl, linkEl);
+    newLinkEl.addEventListener('click', () => {
+      markAsOpened('quiz', quiz.id);
+      setTimeout(() => refreshMarkDoneButton('quiz', quiz.id), 300);
+    });
   }
 
   const descEl = document.getElementById('quiz-description');
@@ -1027,10 +1129,10 @@ function openQuizDetail(quiz, className) {
     quizDueEl.style.display = quiz.due_date ? 'block' : 'none';
   }
 
-  // Check for score
+  // Show score if available
   const key = completionKey('quiz', quiz.id);
   const scoreData = DATA.scores[key];
-  const hasScore = scoreData && scoreData.score !== null;
+  const hasScore = scoreData && scoreData.score !== null && scoreData.score !== undefined;
 
   const scoreDisplayEl = document.getElementById('quiz-score-display');
   if (scoreDisplayEl) {
@@ -1042,6 +1144,7 @@ function openQuizDetail(quiz, className) {
     }
   }
 
+  // Handle overdue state separately from open-gate
   const btn = document.getElementById('quiz-mark-btn');
   if (btn) {
     const dueDate = quiz.due_date ? new Date(quiz.due_date) : null;
@@ -1049,20 +1152,22 @@ function openQuizDetail(quiz, className) {
     const isDone = state.done.has(key) || hasScore;
 
     if (isDone) {
-      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Completed';
+      // FIX #1: Consistent "Finished" label
+      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
       btn.className = 'mark-done-btn done-state';
-      btn.disabled = true;
-      btn.onclick = null;
+      btn.disabled = false;
+      btn.style.opacity = '';
+      btn.style.cursor = '';
+      btn.onclick = () => markDone('quiz');
     } else if (isOverdue) {
       btn.innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Past due date';
       btn.className = 'mark-done-btn dark';
       btn.disabled = true;
+      btn.style.opacity = '0.55';
       btn.onclick = null;
     } else {
-      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> Mark as done';
-      btn.className = 'mark-done-btn yellow';
-      btn.disabled = false;
-      btn.onclick = () => markDone('quiz');
+      // Will be set by refreshMarkDoneButton based on open-gate
+      refreshMarkDoneButton('quiz', quiz.id);
     }
   }
 
@@ -1081,8 +1186,17 @@ function openAssignmentDetail(assign, className) {
   const classNameEl = document.getElementById('assignment-class-name');
   if (classNameEl) classNameEl.textContent = className;
 
+  // FIX #2: Intercept assignment link click to mark as opened
   const linkEl = document.getElementById('assignment-link');
-  if (linkEl) linkEl.href = assign.link || '#';
+  if (linkEl) {
+    linkEl.href = assign.link || '#';
+    const newLinkEl = linkEl.cloneNode(true);
+    linkEl.parentNode.replaceChild(newLinkEl, linkEl);
+    newLinkEl.addEventListener('click', () => {
+      markAsOpened('assignment', assign.id);
+      setTimeout(() => refreshMarkDoneButton('assignment', assign.id), 300);
+    });
+  }
 
   const descEl = document.getElementById('assignment-description');
   if (descEl) descEl.textContent = assign.description || '';
@@ -1092,10 +1206,10 @@ function openAssignmentDetail(assign, className) {
     dueEl.textContent = assign.due_date ? 'Due ' + formatDueDate(assign.due_date) : '';
   }
 
-  // Check for score
+  // Show score if available
   const key = completionKey('assignment', assign.id);
   const scoreData = DATA.scores[key];
-  const hasScore = scoreData && scoreData.score !== null;
+  const hasScore = scoreData && scoreData.score !== null && scoreData.score !== undefined;
 
   const scoreDisplayEl = document.getElementById('assignment-score-display');
   const gradeBadge = document.getElementById('assignment-grade-badge');
@@ -1118,20 +1232,19 @@ function openAssignmentDetail(assign, className) {
     }
   }
 
+  // FIX #1 + #2: Use refreshMarkDoneButton for consistent state
+  const isDone = state.done.has(key) || hasScore;
   const btn = document.getElementById('assignment-mark-btn');
   if (btn) {
-    const isDone = state.done.has(key) || hasScore;
-
     if (isDone) {
-      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Completed';
+      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
       btn.className = 'mark-done-btn done-state';
-      btn.disabled = true;
-      btn.onclick = null;
-    } else {
-      btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> Mark as done';
-      btn.className = 'mark-done-btn dark';
       btn.disabled = false;
+      btn.style.opacity = '';
+      btn.style.cursor = '';
       btn.onclick = () => markDone('assignment');
+    } else {
+      refreshMarkDoneButton('assignment', assign.id);
     }
   }
 
@@ -1149,8 +1262,9 @@ async function markDone(type) {
   if (btn) btn.disabled = true;
 
   if (state.done.has(key)) {
+    // Undo flow
     const result = await Swal.fire({
-      title: 'Are you sure?', text: 'Do you want to undo marking this as done?',
+      title: 'Are you sure?', text: 'Do you want to undo marking this as finished?',
       icon: 'warning', showCancelButton: true,
       confirmButtonText: 'Yes, undo it!', cancelButtonText: 'Cancel'
     });
@@ -1162,11 +1276,10 @@ async function markDone(type) {
           body: JSON.stringify({ userId: DATA.profile.id, itemType: type, itemId: id })
         });
         state.done.delete(key);
-        if (btn) {
-          btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> Mark as done';
-          btn.className = type === 'material' ? 'mark-done-btn dark' : 'mark-done-btn dark';
-          btn.disabled = false;
-        }
+
+        // FIX #1: After undo, refresh button based on open-gate
+        refreshMarkDoneButton(type, id);
+
         updateItemDisplay(type, id, false);
         if (state.currentView === 'progress') renderProgress();
         if (state.currentView === 'home') renderHome();
@@ -1178,6 +1291,7 @@ async function markDone(type) {
       if (btn) btn.disabled = false;
     }
   } else {
+    // Mark done flow
     try {
       await fetch('/api/mark-done', {
         method: 'POST',
@@ -1185,12 +1299,17 @@ async function markDone(type) {
         body: JSON.stringify({ userId: DATA.profile.id, itemType: type, itemId: id })
       });
       state.done.add(key);
+
+      // FIX #1: Show "✓ Finished" immediately and consistently
       if (btn) {
-        btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Marked as done';
+        btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
         btn.className = 'mark-done-btn done-state';
         btn.disabled = false;
+        btn.style.opacity = '';
+        btn.style.cursor = '';
         btn.onclick = () => markDone(type);
       }
+
       updateItemDisplay(type, id, true);
       if (state.currentView === 'progress') renderProgress();
       if (state.currentView === 'home') renderHome();
@@ -1217,7 +1336,8 @@ function updateItemDisplay(type, id, isDone) {
       if (isDone && !existingBadge) {
         const badge = document.createElement('span');
         badge.className = 'item-card-badge';
-        badge.innerHTML = '<i class="fa-solid fa-check"></i> Done';
+        // FIX #1: Consistent "Finished" label
+        badge.innerHTML = '<i class="fa-solid fa-check"></i> Finished';
         item.appendChild(badge);
         const icon = item.querySelector('.item-card-icon');
         if (icon) { icon.style.background = 'var(--success-bg)'; icon.style.color = 'var(--success-text)'; }
@@ -1244,7 +1364,8 @@ function renderTodo() {
         ...(cls.assignments || []).map(a => ({ ...a, type: 'assignment', cls }))
       ].forEach(entry => {
         const key = completionKey(entry.type, entry.id);
-        if (state.done.has(key) || DATA.scores[key]?.score !== null) return;
+        // FIX #3: Only skip if explicitly done
+        if (state.done.has(key)) return;
         if (!entry.due_date) return;
         allTodos.push({
           title: entry.title,
@@ -1328,11 +1449,13 @@ function renderProgress() {
     const quizzes = cls.quizzes || [];
     const assignments = cls.assignments || [];
     const classTotal = materials.length + quizzes.length + assignments.length;
+
+    // FIX #3: Only count items that are explicitly in state.done (student actually marked/submitted)
     const classCompleted = [
       ...materials.map(m => completionKey('material', m.id)),
       ...quizzes.map(q => completionKey('quiz', q.id)),
       ...assignments.map(a => completionKey('assignment', a.id))
-    ].filter(key => state.done.has(key) || DATA.scores[key]?.score !== null).length;
+    ].filter(key => state.done.has(key)).length;
 
     totalCompleted += classCompleted;
     totalItems += classTotal;
@@ -1347,7 +1470,7 @@ function renderProgress() {
       <div class="progress-card-body">
         <div class="progress-card-header">
           <span class="progress-card-name">${escapeHtml(cls.title)}</span>
-          <span class="progress-card-count">${classCompleted}/${classTotal} completed</span>
+          <span class="progress-card-count">${classCompleted}/${classTotal} finished</span>
         </div>
         <div class="progress-card-pct">${pct}% complete</div>
         <div class="progress-bar-track">
@@ -1370,7 +1493,7 @@ function renderProgress() {
         <div class="progress-summary-left">
           <p class="summary-label">Overall progress</p>
           <p class="summary-value">${overallPct}%</p>
-          <p class="summary-sub">${totalCompleted} of ${totalItems} items completed</p>
+          <p class="summary-sub">${totalCompleted} of ${totalItems} items finished</p>
         </div>
         <div class="progress-summary-right">
           <div class="summary-ring">${overallPct}%</div>
@@ -1396,9 +1519,6 @@ async function openScoresModal(cls) {
   body.innerHTML = '<div style="text-align:center;padding:40px;color:#888;">Loading scores...</div>';
   modal.classList.add('active');
 
-  console.log('Opening scores modal for class:', cls.title);
-  console.log('Student ID:', DATA.profile.id);
-
   if (!DATA.profile.id) {
     body.innerHTML = `
       <div class="scores-empty">
@@ -1406,25 +1526,20 @@ async function openScoresModal(cls) {
         <p>Unable to load scores. Please try logging out and back in.</p>
       </div>
     `;
-    modal.classList.add('active');
     return;
   }
 
   try {
-    // Fetch scores from the API
     const response = await fetch(`/api/student/scores/${DATA.profile.id}`);
     if (!response.ok) throw new Error('Failed to fetch scores');
     const allScores = await response.json();
 
-    // Get completed items for this class
     const completedItems = [];
 
-    // Check materials
+    // FIX #3: Only show items that are in state.done
     (cls.materials || []).forEach(m => {
       if (state.done.has(completionKey('material', m.id))) {
-        const scoreData = allScores.find(s =>
-          s.item_type === 'material' && s.item_id === m.id
-        );
+        const scoreData = allScores.find(s => s.item_type === 'material' && s.item_id === m.id);
         completedItems.push({
           title: m.title,
           type: 'material',
@@ -1432,17 +1547,14 @@ async function openScoresModal(cls) {
           icon: 'fa-solid fa-book-open',
           iconClass: 'score-item-icon',
           completedAt: scoreData?.completed_at || null,
-          score: scoreData?.score || null
+          score: scoreData?.score ?? null
         });
       }
     });
 
-    // Check quizzes
     (cls.quizzes || []).forEach(q => {
       if (state.done.has(completionKey('quiz', q.id))) {
-        const scoreData = allScores.find(s =>
-          s.item_type === 'quiz' && s.item_id === q.id
-        );
+        const scoreData = allScores.find(s => s.item_type === 'quiz' && s.item_id === q.id);
         completedItems.push({
           title: q.title,
           type: 'quiz',
@@ -1450,17 +1562,14 @@ async function openScoresModal(cls) {
           icon: 'fa-solid fa-clipboard-question',
           iconClass: 'score-item-icon quiz-icon',
           completedAt: scoreData?.completed_at || null,
-          score: scoreData?.score || null
+          score: scoreData?.score ?? null
         });
       }
     });
 
-    // Check assignments
     (cls.assignments || []).forEach(a => {
       if (state.done.has(completionKey('assignment', a.id))) {
-        const scoreData = allScores.find(s =>
-          s.item_type === 'assignment' && s.item_id === a.id
-        );
+        const scoreData = allScores.find(s => s.item_type === 'assignment' && s.item_id === a.id);
         completedItems.push({
           title: a.title,
           type: 'assignment',
@@ -1468,18 +1577,16 @@ async function openScoresModal(cls) {
           icon: 'fa-solid fa-file-lines',
           iconClass: 'score-item-icon assignment-icon',
           completedAt: scoreData?.completed_at || null,
-          score: scoreData?.score || null
+          score: scoreData?.score ?? null
         });
       }
     });
 
-    // Calculate average score
-    const scoredItems = completedItems.filter(i => i.score !== null);
+    const scoredItems = completedItems.filter(i => i.score !== null && i.score !== undefined);
     const avgScore = scoredItems.length > 0
       ? Math.round(scoredItems.reduce((sum, i) => sum + parseFloat(i.score), 0) / scoredItems.length)
       : null;
 
-    // Build the modal body
     let html = '';
 
     if (avgScore !== null) {
@@ -1497,7 +1604,7 @@ async function openScoresModal(cls) {
       html += `
         <div class="scores-empty">
           <i class="fa-solid fa-clipboard-list"></i>
-          <p>No completed items yet.<br>Mark quizzes and assignments as done to see your scores here.</p>
+          <p>No finished items yet.<br>Mark quizzes and assignments as done to see your progress here.</p>
         </div>
       `;
     } else {
@@ -1508,7 +1615,7 @@ async function openScoresModal(cls) {
           })
           : '';
 
-        const scoreDisplay = item.score !== null
+        const scoreDisplay = item.score !== null && item.score !== undefined
           ? `<div class="score-item-value ${item.score >= 75 ? 'score-pass' : 'score-fail'}">${item.score}<span class="score-item-max">/100</span></div>`
           : `<div class="score-item-value no-score">Not yet graded</div>`;
 
@@ -1520,7 +1627,7 @@ async function openScoresModal(cls) {
             <div class="score-item-info">
               <div class="score-item-title">${escapeHtml(item.title)}</div>
               <div class="score-item-type">${item.typeLabel}</div>
-              ${dateStr ? `<div class="score-item-date">Completed: ${dateStr}</div>` : ''}
+              ${dateStr ? `<div class="score-item-date">Finished: ${dateStr}</div>` : ''}
             </div>
             ${scoreDisplay}
           </div>
@@ -1548,7 +1655,6 @@ function closeScoresModal() {
   if (modal) modal.classList.remove('active');
 }
 
-// Add to your existing event listeners
 document.addEventListener('click', (e) => {
   if (e.target.id === 'scores-modal-close' || e.target.closest('#scores-modal-close')) {
     closeScoresModal();
@@ -1558,7 +1664,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// Close with Escape key
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeScoresModal();
 });
@@ -1587,7 +1692,6 @@ function refreshProfileDisplay() {
   setVal('edit-username', p.username || '');
   setVal('edit-email', p.email || '');
 
-  // ✅ ADD THIS - sync class count badge
   const badgeEl = document.getElementById('profile-badge-classes');
   if (badgeEl) {
     const count = DATA.classes.length;
@@ -1903,7 +2007,7 @@ document.addEventListener('click', async e => {
 (async function init() {
   await fetchProfile();
   await fetchClasses();
-  await fetchArchivedClasses(); // ✅ ADD THIS
+  await fetchArchivedClasses();
   await fetchAnnouncements();
   await fetchCompletions();
 
@@ -1931,7 +2035,6 @@ document.addEventListener('click', async e => {
 
   let selectedFile = null;
 
-  // Toggle between File and Link upload types
   if (submitFileTypeBtn && submitLinkTypeBtn) {
     submitFileTypeBtn.addEventListener('click', function () {
       submitFileTypeBtn.classList.add('active');
@@ -1948,7 +2051,6 @@ document.addEventListener('click', async e => {
     });
   }
 
-  // Browse button
   if (submitBrowseBtn && submitFileInput) {
     submitBrowseBtn.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -1956,13 +2058,11 @@ document.addEventListener('click', async e => {
     });
   }
 
-  // Click on zone to browse
   if (submitFileZone && submitFileInput) {
     submitFileZone.addEventListener('click', function () {
       submitFileInput.click();
     });
 
-    // Drag & drop
     submitFileZone.addEventListener('dragover', function (e) {
       e.preventDefault();
       submitFileZone.classList.add('drag-over');
@@ -1977,24 +2077,18 @@ document.addEventListener('click', async e => {
       e.preventDefault();
       submitFileZone.classList.remove('drag-over');
       const files = e.dataTransfer.files;
-      if (files.length > 0) {
-        handleFileSelection(files[0]);
-      }
+      if (files.length > 0) handleFileSelection(files[0]);
     });
   }
 
-  // File input change
   if (submitFileInput) {
     submitFileInput.addEventListener('change', function () {
-      if (submitFileInput.files.length > 0) {
-        handleFileSelection(submitFileInput.files[0]);
-      }
+      if (submitFileInput.files.length > 0) handleFileSelection(submitFileInput.files[0]);
     });
   }
 
   function handleFileSelection(file) {
     selectedFile = file;
-    // Clear preview
     if (submitFilePreview) {
       submitFilePreview.innerHTML = '';
       const item = document.createElement('div');
@@ -2017,7 +2111,6 @@ document.addEventListener('click', async e => {
       });
       submitFilePreview.appendChild(item);
     }
-    // Hide success message on new file selection
     if (successMsg) successMsg.classList.add('hidden');
   }
 
@@ -2035,7 +2128,6 @@ document.addEventListener('click', async e => {
     return div.innerHTML;
   }
 
-  // Submit button handler
   if (submitBtn) {
     submitBtn.addEventListener('click', async function () {
       const isLinkMode = submitLinkTypeBtn && submitLinkTypeBtn.classList.contains('active');
@@ -2048,27 +2140,15 @@ document.addEventListener('click', async e => {
       if (isLinkMode) {
         const linkInput = document.getElementById('assignment-submit-link-input');
         if (!linkInput || !linkInput.value.trim()) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'Missing Link',
-            text: 'Please paste a submission link.',
-            confirmButtonColor: '#0f1f4b'
-          });
+          Swal.fire({ icon: 'warning', title: 'Missing Link', text: 'Please paste a submission link.', confirmButtonColor: '#0f1f4b' });
           return;
         }
-        // Submit link to backend
         await submitAssignmentSubmission(linkInput.value.trim(), null);
       } else {
         if (!selectedFile) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'No File Selected',
-            text: 'Please select a file to submit.',
-            confirmButtonColor: '#0f1f4b'
-          });
+          Swal.fire({ icon: 'warning', title: 'No File Selected', text: 'Please select a file to submit.', confirmButtonColor: '#0f1f4b' });
           return;
         }
-        // Submit file to backend
         await submitAssignmentSubmission(null, selectedFile);
       }
     });
@@ -2083,33 +2163,18 @@ document.addEventListener('click', async e => {
     if (file) formData.append('submissionFile', file);
 
     try {
-      const response = await fetch('/api/submit-assignment', {
-        method: 'POST',
-        body: formData
-      });
-
+      const response = await fetch('/api/submit-assignment', { method: 'POST', body: formData });
       const data = await response.json();
 
       if (response.ok) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Submitted!',
-          text: 'Your assignment has been submitted successfully.',
-          confirmButtonColor: '#0f1f4b'
-        });
+        Swal.fire({ icon: 'success', title: 'Submitted!', text: 'Your assignment has been submitted successfully.', confirmButtonColor: '#0f1f4b' });
 
-        // Mark as done automatically
         await fetch('/api/mark-done', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: DATA.profile.id,
-            itemType: 'assignment',
-            itemId: state.currentItem.id
-          })
+          body: JSON.stringify({ userId: DATA.profile.id, itemType: 'assignment', itemId: state.currentItem.id })
         });
 
-        // Update local state
         const key = completionKey('assignment', state.currentItem.id);
         state.done.add(key);
 
@@ -2119,9 +2184,17 @@ document.addEventListener('click', async e => {
           submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted';
         }
 
-        // Refresh the display
-        updateItemDisplay('assignment', state.currentItem.id, true);
+        // FIX #1: Update the mark-done button to "Finished"
+        const assignMarkBtn = document.getElementById('assignment-mark-btn');
+        if (assignMarkBtn) {
+          assignMarkBtn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
+          assignMarkBtn.className = 'mark-done-btn done-state';
+          assignMarkBtn.disabled = false;
+          assignMarkBtn.style.opacity = '';
+          assignMarkBtn.onclick = () => markDone('assignment');
+        }
 
+        updateItemDisplay('assignment', state.currentItem.id, true);
       } else {
         Swal.fire('Error', data.message || 'Submission failed', 'error');
       }
@@ -2146,7 +2219,6 @@ document.addEventListener('click', async e => {
 
   let quizSelectedFile = null;
 
-  // Toggle between File and Link upload types
   if (quizSubmitFileTypeBtn && quizSubmitLinkTypeBtn) {
     quizSubmitFileTypeBtn.addEventListener('click', function () {
       quizSubmitFileTypeBtn.classList.add('active');
@@ -2163,7 +2235,6 @@ document.addEventListener('click', async e => {
     });
   }
 
-  // Browse button
   if (quizSubmitBrowseBtn && quizSubmitFileInput) {
     quizSubmitBrowseBtn.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -2171,13 +2242,11 @@ document.addEventListener('click', async e => {
     });
   }
 
-  // Click on zone to browse
   if (quizSubmitFileZone && quizSubmitFileInput) {
     quizSubmitFileZone.addEventListener('click', function () {
       quizSubmitFileInput.click();
     });
 
-    // Drag & drop
     quizSubmitFileZone.addEventListener('dragover', function (e) {
       e.preventDefault();
       quizSubmitFileZone.classList.add('drag-over');
@@ -2192,24 +2261,18 @@ document.addEventListener('click', async e => {
       e.preventDefault();
       quizSubmitFileZone.classList.remove('drag-over');
       const files = e.dataTransfer.files;
-      if (files.length > 0) {
-        handleQuizFileSelection(files[0]);
-      }
+      if (files.length > 0) handleQuizFileSelection(files[0]);
     });
   }
 
-  // File input change
   if (quizSubmitFileInput) {
     quizSubmitFileInput.addEventListener('change', function () {
-      if (quizSubmitFileInput.files.length > 0) {
-        handleQuizFileSelection(quizSubmitFileInput.files[0]);
-      }
+      if (quizSubmitFileInput.files.length > 0) handleQuizFileSelection(quizSubmitFileInput.files[0]);
     });
   }
 
   function handleQuizFileSelection(file) {
     quizSelectedFile = file;
-    // Clear preview
     if (quizSubmitFilePreview) {
       quizSubmitFilePreview.innerHTML = '';
       const item = document.createElement('div');
@@ -2232,7 +2295,6 @@ document.addEventListener('click', async e => {
       });
       quizSubmitFilePreview.appendChild(item);
     }
-    // Hide success message on new file selection
     if (quizSuccessMsg) quizSuccessMsg.classList.add('hidden');
   }
 
@@ -2250,7 +2312,6 @@ document.addEventListener('click', async e => {
     return div.innerHTML;
   }
 
-  // Submit button handler
   if (quizSubmitBtn) {
     quizSubmitBtn.addEventListener('click', async function () {
       const isLinkMode = quizSubmitLinkTypeBtn && quizSubmitLinkTypeBtn.classList.contains('active');
@@ -2263,27 +2324,15 @@ document.addEventListener('click', async e => {
       if (isLinkMode) {
         const linkInput = document.getElementById('quiz-submit-link-input');
         if (!linkInput || !linkInput.value.trim()) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'Missing Link',
-            text: 'Please paste a submission link.',
-            confirmButtonColor: '#0f1f4b'
-          });
+          Swal.fire({ icon: 'warning', title: 'Missing Link', text: 'Please paste a submission link.', confirmButtonColor: '#0f1f4b' });
           return;
         }
-        // Submit link to backend
         await submitQuizSubmission(linkInput.value.trim(), null);
       } else {
         if (!quizSelectedFile) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'No File Selected',
-            text: 'Please select a file to submit.',
-            confirmButtonColor: '#0f1f4b'
-          });
+          Swal.fire({ icon: 'warning', title: 'No File Selected', text: 'Please select a file to submit.', confirmButtonColor: '#0f1f4b' });
           return;
         }
-        // Submit file to backend
         await submitQuizSubmission(null, quizSelectedFile);
       }
     });
@@ -2298,33 +2347,18 @@ document.addEventListener('click', async e => {
     if (file) formData.append('submissionFile', file);
 
     try {
-      const response = await fetch('/api/submit-quiz', {
-        method: 'POST',
-        body: formData
-      });
-
+      const response = await fetch('/api/submit-quiz', { method: 'POST', body: formData });
       const data = await response.json();
 
       if (response.ok) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Submitted!',
-          text: 'Your quiz has been submitted successfully.',
-          confirmButtonColor: '#0f1f4b'
-        });
+        Swal.fire({ icon: 'success', title: 'Submitted!', text: 'Your quiz has been submitted successfully.', confirmButtonColor: '#0f1f4b' });
 
-        // Mark as done automatically
         await fetch('/api/mark-done', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: DATA.profile.id,
-            itemType: 'quiz',
-            itemId: state.currentItem.id
-          })
+          body: JSON.stringify({ userId: DATA.profile.id, itemType: 'quiz', itemId: state.currentItem.id })
         });
 
-        // Update local state
         const key = completionKey('quiz', state.currentItem.id);
         state.done.add(key);
 
@@ -2334,18 +2368,17 @@ document.addEventListener('click', async e => {
           quizSubmitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted';
         }
 
-        // Refresh the display
         updateItemDisplay('quiz', state.currentItem.id, true);
 
-        // Update the quiz mark button if visible
+        // FIX #1: Update the mark-done button to "Finished"
         const quizMarkBtn = document.getElementById('quiz-mark-btn');
         if (quizMarkBtn) {
-          quizMarkBtn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Completed';
+          quizMarkBtn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
           quizMarkBtn.className = 'mark-done-btn done-state';
-          quizMarkBtn.disabled = true;
-          quizMarkBtn.onclick = null;
+          quizMarkBtn.disabled = false;
+          quizMarkBtn.style.opacity = '';
+          quizMarkBtn.onclick = () => markDone('quiz');
         }
-
       } else {
         Swal.fire('Error', data.message || 'Submission failed', 'error');
       }
