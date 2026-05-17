@@ -9,6 +9,200 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link rel="stylesheet" href="/studentdashboard/dashboard.css" />
+
+  <style>
+    /* ── STAT CARD CLICKABLE ─────────────────────────────────── */
+    .stat-card {
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    }
+    .stat-card:active {
+      transform: translateY(0);
+    }
+
+    /* ── STATS MODAL OVERLAY ─────────────────────────────────── */
+    .stats-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(7px);
+      -webkit-backdrop-filter: blur(7px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    .stats-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .stats-modal {
+      background: #ffffff;
+      border-radius: 20px;
+      border: 1px solid rgba(0,0,0,0.08);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+      width: 460px;
+      max-width: 95vw;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      transform: translateY(20px) scale(0.97);
+      transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      overflow: hidden;
+    }
+    .stats-overlay.active .stats-modal {
+      transform: translateY(0) scale(1);
+    }
+    .stats-modal-header {
+      padding: 1.4rem 1.6rem 1.1rem;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .stats-modal-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .stats-modal-icon.blue   { background: #dbeafe; color: #1d4ed8; }
+    .stats-modal-icon.green  { background: #dcfce7; color: #16a34a; }
+    .stats-modal-icon.orange { background: #fef3c7; color: #d97706; }
+    .stats-modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+      flex: 1;
+    }
+    .stats-modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: none;
+      background: #f8fafc;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: #64748b;
+      transition: background 0.15s, color 0.15s;
+    }
+    .stats-modal-close:hover { background: #f1f5f9; color: #0f172a; }
+    .stats-modal-body {
+      padding: 1.2rem 1.6rem 1.4rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .stats-modal-summary {
+      padding: 0.8rem 1rem;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .stats-modal-summary strong {
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .stats-modal-item {
+      padding: 0.85rem 1rem;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #f8fafc;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .stats-modal-item.clickable { cursor: pointer; }
+    .stats-modal-item.clickable:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+    .stats-item-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .stats-item-info { flex: 1; min-width: 0; }
+    .stats-item-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .stats-item-meta {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .stats-item-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .stats-item-badge.done    { background: #dcfce7; color: #15803d; }
+    .stats-item-badge.pending { background: #fef3c7; color: #b45309; }
+    .stats-item-badge.score   { background: #dbeafe; color: #1d4ed8; }
+    .stats-item-badge.pct     { background: #ede9fe; color: #6d28d9; }
+    .stats-progress-bar {
+      margin-top: 7px;
+      height: 5px;
+      border-radius: 3px;
+      background: #e2e8f0;
+      overflow: hidden;
+    }
+    .stats-progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #16a34a, #22c55e);
+      transition: width 0.6s ease;
+    }
+    .stats-progress-sub {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .stats-modal-empty {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+    .stats-modal-empty i {
+      font-size: 32px;
+      display: block;
+      margin-bottom: 10px;
+      opacity: 0.4;
+    }
+  </style>
 </head>
 
 <body>
@@ -74,7 +268,8 @@
           <p class="welcome-subheading">Stay on top of your learning journey</p>
         </div>
         <div class="home-stats-row" id="home-stats-row">
-          <div class="stat-card">
+          <!-- Classes stat card -->
+          <div class="stat-card" onclick="openStatsModal('classes')" title="View your classes">
             <div class="stat-icon-wrap blue">
               <i class="fa-solid fa-book-open"></i>
             </div>
@@ -83,7 +278,8 @@
               <div class="stat-label">Classes</div>
             </div>
           </div>
-          <div class="stat-card">
+          <!-- Completed stat card -->
+          <div class="stat-card" onclick="openStatsModal('completed')" title="View completed items">
             <div class="stat-icon-wrap green">
               <i class="fa-solid fa-circle-check"></i>
             </div>
@@ -92,7 +288,8 @@
               <div class="stat-label">Completed</div>
             </div>
           </div>
-          <div class="stat-card">
+          <!-- Pending stat card -->
+          <div class="stat-card" onclick="openStatsModal('pending')" title="View pending items">
             <div class="stat-icon-wrap orange">
               <i class="fa-regular fa-clock"></i>
             </div>
@@ -138,35 +335,36 @@
       </div>
 
       <!-- ===== CLASSES VIEW ===== -->
-<div class="page-body hidden" id="view-classes">
-  <div class="classes-header">
-    <div>
-      <h1 class="page-heading">Continue learning with your courses!</h1>
-      <p class="page-subheading">Access all your enrolled classes and materials</p>
-    </div>
-    <button class="join-class-btn" id="join-class-btn">
-      <i class="fa-solid fa-plus"></i> Join Class
-    </button>
-  </div>
+      <div class="page-body hidden" id="view-classes">
+        <div class="classes-header">
+          <div>
+            <h1 class="page-heading">Continue learning with your courses!</h1>
+            <p class="page-subheading">Access all your enrolled classes and materials</p>
+          </div>
+          <button class="join-class-btn" id="join-class-btn">
+            <i class="fa-solid fa-plus"></i> Join Class
+          </button>
+        </div>
 
-  <!-- Active Classes -->
-  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-    <p class="classes-section-label" style="margin-bottom:0">Enrolled Classes</p>
-  </div>
-  <div class="classes-grid" id="classes-grid"></div>
+        <!-- Active Classes -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+          <p class="classes-section-label" style="margin-bottom:0">Enrolled Classes</p>
+        </div>
+        <div class="classes-grid" id="classes-grid"></div>
 
-  <!-- Archived Classes -->
-  <div style="margin-top:32px;">
-    <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; cursor:pointer;" id="archived-toggle">
-      <div style="width:32px;height:32px;background:#f1f5f9;border-radius:8px;display:flex;align-items:center;justify-content:center;">
-        <i class="fa-solid fa-box-archive" style="color:#64748b;font-size:14px;"></i>
+        <!-- Archived Classes -->
+        <div style="margin-top:32px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; cursor:pointer;" id="archived-toggle">
+            <div style="width:32px;height:32px;background:#f1f5f9;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+              <i class="fa-solid fa-box-archive" style="color:#64748b;font-size:14px;"></i>
+            </div>
+            <p class="classes-section-label" style="margin-bottom:0">Archived Classes</p>
+            <i class="fa-solid fa-chevron-down" id="archived-chevron" style="color:#94a3b8;font-size:12px;margin-left:4px;transition:transform 0.2s;"></i>
+          </div>
+          <div id="archived-classes-grid" class="classes-grid" style="display:none;"></div>
+        </div>
       </div>
-      <p class="classes-section-label" style="margin-bottom:0">Archived Classes</p>
-      <i class="fa-solid fa-chevron-down" id="archived-chevron" style="color:#94a3b8;font-size:12px;margin-left:4px;transition:transform 0.2s;"></i>
-    </div>
-    <div id="archived-classes-grid" class="classes-grid" style="display:none;"></div>
-  </div>
-</div>
+
       <!-- ===== ANNOUNCEMENTS VIEW ===== -->
       <div class="page-body hidden" id="view-announcements">
         <div class="announcements-full-header">
@@ -219,7 +417,6 @@
           <i class="fa-solid fa-arrow-left"></i> Back to Class
         </button>
 
-        <!-- Header card -->
         <div class="detail-header detail-header-card">
           <div class="detail-header-icon-wrap blue">
             <i class="fa-solid fa-book-open"></i>
@@ -230,7 +427,6 @@
           </div>
         </div>
 
-        <!-- Due date badge row -->
         <div class="detail-info-row">
           <div class="detail-info-badge due-badge" id="mat-due-container">
             <i class="fa-regular fa-clock"></i>
@@ -242,7 +438,6 @@
           </div>
         </div>
 
-        <!-- Description card -->
         <div class="item-content-card">
           <div class="item-content-section-header">
             <div class="section-header-icon-wrap">
@@ -253,7 +448,6 @@
           <p class="item-description" id="mat-description"></p>
         </div>
 
-        <!-- Material link card -->
         <div class="item-link-card blue-link-card" id="mat-link-card">
           <div class="item-link-icon-wrap blue-material-icon">
             <i class="fa-solid fa-book-open"></i>
@@ -264,7 +458,6 @@
           </div>
         </div>
 
-        <!-- Clickable text link -->
         <div class="material-link-text-wrapper">
           <a href="#" class="material-link-text" id="mat-pdf-link" target="_blank">
             <i class="fa-solid fa-arrow-up-right-from-square"></i>
@@ -272,27 +465,24 @@
           </a>
         </div>
 
-        <!-- Mark as done -->
         <div class="mark-done-row">
           <button class="mark-done-btn dark" id="mat-mark-btn">
             <i class="fa-regular fa-circle-check"></i> Mark as done
           </button>
         </div>
 
-        <!-- Hidden elements preserved for JS compatibility -->
         <div style="display:none;">
           <div id="mat-banner"></div>
           <div id="mat-class-tag"></div>
         </div>
       </div>
 
-            <!-- ===== ASSIGNMENT DETAIL VIEW ===== -->
+      <!-- ===== ASSIGNMENT DETAIL VIEW ===== -->
       <div class="page-body hidden" id="view-assignment-detail">
         <button class="back-btn" id="back-to-class-from-assignment">
           <i class="fa-solid fa-arrow-left"></i> Back to Class
         </button>
 
-        <!-- Header card -->
         <div class="detail-header detail-header-card">
           <div class="detail-header-icon-wrap orange">
             <i class="fa-solid fa-file-pen"></i>
@@ -303,7 +493,6 @@
           </div>
         </div>
 
-        <!-- Due date badge row -->
         <div class="detail-info-row">
           <div class="detail-info-badge due-badge" id="assignment-due-container">
             <i class="fa-regular fa-clock"></i>
@@ -315,7 +504,6 @@
           </div>
         </div>
 
-        <!-- Description + Instructions card -->
         <div class="item-content-card">
           <div class="item-content-section-header">
             <div class="section-header-icon-wrap">
@@ -340,7 +528,6 @@
           </ul>
         </div>
 
-        <!-- File / Link card -->
         <div class="item-link-card orange-link-card" id="assignment-link-card">
           <div class="item-link-icon-wrap orange-icon">
             <i class="fa-solid fa-file-pen"></i>
@@ -356,7 +543,7 @@
           </a>
         </div>
 
-        <!-- ===== SUBMISSION AREA ===== -->
+        <!-- SUBMISSION AREA -->
         <div class="submission-area" id="submission-area">
           <div class="submission-header">
             <div class="section-header-icon-wrap">
@@ -365,7 +552,6 @@
             <h3 class="submission-title">Submit Your Work</h3>
           </div>
 
-          <!-- Upload Type Selection -->
           <div class="upload-type-selector">
             <button class="upload-type-btn active" data-upload-type="file" id="assign-submit-file-type-btn">
               <i class="fa-solid fa-file-arrow-up"></i> Upload File
@@ -375,7 +561,6 @@
             </button>
           </div>
 
-          <!-- File Upload Zone -->
           <div class="file-upload-zone" id="assignment-submit-file-zone">
             <input type="file" id="assignment-submit-file-input" style="display:none" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.zip">
             <div class="file-upload-icon">
@@ -389,177 +574,161 @@
             <div class="file-preview-list" id="assignment-submit-file-preview"></div>
           </div>
 
-          <!-- Link Input -->
           <div class="form-group hidden" id="assignment-submit-link-group">
             <label>Submission Link</label>
             <input type="text" id="assignment-submit-link-input" placeholder="https://drive.google.com/... or https://...">
           </div>
 
-          <!-- Submit Button -->
           <button class="submit-assignment-btn" id="btn-submit-assignment">
             <i class="fa-solid fa-paper-plane"></i> Submit Assignment
           </button>
 
-          <!-- Submitted status (hidden by default) -->
           <div class="submission-success-msg hidden" id="submission-success-msg">
             <i class="fa-solid fa-circle-check"></i>
             <span>Assignment submitted successfully!</span>
           </div>
         </div>
-        <!-- ===== END SUBMISSION AREA ===== -->
 
-        <!-- Mark as done -->
         <div class="mark-done-row">
           <button class="mark-done-btn dark" id="assignment-mark-btn">
             <i class="fa-regular fa-circle-check"></i> Mark as done
           </button>
         </div>
 
-        <!-- Hidden elements preserved for JS compatibility -->
         <div style="display:none;">
           <div id="assignment-banner"></div>
           <div id="assignment-class-tag"></div>
+          <div id="assignment-score-display"></div>
+          <div id="assignment-grade-badge"></div>
         </div>
       </div>
-      
-     <!-- ===== QUIZ DETAIL VIEW ===== -->
-<div class="page-body hidden" id="view-quiz-detail">
-  <button class="back-btn" id="back-to-class-from-quiz">
-    <i class="fa-solid fa-arrow-left"></i> Back to Class
-  </button>
 
-  <!-- Header card -->
-  <div class="detail-header detail-header-card">
-    <div class="detail-header-icon-wrap purple">
-      <i class="fa-solid fa-clipboard-question"></i>
-    </div>
-    <div class="detail-header-content">
-      <h1 class="page-heading" id="quiz-title"></h1>
-      <p class="class-meta-text" id="quiz-class-name"></p>
-    </div>
-  </div>
+      <!-- ===== QUIZ DETAIL VIEW ===== -->
+      <div class="page-body hidden" id="view-quiz-detail">
+        <button class="back-btn" id="back-to-class-from-quiz">
+          <i class="fa-solid fa-arrow-left"></i> Back to Class
+        </button>
 
-  <!-- Due date badge row -->
-  <div class="detail-info-row">
-    <div class="detail-info-badge due-badge" id="quiz-due-container">
-      <i class="fa-regular fa-clock"></i>
-      <span class="due-date-text" id="quiz-due-text"></span>
-    </div>
-    <div class="detail-info-badge status-badge" id="quiz-status-badge">
-      <i class="fa-regular fa-circle"></i>
-      <span id="quiz-status-text">Pending</span>
-    </div>
-  </div>
+        <div class="detail-header detail-header-card">
+          <div class="detail-header-icon-wrap purple">
+            <i class="fa-solid fa-clipboard-question"></i>
+          </div>
+          <div class="detail-header-content">
+            <h1 class="page-heading" id="quiz-title"></h1>
+            <p class="class-meta-text" id="quiz-class-name"></p>
+          </div>
+        </div>
 
-  <!-- Description card -->
-  <div class="item-content-card">
-    <div class="item-content-section-header">
-      <div class="section-header-icon-wrap">
-        <i class="fa-solid fa-align-left"></i>
+        <div class="detail-info-row">
+          <div class="detail-info-badge due-badge" id="quiz-due-container">
+            <i class="fa-regular fa-clock"></i>
+            <span class="due-date-text" id="quiz-due-text"></span>
+          </div>
+          <div class="detail-info-badge status-badge" id="quiz-status-badge">
+            <i class="fa-regular fa-circle"></i>
+            <span id="quiz-status-text">Pending</span>
+          </div>
+        </div>
+
+        <div class="item-content-card">
+          <div class="item-content-section-header">
+            <div class="section-header-icon-wrap">
+              <i class="fa-solid fa-align-left"></i>
+            </div>
+            <p class="item-section-title">Description</p>
+          </div>
+          <p class="item-description" id="quiz-description"></p>
+
+          <div class="item-content-divider"></div>
+
+          <div class="item-content-section-header">
+            <div class="section-header-icon-wrap purple-icon-wrap">
+              <i class="fa-solid fa-list-ol"></i>
+            </div>
+            <p class="item-section-title">Instructions</p>
+          </div>
+          <ul class="item-instructions" id="quiz-instructions">
+            <li>Read each question carefully before answering</li>
+            <li>Submit your answers before the due date</li>
+            <li>You can only take the quiz once</li>
+          </ul>
+        </div>
+
+        <div class="item-link-card purple-link-card" id="quiz-link-card">
+          <div class="item-link-icon-wrap purple-icon">
+            <i class="fa-solid fa-clipboard-question"></i>
+          </div>
+          <div class="item-link-content">
+            <p class="item-link-label">Quiz Link</p>
+            <p class="item-link-sub">Click below to open and take the quiz</p>
+          </div>
+        </div>
+
+        <div class="quiz-link-text-wrapper">
+          <a href="#" class="quiz-link-text" id="quiz-link" target="_blank">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <span>Open Quiz</span>
+          </a>
+        </div>
+
+        <!-- QUIZ SUBMISSION AREA -->
+        <div class="submission-area" id="quiz-submission-area">
+          <div class="submission-header">
+            <div class="section-header-icon-wrap">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+            <h3 class="submission-title">Submit Your Quiz</h3>
+          </div>
+
+          <div class="upload-type-selector">
+            <button class="upload-type-btn active" data-upload-type="file" id="quiz-submit-file-type-btn">
+              <i class="fa-solid fa-file-arrow-up"></i> Upload File
+            </button>
+            <button class="upload-type-btn" data-upload-type="link" id="quiz-submit-link-type-btn">
+              <i class="fa-solid fa-link"></i> Paste Link
+            </button>
+          </div>
+
+          <div class="file-upload-zone" id="quiz-submit-file-zone">
+            <input type="file" id="quiz-submit-file-input" style="display:none" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.zip">
+            <div class="file-upload-icon">
+              <i class="fa-solid fa-cloud-arrow-up" style="font-size: 40px; color: var(--text-muted);"></i>
+            </div>
+            <p class="file-upload-title">Drag & drop your file here</p>
+            <p class="file-upload-sub">or click to browse (PDF, DOC, PPT, images, ZIP)</p>
+            <button class="btn-browse" id="quiz-submit-browse-btn">
+              <i class="fa-solid fa-folder-open"></i> Browse Files
+            </button>
+            <div class="file-preview-list" id="quiz-submit-file-preview"></div>
+          </div>
+
+          <div class="form-group hidden" id="quiz-submit-link-group">
+            <label>Submission Link</label>
+            <input type="text" id="quiz-submit-link-input" placeholder="https://drive.google.com/... or https://...">
+          </div>
+
+          <button class="submit-assignment-btn" id="btn-submit-quiz">
+            <i class="fa-solid fa-paper-plane"></i> Submit Quiz
+          </button>
+
+          <div class="submission-success-msg hidden" id="quiz-submission-success-msg">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>Quiz submitted successfully!</span>
+          </div>
+        </div>
+
+        <div class="mark-done-row">
+          <button class="mark-done-btn yellow" id="quiz-mark-btn">
+            <i class="fa-regular fa-circle-check"></i> Mark as done
+          </button>
+        </div>
+
+        <div style="display:none;">
+          <div id="quiz-banner"></div>
+          <div id="quiz-class-tag"></div>
+          <div id="quiz-score-display"></div>
+        </div>
       </div>
-      <p class="item-section-title">Description</p>
-    </div>
-    <p class="item-description" id="quiz-description"></p>
-
-    <div class="item-content-divider"></div>
-
-    <div class="item-content-section-header">
-      <div class="section-header-icon-wrap purple-icon-wrap">
-        <i class="fa-solid fa-list-ol"></i>
-      </div>
-      <p class="item-section-title">Instructions</p>
-    </div>
-    <ul class="item-instructions" id="quiz-instructions">
-      <li>Read each question carefully before answering</li>
-      <li>Submit your answers before the due date</li>
-      <li>You can only take the quiz once</li>
-    </ul>
-  </div>
-
-  <!-- Quiz link card -->
-  <div class="item-link-card purple-link-card" id="quiz-link-card">
-    <div class="item-link-icon-wrap purple-icon">
-      <i class="fa-solid fa-clipboard-question"></i>
-    </div>
-    <div class="item-link-content">
-      <p class="item-link-label">Quiz Link</p>
-      <p class="item-link-sub">Click below to open and take the quiz</p>
-    </div>
-  </div>
-
-  <!-- Clickable text link -->
-  <div class="quiz-link-text-wrapper">
-    <a href="#" class="quiz-link-text" id="quiz-link" target="_blank">
-      <i class="fa-solid fa-arrow-up-right-from-square"></i>
-      <span>Open Quiz</span>
-    </a>
-  </div>
-
-  <!-- ===== QUIZ SUBMISSION AREA ===== -->
-  <div class="submission-area" id="quiz-submission-area">
-    <div class="submission-header">
-      <div class="section-header-icon-wrap">
-        <i class="fa-solid fa-cloud-arrow-up"></i>
-      </div>
-      <h3 class="submission-title">Submit Your Quiz</h3>
-    </div>
-
-    <!-- Upload Type Selection -->
-    <div class="upload-type-selector">
-      <button class="upload-type-btn active" data-upload-type="file" id="quiz-submit-file-type-btn">
-        <i class="fa-solid fa-file-arrow-up"></i> Upload File
-      </button>
-      <button class="upload-type-btn" data-upload-type="link" id="quiz-submit-link-type-btn">
-        <i class="fa-solid fa-link"></i> Paste Link
-      </button>
-    </div>
-
-    <!-- File Upload Zone -->
-    <div class="file-upload-zone" id="quiz-submit-file-zone">
-      <input type="file" id="quiz-submit-file-input" style="display:none" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.zip">
-      <div class="file-upload-icon">
-        <i class="fa-solid fa-cloud-arrow-up" style="font-size: 40px; color: var(--text-muted);"></i>
-      </div>
-      <p class="file-upload-title">Drag & drop your file here</p>
-      <p class="file-upload-sub">or click to browse (PDF, DOC, PPT, images, ZIP)</p>
-      <button class="btn-browse" id="quiz-submit-browse-btn">
-        <i class="fa-solid fa-folder-open"></i> Browse Files
-      </button>
-      <div class="file-preview-list" id="quiz-submit-file-preview"></div>
-    </div>
-
-    <!-- Link Input -->
-    <div class="form-group hidden" id="quiz-submit-link-group">
-      <label>Submission Link</label>
-      <input type="text" id="quiz-submit-link-input" placeholder="https://drive.google.com/... or https://...">
-    </div>
-
-    <!-- Submit Button -->
-    <button class="submit-assignment-btn" id="btn-submit-quiz">
-      <i class="fa-solid fa-paper-plane"></i> Submit Quiz
-    </button>
-
-    <!-- Submitted status (hidden by default) -->
-    <div class="submission-success-msg hidden" id="quiz-submission-success-msg">
-      <i class="fa-solid fa-circle-check"></i>
-      <span>Quiz submitted successfully!</span>
-    </div>
-  </div>
-  <!-- ===== END QUIZ SUBMISSION AREA ===== -->
-
-  <!-- Mark as done -->
-  <div class="mark-done-row">
-    <button class="mark-done-btn yellow" id="quiz-mark-btn">
-      <i class="fa-regular fa-circle-check"></i> Mark as done
-    </button>
-  </div>
-
-  <!-- Hidden elements preserved for JS compatibility -->
-  <div style="display:none;">
-    <div id="quiz-banner"></div>
-    <div id="quiz-class-tag"></div>
-  </div>
-</div>
 
       <!-- ===== PROGRESS VIEW ===== -->
       <div class="page-body hidden" id="view-progress">
@@ -569,11 +738,7 @@
             <p class="page-subheading">Monitor your learning achievements across all classes</p>
           </div>
         </div>
-
-        <!-- Overall summary card -->
         <div class="progress-summary" id="progress-summary"></div>
-
-        <!-- Per-class progress cards -->
         <div class="progress-section-label-row">
           <div class="section-header-icon-wrap">
             <i class="fa-solid fa-chart-simple"></i>
@@ -590,7 +755,6 @@
           <p class="page-subheading">Stay organized with pending and upcoming assignments</p>
         </div>
 
-        <!-- Quick todo stats -->
         <div class="todo-stats-row">
           <div class="todo-stat-card yellow-stat">
             <div class="todo-stat-icon">
@@ -613,7 +777,6 @@
         </div>
 
         <div class="todo-page-scroll">
-          <!-- Assigned tasks -->
           <div class="todo-group">
             <div class="todo-group-header-fancy yellow-group">
               <div class="todo-group-icon-wrap yellow-icon-wrap">
@@ -627,7 +790,6 @@
             <div id="todo-assigned-list"></div>
           </div>
 
-          <!-- Missing tasks -->
           <div class="todo-group">
             <div class="todo-group-header-fancy red-group">
               <div class="todo-group-icon-wrap red-icon-wrap">
@@ -650,7 +812,6 @@
           <p class="page-subheading">Manage your account information and settings</p>
         </div>
         <div class="profile-layout">
-          <!-- Left card -->
           <div class="profile-card">
             <div class="profile-picture-section">
               <div class="profile-avatar" id="profile-avatar-container">
@@ -666,7 +827,6 @@
             <h2 id="profile-username-display">student</h2>
             <p class="profile-role" id="profile-role-display">Student</p>
 
-            <!-- Profile quick info badges -->
             <div class="profile-quick-badges">
               <div class="profile-quick-badge">
                 <i class="fa-solid fa-graduation-cap"></i>
@@ -681,10 +841,7 @@
             </div>
           </div>
 
-          <!-- Right panels -->
           <div class="profile-panels">
-
-            <!-- Main info panel -->
             <section id="profile-main">
               <div class="profile-panel-header">
                 <div class="profile-panel-icon-wrap blue-icon-wrap">
@@ -732,7 +889,6 @@
               </div>
             </section>
 
-            <!-- Edit info panel -->
             <section id="profile-edit-info" style="display:none;">
               <div class="profile-panel-header">
                 <div class="profile-panel-icon-wrap orange-icon-wrap">
@@ -752,7 +908,6 @@
               </div>
             </section>
 
-            <!-- Change password panel -->
             <section id="profile-change-password" style="display:none;">
               <div class="profile-panel-header">
                 <div class="profile-panel-icon-wrap purple-icon-wrap">
@@ -785,22 +940,34 @@
   </div>
 
   <!-- ===== SCORES DETAIL MODAL ===== -->
-<div class="scores-modal-overlay" id="scores-modal-overlay">
-  <div class="scores-modal">
-    <div class="scores-modal-header">
-      <h2>
-        <i class="fa-solid fa-chart-bar"></i>
-        <span id="scores-modal-title">Class Progress</span>
-      </h2>
-      <button class="scores-modal-close" id="scores-modal-close">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-    </div>
-    <div class="scores-modal-body" id="scores-modal-body">
-      <!-- Dynamic content -->
+  <div class="scores-modal-overlay" id="scores-modal-overlay">
+    <div class="scores-modal">
+      <div class="scores-modal-header">
+        <h2>
+          <i class="fa-solid fa-chart-bar"></i>
+          <span id="scores-modal-title">Class Progress</span>
+        </h2>
+        <button class="scores-modal-close" id="scores-modal-close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="scores-modal-body" id="scores-modal-body"></div>
     </div>
   </div>
-</div>
+
+  <!-- ===== STATS POPUP MODAL ===== -->
+  <div class="stats-overlay" id="stats-overlay">
+    <div class="stats-modal" role="dialog" aria-modal="true" aria-labelledby="stats-modal-title">
+      <div class="stats-modal-header">
+        <div class="stats-modal-icon" id="stats-modal-icon"></div>
+        <span class="stats-modal-title" id="stats-modal-title"></span>
+        <button class="stats-modal-close" onclick="closeStatsModal()" aria-label="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="stats-modal-body" id="stats-modal-body"></div>
+    </div>
+  </div>
 
   <!-- ===== JOIN CLASS MODAL ===== -->
   <div id="join-modal" class="modal-overlay">
@@ -831,6 +998,190 @@
   </div>
 
   <script src="/studentdashboard/dashboard.js"></script>
-</body>
 
+  <!-- ===== STATS MODAL SCRIPT ===== -->
+  <script>
+    function openStatsModal(type) {
+      const overlay = document.getElementById('stats-overlay');
+      const iconEl  = document.getElementById('stats-modal-icon');
+      const titleEl = document.getElementById('stats-modal-title');
+      const body    = document.getElementById('stats-modal-body');
+      body.innerHTML = '';
+
+      const typeDots = { material: '#378ADD', quiz: '#16a34a', assignment: '#d97706' };
+      const typeLabel = { material: 'Lesson', quiz: 'Quiz', assignment: 'Assignment' };
+
+      if (type === 'classes') {
+        iconEl.className = 'stats-modal-icon blue';
+        iconEl.innerHTML = '<i class="fa-solid fa-book-open"></i>';
+        titleEl.textContent = 'Your Classes';
+
+        if (!DATA.classes || DATA.classes.length === 0) {
+          body.innerHTML = '<div class="stats-modal-empty"><i class="fa-solid fa-chalkboard-user"></i>No classes enrolled yet.</div>';
+        } else {
+          DATA.classes.forEach(cls => {
+            const allKeys = [
+              ...(cls.materials   || []).map(m => completionKey('material',   m.id)),
+              ...(cls.quizzes     || []).map(q => completionKey('quiz',       q.id)),
+              ...(cls.assignments || []).map(a => completionKey('assignment', a.id))
+            ];
+            const total = allKeys.length;
+            const done  = allKeys.filter(k => state.done.has(k)).length;
+            const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
+
+            const el = document.createElement('div');
+            el.className = 'stats-modal-item';
+            el.innerHTML = `
+              <div class="stats-item-dot" style="background:#7c3aed;"></div>
+              <div class="stats-item-info">
+                <div class="stats-item-name">${escapeHtml(cls.title)}</div>
+                <div class="stats-item-meta">${escapeHtml(cls.professor || '')}</div>
+                <div class="stats-progress-bar">
+                  <div class="stats-progress-fill" style="width:${pct}%"></div>
+                </div>
+                <div class="stats-progress-sub">${done} / ${total} items finished</div>
+              </div>
+              <span class="stats-item-badge pct">${pct}%</span>`;
+            el.style.cursor = 'pointer';
+            el.addEventListener('click', () => {
+              closeStatsModal();
+              setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
+              openClassDetail(cls);
+              showView('class-detail');
+            });
+            body.appendChild(el);
+          });
+        }
+
+      } else if (type === 'completed') {
+        iconEl.className = 'stats-modal-icon green';
+        iconEl.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+
+        const items = [];
+        (DATA.classes || []).forEach(cls => {
+          (cls.materials   || []).forEach(m => { if (state.done.has(completionKey('material',   m.id))) items.push({...m, type:'material',   cls}); });
+          (cls.quizzes     || []).forEach(q => { if (state.done.has(completionKey('quiz',       q.id))) items.push({...q, type:'quiz',       cls}); });
+          (cls.assignments || []).forEach(a => { if (state.done.has(completionKey('assignment', a.id))) items.push({...a, type:'assignment', cls}); });
+        });
+
+        titleEl.textContent = `${items.length} Completed Item${items.length !== 1 ? 's' : ''}`;
+
+        if (items.length === 0) {
+          body.innerHTML = '<div class="stats-modal-empty"><i class="fa-solid fa-circle-check"></i>No completed items yet. Keep going!</div>';
+        } else {
+          const summary = document.createElement('div');
+          summary.className = 'stats-modal-summary';
+          summary.innerHTML = `<span>Total completed</span><strong>${items.length} items</strong>`;
+          body.appendChild(summary);
+
+          items.forEach(item => {
+            const key       = completionKey(item.type, item.id);
+            const scoreData = DATA.scores && DATA.scores[key];
+            const hasScore  = scoreData && scoreData.score != null;
+            const badge     = hasScore
+              ? `<span class="stats-item-badge score">⭐ ${scoreData.score}/100</span>`
+              : `<span class="stats-item-badge done">✓ Done</span>`;
+
+            const el = document.createElement('div');
+            el.className = 'stats-modal-item clickable';
+            el.innerHTML = `
+              <div class="stats-item-dot" style="background:${typeDots[item.type]};"></div>
+              <div class="stats-item-info">
+                <div class="stats-item-name">${escapeHtml(item.title)}</div>
+                <div class="stats-item-meta">${typeLabel[item.type]} · ${escapeHtml(item.cls.title)}</div>
+              </div>
+              ${badge}`;
+            el.addEventListener('click', () => {
+              closeStatsModal();
+              setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
+              openClassDetail(item.cls);
+              if      (item.type === 'material')   openMaterialDetail(item, item.cls.title);
+              else if (item.type === 'quiz')        openQuizDetail(item, item.cls.title);
+              else                                  openAssignmentDetail(item, item.cls.title);
+            });
+            body.appendChild(el);
+          });
+        }
+
+      } else { // pending
+        iconEl.className = 'stats-modal-icon orange';
+        iconEl.innerHTML = '<i class="fa-regular fa-clock"></i>';
+
+        const now   = new Date();
+        const items = [];
+        (DATA.classes || []).forEach(cls => {
+          [
+            ...(cls.materials   || []).map(m => ({...m, type:'material',   cls})),
+            ...(cls.quizzes     || []).map(q => ({...q, type:'quiz',       cls})),
+            ...(cls.assignments || []).map(a => ({...a, type:'assignment', cls}))
+          ].forEach(entry => {
+            const key = completionKey(entry.type, entry.id);
+            if (state.done.has(key)) return;
+            // EXACTLY matches renderHome(): not done AND (no due date OR due date >= now)
+            const due = entry.due_date ? new Date(entry.due_date) : null;
+            if (!due || due >= now) items.push(entry);
+          });
+        });
+        // Sort: soonest due first, then no-due-date items
+        items.sort((a, b) => {
+          const da = a.due_date ? new Date(a.due_date) : null;
+          const db = b.due_date ? new Date(b.due_date) : null;
+          if (da && db) return da - db;
+          if (da) return -1;
+          if (db) return 1;
+          return 0;
+        });
+
+        titleEl.textContent = `${items.length} Pending Item${items.length !== 1 ? 's' : ''}`;
+
+        if (items.length === 0) {
+          body.innerHTML = '<div class="stats-modal-empty"><i class="fa-regular fa-calendar-check"></i>All caught up! No pending tasks.</div>';
+        } else {
+          const summary = document.createElement('div');
+          summary.className = 'stats-modal-summary';
+          summary.innerHTML = `<span>Not yet completed</span><strong>${items.length} item${items.length !== 1 ? 's' : ''}</strong>`;
+          body.appendChild(summary);
+
+          items.forEach(item => {
+            const badgeHtml = item.due_date
+              ? `<span class="stats-item-badge pending">Due ${formatDueDate(item.due_date)}</span>`
+              : `<span class="stats-item-badge" style="background:#f1f5f9;color:#64748b;font-weight:700;padding:3px 10px;border-radius:20px;font-size:11px;white-space:nowrap;">No due date</span>`;
+            const el = document.createElement('div');
+            el.className = 'stats-modal-item clickable';
+            el.innerHTML = `
+              <div class="stats-item-dot" style="background:${typeDots[item.type]};"></div>
+              <div class="stats-item-info">
+                <div class="stats-item-name">${escapeHtml(item.title)}</div>
+                <div class="stats-item-meta">${typeLabel[item.type]} · ${escapeHtml(item.cls.title)}</div>
+              </div>
+              ${badgeHtml}`;
+            el.addEventListener('click', () => {
+              closeStatsModal();
+              setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
+              openClassDetail(item.cls);
+              if      (item.type === 'material')   openMaterialDetail(item, item.cls.title);
+              else if (item.type === 'quiz')        openQuizDetail(item, item.cls.title);
+              else                                  openAssignmentDetail(item, item.cls.title);
+            });
+            body.appendChild(el);
+          });
+        }
+      }
+
+      overlay.classList.add('active');
+    }
+
+    function closeStatsModal() {
+      document.getElementById('stats-overlay').classList.remove('active');
+    }
+
+    document.getElementById('stats-overlay').addEventListener('click', function(e) {
+      if (e.target === this) closeStatsModal();
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeStatsModal();
+    });
+  </script>
+</body>
 </html>

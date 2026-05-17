@@ -290,8 +290,6 @@ async function apiDelete(url, body = null) {
 }
 
 // =============================================
-// FETCH ALL SECTIONS FOR ANNOUNCEMENTS
-// =============================================// =============================================
 // FETCH ALL CLASSES AND SECTIONS FOR ANNOUNCEMENTS
 // =============================================
 async function fetchAllClassesAndSectionsForAnnouncements() {
@@ -351,12 +349,7 @@ function renderAudienceCheckboxes(preselectedAudiences = []) {
   allClassesCheckbox.id = 'select-all-classes';
   allClassesCheckbox.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
   
-  // If "all_classes" is preselected or all sections are selected
-  const allSectionsSelected = preselectedAudiences.length > 0 && 
-    preselectedAudiences.every(a => a.startsWith('section_')) &&
-    preselectedAudiences.length === classData.reduce((sum, cls) => sum + cls.sections.length, 0);
-  
-  if (preselectedAudiences.includes('all_classes') || allSectionsSelected) {
+  if (preselectedAudiences.includes('all_classes')) {
     allClassesCheckbox.checked = true;
   }
   
@@ -377,10 +370,8 @@ function renderAudienceCheckboxes(preselectedAudiences = []) {
   selectAllSectionsBtn.textContent = '✓ Select All Sections';
   selectAllSectionsBtn.style.cssText = 'padding: 6px 14px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;';
   selectAllSectionsBtn.addEventListener('click', () => {
-    // Uncheck "All Classes" if checked
     const allClassesChk = document.getElementById('select-all-classes');
     if (allClassesChk) allClassesChk.checked = false;
-    // Check all section checkboxes
     container.querySelectorAll('input[type="checkbox"][value^="section_"]').forEach(cb => cb.checked = true);
   });
   
@@ -401,7 +392,6 @@ function renderAudienceCheckboxes(preselectedAudiences = []) {
     const classGroup = document.createElement('div');
     classGroup.style.cssText = 'margin-bottom: 16px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden;';
     
-    // Class header with "Select All" for this class
     const classHeader = document.createElement('div');
     classHeader.style.cssText = 'background: #f9fafb; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 12px; cursor: pointer;';
     
@@ -415,7 +405,6 @@ function renderAudienceCheckboxes(preselectedAudiences = []) {
     classCheckbox.dataset.classId = classItem.classId;
     classCheckbox.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
     
-    // Check if all sections in this class are selected
     const allSectionsInClassSelected = classItem.sections.length > 0 &&
       classItem.sections.every(sec => preselectedAudiences.includes(`section_${sec.sectionId}`));
     classCheckbox.checked = allSectionsInClassSelected;
@@ -433,7 +422,6 @@ function renderAudienceCheckboxes(preselectedAudiences = []) {
     classHeader.appendChild(className);
     classHeader.appendChild(sectionCount);
     
-    // Sections container (collapsible)
     const sectionsContainer = document.createElement('div');
     sectionsContainer.className = 'class-sections-container';
     sectionsContainer.style.cssText = 'padding: 8px 16px 12px 48px; background: white; display: block;';
@@ -464,28 +452,23 @@ function renderAudienceCheckboxes(preselectedAudiences = []) {
       sectionsContainer.appendChild(label);
     });
     
-    // Toggle sections visibility on header click
     let sectionsVisible = true;
     classHeader.addEventListener('click', (e) => {
-      // Don't toggle if clicking on checkbox
       if (e.target.type === 'checkbox') return;
       sectionsVisible = !sectionsVisible;
       sectionsContainer.style.display = sectionsVisible ? 'block' : 'none';
       classExpandIcon.style.transform = sectionsVisible ? 'rotate(0deg)' : 'rotate(-90deg)';
     });
     
-    // Class checkbox: select/deselect all sections in this class
     classCheckbox.addEventListener('change', (e) => {
       e.stopPropagation();
       const isChecked = classCheckbox.checked;
       sectionsContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
         cb.checked = isChecked;
       });
-      // Update "All Classes" checkbox
       updateAllClassesCheckbox();
     });
     
-    // Individual section checkboxes: update class checkbox
     sectionsContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
       cb.addEventListener('change', () => {
         const allChecked = Array.from(sectionsContainer.querySelectorAll('input[type="checkbox"]'))
@@ -500,7 +483,6 @@ function renderAudienceCheckboxes(preselectedAudiences = []) {
     container.appendChild(classGroup);
   });
   
-  // Function to update "All Classes" checkbox
   function updateAllClassesCheckbox() {
     const allClassesChk = document.getElementById('select-all-classes');
     if (!allClassesChk) return;
@@ -510,198 +492,18 @@ function renderAudienceCheckboxes(preselectedAudiences = []) {
     allClassesChk.checked = allChecked;
   }
   
-  // "All Classes" checkbox handler
   const allClassesChk = document.getElementById('select-all-classes');
   if (allClassesChk) {
     allClassesChk.addEventListener('change', () => {
       const isChecked = allClassesChk.checked;
-      // Select/deselect all section checkboxes
       container.querySelectorAll('input[type="checkbox"][value^="section_"]').forEach(cb => {
         cb.checked = isChecked;
       });
-      // Also update all class-level checkboxes
       container.querySelectorAll('.class-select-all').forEach(cb => {
         cb.checked = isChecked;
       });
     });
   }
-}
-// =============================================
-// FETCH ALL CLASSES AND SECTIONS FOR ANNOUNCEMENTS
-// =============================================
-async function fetchAllSectionsForAnnouncements() {
-  try {
-    if (!TEACHER_DATA.profile.id) return [];
-    const data = await apiGet(`/api/teacher/all-sections?teacherId=${TEACHER_DATA.profile.id}`);
-    TEACHER_DATA.allSectionsForAnnouncements = data;
-    return data;
-  } catch (err) {
-    console.error('Error fetching sections for announcements:', err);
-    TEACHER_DATA.allSectionsForAnnouncements = [];
-    return [];
-  }
-}
-function renderAudienceCheckboxes(preselectedAudiences = []) {
-  const container = document.getElementById('audience-checkboxes');
-  if (!container) return;
-
-  const classData = TEACHER_DATA.allSectionsForAnnouncements;
-
-  if (!classData || classData.length === 0) {
-    container.innerHTML = '<div style="text-align:center;color:#888;padding:20px;">No classes available. Create classes and sections first.</div>';
-    return;
-  }
-
-  container.innerHTML = '';
-
-  // ── All Classes master toggle ──
-  const allDiv = document.createElement('div');
-  allDiv.style.cssText = 'margin-bottom:14px;padding-bottom:12px;border-bottom:2px solid #e5e7eb;';
-  const allLabel = document.createElement('label');
-  allLabel.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;color:#166534;';
-  const allChk = document.createElement('input');
-  allChk.type = 'checkbox';
-  allChk.value = 'all_classes';
-  allChk.id = 'select-all-classes';
-  allChk.style.cssText = 'width:18px;height:18px;cursor:pointer;accent-color:#6366f1;';
-  const allText = document.createElement('span');
-  allText.innerHTML = '<i class="fa-solid fa-globe"></i> All Classes & Sections';
-  allLabel.appendChild(allChk);
-  allLabel.appendChild(allText);
-  allDiv.appendChild(allLabel);
-  container.appendChild(allDiv);
-
-  // ── Select/Deselect All buttons ──
-  const btnRow = document.createElement('div');
-  btnRow.style.cssText = 'margin-bottom:14px;display:flex;gap:8px;';
-  const selAllBtn = document.createElement('button');
-  selAllBtn.type = 'button';
-  selAllBtn.textContent = '✓ Select All';
-  selAllBtn.style.cssText = 'padding:5px 14px;background:#6366f1;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;font-family:Poppins,sans-serif;';
-  selAllBtn.onclick = () => {
-    container.querySelectorAll('input[type="checkbox"][value^="section_"]').forEach(cb => cb.checked = true);
-    container.querySelectorAll('.class-select-all').forEach(cb => cb.checked = true);
-    allChk.checked = true;
-  };
-  const deselAllBtn = document.createElement('button');
-  deselAllBtn.type = 'button';
-  deselAllBtn.textContent = '✗ Deselect All';
-  deselAllBtn.style.cssText = 'padding:5px 14px;background:#6b7280;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;font-family:Poppins,sans-serif;';
-  deselAllBtn.onclick = () => {
-    container.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-  };
-  btnRow.appendChild(selAllBtn);
-  btnRow.appendChild(deselAllBtn);
-  container.appendChild(btnRow);
-
-  // ── Per-class groups ──
-  classData.forEach(classItem => {
-    // Support both old flat format and new grouped format
-    const classId   = classItem.classId   || classItem.class_id;
-    const className = classItem.className || classItem.class_title;
-    const sections  = classItem.sections  || [];
-
-    const group = document.createElement('div');
-    group.style.cssText = 'margin-bottom:12px;border:1.5px solid #e5e7eb;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.05);';
-
-    // Class header row
-    const header = document.createElement('div');
-    header.style.cssText = 'background:#f8fafc;padding:11px 14px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;gap:10px;';
-
-    const classChk = document.createElement('input');
-    classChk.type = 'checkbox';
-    classChk.className = 'class-select-all';
-    classChk.dataset.classId = classId;
-    classChk.style.cssText = 'width:17px;height:17px;cursor:pointer;accent-color:#6366f1;flex-shrink:0;';
-
-    // Pre-check if all sections selected
-    const allSectionsPreselected = sections.length > 0 && sections.every(sec => {
-      const sid = sec.sectionId || sec.section_id;
-      return preselectedAudiences.includes(`section_${sid}`);
-    });
-    classChk.checked = allSectionsPreselected;
-
-    const nameSpan = document.createElement('span');
-    nameSpan.style.cssText = 'font-weight:600;font-size:13px;color:#1e293b;flex:1;';
-    nameSpan.textContent = `📚 ${className}`;
-
-    const countBadge = document.createElement('span');
-    countBadge.style.cssText = 'font-size:11px;color:#94a3b8;background:#f1f5f9;padding:2px 8px;border-radius:20px;font-weight:500;';
-    countBadge.textContent = `${sections.length} section(s)`;
-
-    header.appendChild(classChk);
-    header.appendChild(nameSpan);
-    header.appendChild(countBadge);
-
-    // Sections list
-    const secContainer = document.createElement('div');
-    secContainer.className = 'class-sections-container';
-    secContainer.style.cssText = 'padding:8px 12px 10px 14px;background:#fff;';
-
-    if (sections.length === 0) {
-      const empty = document.createElement('p');
-      empty.style.cssText = 'font-size:12px;color:#94a3b8;padding:8px;margin:0;';
-      empty.textContent = 'No sections in this class.';
-      secContainer.appendChild(empty);
-    }
-
-    sections.forEach(sec => {
-      // Support both property name formats
-      const secId   = sec.sectionId   || sec.section_id;
-      const secName = sec.sectionName || sec.section_name || sec.name;
-      const secCode = sec.sectionCode || sec.enrollment_code || sec.code;
-
-      const lbl = document.createElement('label');
-      lbl.style.cssText = 'display:flex;align-items:center;gap:10px;padding:7px 10px;margin-bottom:3px;border-radius:6px;cursor:pointer;font-size:13px;transition:background 0.15s;';
-      lbl.onmouseenter = () => lbl.style.background = '#f1f5f9';
-      lbl.onmouseleave = () => lbl.style.background = 'transparent';
-
-      const secChk = document.createElement('input');
-      secChk.type = 'checkbox';
-      secChk.value = `section_${secId}`;
-      secChk.dataset.sectionId = secId;
-      secChk.dataset.classId = classId;
-      secChk.style.cssText = 'width:15px;height:15px;cursor:pointer;accent-color:#6366f1;flex-shrink:0;';
-      if (preselectedAudiences.includes(secChk.value)) secChk.checked = true;
-
-      const txt = document.createElement('span');
-      txt.style.cssText = 'flex:1;';
-      txt.innerHTML = `<strong style="color:#1e293b;">${escHtml(secName)}</strong> <span style="font-size:11px;color:#94a3b8;">(${secCode || 'No code'})</span>`;
-
-      lbl.appendChild(secChk);
-      lbl.appendChild(txt);
-      secContainer.appendChild(lbl);
-    });
-
-    // Class checkbox → select/deselect all its sections
-    classChk.onchange = () => {
-      secContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = classChk.checked);
-      updateAllClassesCheckbox();
-    };
-
-    // Section checkbox → update class + master checkbox
-    secContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-      cb.onchange = () => {
-        classChk.checked = Array.from(secContainer.querySelectorAll('input[type="checkbox"]')).every(c => c.checked);
-        updateAllClassesCheckbox();
-      };
-    });
-
-    group.appendChild(header);
-    group.appendChild(secContainer);
-    container.appendChild(group);
-  });
-
-  function updateAllClassesCheckbox() {
-    const all = container.querySelectorAll('input[type="checkbox"][value^="section_"]');
-    allChk.checked = all.length > 0 && Array.from(all).every(cb => cb.checked);
-  }
-
-  // Master "All Classes" toggle
-  allChk.onchange = () => {
-    container.querySelectorAll('input[type="checkbox"][value^="section_"]').forEach(cb => cb.checked = allChk.checked);
-    container.querySelectorAll('.class-select-all').forEach(cb => cb.checked = allChk.checked);
-  };
 }
 
 // =============================================
@@ -743,7 +545,7 @@ function dotsIconSVG() {
 }
 
 // =============================================
-// CLASSES VIEW - FIXED
+// CLASSES VIEW
 // =============================================
 async function fetchAndRenderClasses() {
   console.log('Fetching classes for teacher ID:', TEACHER_DATA.profile.id);
@@ -760,7 +562,6 @@ async function fetchAndRenderClasses() {
     TEACHER_DATA.classes = classes;
     console.log('Classes loaded:', classes);
 
-    // ✅ ADD THIS - update the profile badge
     const badgeEl = document.getElementById('profile-badge-classes');
     if (badgeEl) badgeEl.textContent = `${classes.length} Class${classes.length !== 1 ? 'es' : ''}`;
 
@@ -806,7 +607,7 @@ function renderClassesView() {
             <i class="fa-solid fa-book"></i>
           </div>
           <div>
-            <div class="class-card-name">${escHtml(cls.title)}</div>
+            <div class="class-card-name">${escapeHtml(cls.title)}</div>
             <div class="class-card-meta">${sections.length} section${sections.length !== 1 ? 's' : ''}</div>
           </div>
         </div>
@@ -882,7 +683,7 @@ document.getElementById('delete-class-modal-btn')?.addEventListener('click', asy
 });
 
 // =============================================
-// CLASS DETAIL VIEW - FIXED
+// CLASS DETAIL VIEW
 // =============================================
 async function openClassDetail(classId) {
   state.currentClassId = classId;
@@ -951,7 +752,7 @@ function renderSectionsList() {
           <i class="fa-solid fa-layer-group"></i>
         </div>
         <div>
-          <div class="section-card-name">${escHtml(sec.name)}</div>
+          <div class="section-card-name">${escapeHtml(sec.name)}</div>
           <div class="section-card-students">${enrolledCount} student${enrolledCount !== 1 ? 's' : ''} enrolled</div>
           <div class="section-card-code" style="margin-top: 8px;">
             <span style="font-size: 12px; color: #666;"><i class="fa-solid fa-key"></i> Enrollment Code: </span>
@@ -1143,8 +944,8 @@ function renderMaterialsList() {
           <i class="fa-solid fa-book-open"></i>
         </div>
         <div class="material-card-info">
-          <span class="material-card-name">${escHtml(mat.title)}</span>
-          <span class="material-card-desc">${escHtml(mat.description || '')}</span>
+          <span class="material-card-name">${escapeHtml(mat.title)}</span>
+          <span class="material-card-desc">${escapeHtml(mat.description || '')}</span>
         </div>
       </div>
       <div class="material-card-actions" onclick="event.stopPropagation()">
@@ -1244,7 +1045,7 @@ function renderQuizzesList() {
           <i class="fa-solid fa-clipboard-question"></i>
         </div>
         <div class="quiz-card-info">
-          <span class="quiz-card-name">${escHtml(quiz.title)}</span>
+          <span class="quiz-card-name">${escapeHtml(quiz.title)}</span>
           <span class="quiz-card-meta">Due: ${quiz.due_date ? new Date(quiz.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'}</span>       
         </div>
       </div>
@@ -1347,7 +1148,7 @@ function renderAssignmentsList() {
           <i class="fa-solid fa-file-lines"></i>
         </div>
         <div class="quiz-card-info">
-          <span class="quiz-card-name">${escHtml(assign.title)}</span>
+          <span class="quiz-card-name">${escapeHtml(assign.title)}</span>
           <span class="quiz-card-meta">Due: ${assign.due_date ? new Date(assign.due_date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'N/A'} · ${assign.points || 0} pts</span>
         </div>
       </div>
@@ -1542,11 +1343,11 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
       card.innerHTML = `
         <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
           <div class="student-avatar" style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: #6366f1; flex-shrink:0;">
-            <img src="${profilePicUrl}" alt="${escHtml(fullName)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='${defaultAvatar}'">
+            <img src="${profilePicUrl}" alt="${escapeHtml(fullName)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='${defaultAvatar}'">
           </div>
           <div style="min-width:0;">
-            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(fullName)}</div>
-            <div style="font-size:12px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(s.email)}</div>
+            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(fullName)}</div>
+            <div style="font-size:12px;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(s.email)}</div>
           </div>
         </div>
         <span class="student-done-badge ${badgeClass}" style="flex-shrink:0;">${badgeLabel}</span>
@@ -1561,7 +1362,7 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
 }
 
 // =============================================
-// SAVE STUDENT SCORE (FIXED)
+// SAVE STUDENT SCORE
 // =============================================
 async function saveStudentScore(inputElement) {
   const studentId = inputElement.dataset.studentId;
@@ -1570,12 +1371,10 @@ async function saveStudentScore(inputElement) {
   const score = inputElement.value.trim();
   const savedIcon = inputElement.parentElement.querySelector('.score-saved-icon');
   
-  // If value hasn't changed, don't save
   if (score === inputElement.dataset.originalValue) {
     return;
   }
   
-  // Handle clearing score
   if (score === '') {
     try {
       const response = await fetch('/api/teacher/scores', {
@@ -1633,7 +1432,6 @@ async function saveStudentScore(inputElement) {
     const data = await response.json();
     console.log('Score saved:', data);
     
-    // Store the new value as original
     inputElement.dataset.originalValue = numScore;
     showScoreSaved(inputElement, savedIcon);
   } catch (err) {
@@ -1650,7 +1448,6 @@ function showScoreSaved(inputElement, iconElement) {
       iconElement.style.display = 'none';
     }, 2000);
   }
-  // Brief green flash on input
   inputElement.style.borderColor = '#10b981';
   inputElement.style.backgroundColor = '#f0fdf4';
   setTimeout(() => {
@@ -1660,7 +1457,7 @@ function showScoreSaved(inputElement, iconElement) {
 }
 
 // =============================================
-// STUDENTS TAB WITH PROFILE PICTURES - FIXED
+// STUDENTS TAB WITH PROFILE PICTURES
 // =============================================
 async function fetchAndRenderStudents() {
   if (!state.currentSectionId) {
@@ -1713,7 +1510,6 @@ function renderStudentsList() {
     const lastName = student.last_name || '';
     const fullName = (firstName + ' ' + lastName).trim() || 'Unknown';
     
-    // Generate profile picture URL or default avatar
     const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=6366f1&color=fff`;
     const profilePicUrl = student.profile_picture 
       ? `/uploads/profile-pictures/${student.profile_picture}?t=${Date.now()}`
@@ -1722,11 +1518,11 @@ function renderStudentsList() {
     card.innerHTML = `
       <div class="student-card-left">
         <div class="student-avatar" style="width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: #6366f1; flex-shrink: 0;">
-          <img src="${profilePicUrl}" alt="${escHtml(fullName)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='${defaultAvatar}'">
+          <img src="${profilePicUrl}" alt="${escapeHtml(fullName)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='${defaultAvatar}'">
         </div>
         <div>
-          <div class="student-name">${escHtml(fullName)}</div>
-          <div class="student-email">${escHtml(student.email)}</div>
+          <div class="student-name">${escapeHtml(fullName)}</div>
+          <div class="student-email">${escapeHtml(student.email)}</div>
           <div style="font-size: 11px; color: #22c55e; margin-top: 4px;"><i class="fa-solid fa-circle-check"></i> Enrolled: ${enrollmentDate}</div>
         </div>
       </div>
@@ -1789,14 +1585,12 @@ function closeModal(id) {
   if (modal) modal.classList.add('hidden');
 }
 
-// Close modals when clicking overlay
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => {
     if (e.target === overlay) overlay.classList.add('hidden');
   });
 });
 
-// Close modals when clicking X button
 document.querySelectorAll('.close-modal').forEach(btn => {
   btn.addEventListener('click', function() {
     const modal = this.closest('.modal-overlay');
@@ -1871,7 +1665,7 @@ if (saveSectionModal) {
         title: 'Section Created!',
         html: `
           <div style="text-align: left;">
-            <p><strong>Section Name:</strong> ${escHtml(name)}</p>
+            <p><strong>Section Name:</strong> ${escapeHtml(name)}</p>
             <p><strong>Display Code:</strong> <code>${result.code}</code></p>
             <p><strong><i class="fa-solid fa-key"></i> Enrollment Code (SHARE THIS WITH STUDENTS):</strong><br/>
             <span style="background: #f0fdf4; padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 18px; font-weight: bold; display: inline-block; margin-top: 5px;">${result.enrollment_code}</span></p>
@@ -1906,7 +1700,7 @@ if (saveSectionModal) {
 }
 
 // =============================================
-// FILE UPLOAD HANDLERS (simplified)
+// FILE UPLOAD HANDLERS
 // =============================================
 
 function setupFileUploadZone(zoneId, inputId, previewId, browseBtnId, stateKey) {
@@ -1967,7 +1761,7 @@ function handleFileSelect(file, previewContainer, stateKey) {
       <div class="file-preview-item-left">
         <i class="fa-solid fa-file" style="color: var(--accent);"></i>
         <div>
-          <div class="file-preview-name">${escHtml(file.name)}</div>
+          <div class="file-preview-name">${escapeHtml(file.name)}</div>
           <div class="file-preview-size">${fileSize}</div>
         </div>
       </div>
@@ -2332,7 +2126,7 @@ if (newAnnouncementBtn) {
     if (announceTitle) announceTitle.value = '';
     if (announceBody) announceBody.value = '';
     
-    await fetchAllSectionsForAnnouncements();
+    await fetchAllClassesAndSectionsForAnnouncements();
     renderAudienceCheckboxes([]);
     
     openModal('modal-announcement');
@@ -2363,12 +2157,10 @@ if (saveAnnouncementModal) {
       return;
     }
     
-    // Check if "All Classes" is selected
     let audienceString;
     if (selectedAudiences.includes('all_classes')) {
       audienceString = 'All Classes';
     } else {
-      // Filter only section_ values
       const sectionValues = selectedAudiences.filter(v => v.startsWith('section_'));
       audienceString = sectionValues.join(',');
     }
@@ -2410,7 +2202,7 @@ if (saveAnnouncementModal) {
 }
 
 // =============================================
-// PROGRESS VIEW
+// PROGRESS VIEW - CLICKABLE WITH POPUP
 // =============================================
 async function renderProgressView() {
   showView('progress');
@@ -2457,22 +2249,28 @@ async function renderProgressView() {
 
         const card = document.createElement('div');
         card.className = 'progress-card';
+        card.style.cursor = 'pointer';
         card.innerHTML = `
           <div class="progress-card-icon">
             <i class="fa-solid fa-layer-group"></i>
           </div>
           <div class="progress-card-body">
             <div class="progress-card-header">
-              <span class="progress-card-name">${escHtml(sec.name)}</span>
+              <span class="progress-card-name">${escapeHtml(sec.name)}</span>
               <span class="progress-card-count">${pct}% completion</span>
             </div>
             <div class="progress-bar-track">
               <div class="progress-bar-fill" style="width:${pct}%"></div>
             </div>
             <div class="progress-class-label">
-              ${escHtml(cls.title)} · ${enrolled.length} students · ${totalItems} items
+              ${escapeHtml(cls.title)} · ${enrolled.length} students · ${totalItems} items
             </div>
           </div>`;
+        
+        card.addEventListener('click', () => {
+          showProgressDetailPopup(sec, cls, materials, quizzes, assignments, enrolled, doneCount, possible, pct);
+        });
+        
         list.appendChild(card);
       }
     }
@@ -2480,6 +2278,186 @@ async function renderProgressView() {
     console.error('Progress view error:', err);
     list.innerHTML = '<div class="empty-state">Failed to load progress.</div>';
   }
+}
+
+function showProgressDetailPopup(section, cls, materials, quizzes, assignments, students, doneCount, possible, pct) {
+  // Create overlay with blur
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 9998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+  `;
+  
+  // Create popup container
+  const popup = document.createElement('div');
+  popup.style.cssText = `
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    width: 90%;
+    max-width: 700px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    animation: slideUp 0.3s ease;
+    position: relative;
+  `;
+  
+  // Build items list HTML
+  let itemsHTML = '';
+  
+  if (materials.length > 0) {
+    itemsHTML += `
+      <div style="margin-bottom: 20px;">
+        <h4 style="margin: 0 0 12px 0; color: #6366f1; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">
+          <i class="fa-solid fa-book-open"></i> Materials (${materials.length})
+        </h4>`;
+    materials.forEach(mat => {
+      itemsHTML += `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #f8fafc; border-radius: 8px; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i>
+            <span style="font-weight: 500;">${escapeHtml(mat.title)}</span>
+          </div>
+          <span style="font-size: 12px; color: #888; font-weight: 500;">Learning Material</span>
+        </div>`;
+    });
+    itemsHTML += '</div>';
+  }
+  
+  if (quizzes.length > 0) {
+    itemsHTML += `
+      <div style="margin-bottom: 20px;">
+        <h4 style="margin: 0 0 12px 0; color: #f59e0b; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">
+          <i class="fa-solid fa-clipboard-question"></i> Quizzes (${quizzes.length})
+        </h4>`;
+    quizzes.forEach(quiz => {
+      const dueDate = quiz.due_date ? new Date(quiz.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No due date';
+      itemsHTML += `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #fffbeb; border-radius: 8px; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fa-solid fa-question-circle" style="color: #f59e0b;"></i>
+            <span style="font-weight: 500;">${escapeHtml(quiz.title)}</span>
+          </div>
+          <span style="font-size: 12px; color: #888; font-weight: 500;">Due: ${dueDate} · ${quiz.points || 0} pts</span>
+        </div>`;
+    });
+    itemsHTML += '</div>';
+  }
+  
+  if (assignments.length > 0) {
+    itemsHTML += `
+      <div style="margin-bottom: 20px;">
+        <h4 style="margin: 0 0 12px 0; color: #ef4444; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">
+          <i class="fa-solid fa-file-lines"></i> Assignments (${assignments.length})
+        </h4>`;
+    assignments.forEach(assign => {
+      const dueDate = assign.due_date ? new Date(assign.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'No due date';
+      itemsHTML += `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #fef2f2; border-radius: 8px; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fa-solid fa-file-pen" style="color: #ef4444;"></i>
+            <span style="font-weight: 500;">${escapeHtml(assign.title)}</span>
+          </div>
+          <span style="font-size: 12px; color: #888; font-weight: 500;">Due: ${dueDate} · ${assign.points || 0} pts</span>
+        </div>`;
+    });
+    itemsHTML += '</div>';
+  }
+  
+  if (!materials.length && !quizzes.length && !assignments.length) {
+    itemsHTML = '<p style="text-align: center; color: #888; padding: 20px;">No items added yet.</p>';
+  }
+  
+  popup.innerHTML = `
+    <style>
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes slideUp {
+        from { transform: translateY(30px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+    </style>
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px;">
+      <div>
+        <h3 style="margin: 0 0 4px 0; color: #1f2937; font-size: 20px;">${escapeHtml(section.name)}</h3>
+        <p style="margin: 0; color: #6b7280; font-size: 14px;">${escapeHtml(cls.title)}</p>
+      </div>
+      <button class="close-popup-btn" style="background: none; border: none; font-size: 24px; color: #9ca3af; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.2s;" onmouseover="this.style.background='#f3f4f6'; this.style.color='#374151';" onmouseout="this.style.background='none'; this.style.color='#9ca3af';">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
+      <div style="background: #f0f9ff; padding: 16px; border-radius: 12px; text-align: center;">
+        <div style="font-size: 24px; font-weight: 700; color: #6366f1;">${students.length}</div>
+        <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">Students</div>
+      </div>
+      <div style="background: #f0fdf4; padding: 16px; border-radius: 12px; text-align: center;">
+        <div style="font-size: 24px; font-weight: 700; color: #10b981;">${materials.length + quizzes.length + assignments.length}</div>
+        <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">Total Items</div>
+      </div>
+      <div style="background: #faf5ff; padding: 16px; border-radius: 12px; text-align: center;">
+        <div style="font-size: 24px; font-weight: 700; color: #8b5cf6;">${pct}%</div>
+        <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">Completion</div>
+      </div>
+    </div>
+    
+    <div style="margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="font-size: 13px; font-weight: 600; color: #374151;">Overall Progress</span>
+        <span style="font-size: 13px; font-weight: 600; color: #6366f1;">${doneCount}/${possible} completions</span>
+      </div>
+      <div style="width: 100%; height: 8px; background: #e5e7eb; border-radius: 10px; overflow: hidden;">
+        <div style="width: ${pct}%; height: 100%; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 10px; transition: width 0.5s ease;"></div>
+      </div>
+    </div>
+    
+    <div style="border-top: 1px solid #e5e7eb; padding-top: 20px;">
+      <h3 style="margin: 0 0 16px 0; color: #1f2937; font-size: 16px;">
+        <i class="fa-solid fa-list-check"></i> Items
+      </h3>
+      ${itemsHTML}
+    </div>
+  `;
+  
+  // Add close functionality
+  const closeBtn = popup.querySelector('.close-popup-btn');
+  closeBtn.addEventListener('click', () => {
+    document.body.removeChild(overlay);
+  });
+  
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      document.body.removeChild(overlay);
+    }
+  });
+  
+  // Close on Escape key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      document.body.removeChild(overlay);
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+  
+  overlay.appendChild(popup);
+  document.body.appendChild(overlay);
 }
 
 // =============================================
@@ -2536,15 +2514,15 @@ function renderAnnouncementList() {
       <div class="announcement-body-wrap">
         <div class="announcement-footer">
           <div>
-            <div class="announcement-title">${escHtml(a.title)}</div>
-            <div class="announcement-meta">${escHtml(audienceDisplay)} · ${date}</div>
+            <div class="announcement-title">${escapeHtml(a.title)}</div>
+            <div class="announcement-meta">${escapeHtml(audienceDisplay)} · ${date}</div>
           </div>
           <div style="display:flex;gap:6px">
             <button class="btn btn-ghost btn-sm" onclick="editAnnouncementFromList(${a.id})"><i class="fa-solid fa-pen"></i> Edit</button>
             <button class="btn btn-danger btn-sm" onclick="deleteAnnouncementFromList(${a.id})"><i class="fa-solid fa-trash"></i> Delete</button>
           </div>
         </div>
-        <div class="announcement-body" style="margin-top:10px">${escHtml(a.body)}</div>
+        <div class="announcement-body" style="margin-top:10px">${escapeHtml(a.body)}</div>
       </div>`;
     list.appendChild(card);
   });
@@ -2563,7 +2541,7 @@ window.editAnnouncementFromList = async function(id) {
   if (bodyInput) bodyInput.value = a.body;
   if (modalTitle) modalTitle.textContent = 'Edit Announcement';
   
-  await fetchAllSectionsForAnnouncements();
+  await fetchAllClassesAndSectionsForAnnouncements();
   
   const preselectedAudiences = a.audience ? a.audience.split(',').map(s => s.trim()) : [];
   renderAudienceCheckboxes(preselectedAudiences);
@@ -2642,7 +2620,6 @@ function refreshTeacherProfileDisplay() {
   setVal('edit-username', p.username || '');
   setVal('edit-email', p.email || '');
 
-  // ✅ ADD THIS - sync class count badge
   const badgeEl = document.getElementById('profile-badge-classes');
   if (badgeEl) {
     const count = TEACHER_DATA.classes.length;
@@ -2850,7 +2827,7 @@ function formatDateTimeLocal(dateVal) {
 // =============================================
 // UTILITY
 // =============================================
-function escHtml(str) {
+function escapeHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -2886,7 +2863,6 @@ function escHtml(str) {
 
     const results = [];
 
-    // ── Search Classes ──
     TEACHER_DATA.classes.forEach(cls => {
       if (cls.title.toLowerCase().includes(q)) {
         results.push({
@@ -2898,7 +2874,6 @@ function escHtml(str) {
       }
     });
 
-    // ── Search Sections ──
     TEACHER_DATA.sections.forEach(sec => {
       if (sec.name.toLowerCase().includes(q)) {
         results.push({
@@ -2910,7 +2885,6 @@ function escHtml(str) {
       }
     });
 
-    // ── Search Materials ──
     TEACHER_DATA.materials.forEach(mat => {
       if (mat.title.toLowerCase().includes(q) || (mat.description || '').toLowerCase().includes(q)) {
         results.push({
@@ -2922,7 +2896,6 @@ function escHtml(str) {
       }
     });
 
-    // ── Search Quizzes ──
     TEACHER_DATA.quizzes.forEach(quiz => {
       if (quiz.title.toLowerCase().includes(q) || (quiz.description || '').toLowerCase().includes(q)) {
         results.push({
@@ -2936,7 +2909,6 @@ function escHtml(str) {
       }
     });
 
-    // ── Search Assignments ──
     TEACHER_DATA.assignments.forEach(assign => {
       if (assign.title.toLowerCase().includes(q) || (assign.description || '').toLowerCase().includes(q)) {
         results.push({
@@ -2950,7 +2922,6 @@ function escHtml(str) {
       }
     });
 
-    // ── Search Students ──
     TEACHER_DATA.students.forEach(stu => {
       const fullName = `${stu.first_name} ${stu.last_name}`.toLowerCase();
       const email    = (stu.email || '').toLowerCase();
@@ -2960,7 +2931,6 @@ function escHtml(str) {
           label: `${stu.first_name} ${stu.last_name}`,
           sub: stu.email || 'Student',
           action: () => {
-            // Navigate to the section's students tab
             if (state.currentSectionId) {
               switchTab('students');
             }
@@ -2975,7 +2945,6 @@ function escHtml(str) {
       return;
     }
 
-    // ── Type colors ──
     const typeColors = {
       class:      { bg: '#eff6ff', color: '#2563eb' },
       section:    { bg: '#f0fdf4', color: '#16a34a' },
@@ -3016,10 +2985,10 @@ function escHtml(str) {
         ">${r.type}</span>
         <div style="min-width:0;">
           <p style="margin:0;font-size:13px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-            ${escHtml(r.label)}
+            ${escapeHtml(r.label)}
           </p>
           <p style="margin:0;font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-            ${escHtml(r.sub)}
+            ${escapeHtml(r.sub)}
           </p>
         </div>
       `;
@@ -3036,14 +3005,12 @@ function escHtml(str) {
     dropdown.classList.remove('hidden');
   });
 
-  // Close dropdown on outside click
   document.addEventListener('click', e => {
     if (!e.target.closest('.search-bar')) {
       dropdown.classList.add('hidden');
     }
   });
 
-  // Close on Escape
   input.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       dropdown.classList.add('hidden');

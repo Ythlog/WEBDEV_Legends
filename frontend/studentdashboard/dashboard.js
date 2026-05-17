@@ -5,6 +5,8 @@
    2. Student must open/download PDF or link before marking done
    3. Progress analytics only counts genuinely submitted/marked items
    4. Status badge (Pending/Finished) now reliably updates on mark done/undo
+   5. To Do List stat counters now update correctly
+   6. Progress modal items are now clickable
 ============================================================= */
 
 // ── DATA OBJECT ──────────────────────────────────────────────────
@@ -96,73 +98,61 @@ function getOpenGateMessage(type) {
 
 // ── STATUS BADGE HELPERS ─────────────────────────────────────────
 
-/**
- * FIX #4: Reliably finds and updates the Pending/Finished status badge
- * in the currently visible detail view.
- */
 function updateStatusBadge(isDone) {
-  const activeView = document.querySelector('.page-body:not(.hidden)');
-  if (!activeView) return;
-
-  let badge = null;
-
-  // 1. Try known IDs
-  const knownIds = [
-    'assignment-status-badge', 'quiz-status-badge', 'mat-status-badge',
-    'material-status-badge', 'item-status-badge', 'status-badge',
-    'mat-pending-badge', 'quiz-pending-badge', 'assignment-pending-badge'
-  ];
-  for (const id of knownIds) {
-    const el = document.getElementById(id);
-    if (el) { badge = el; break; }
-  }
-
-  // 2. Try class selectors within the active view
-  if (!badge) {
-    const classSelectors = [
-      '.detail-status-badge', '.status-badge', '.pending-badge',
-      '[data-status-badge]', '.item-status', '.status-pill'
-    ];
-    for (const sel of classSelectors) {
-      const el = activeView.querySelector(sel);
-      if (el) { badge = el; break; }
-    }
-  }
-
-  // 3. Scan by inline background color used for the pending/done pill
-  if (!badge) {
-    const allEls = activeView.querySelectorAll('span, div');
-    for (const el of allEls) {
-      if (el.offsetWidth === 0 || el.offsetWidth >= 250) continue;
-      const style = el.getAttribute('style') || '';
-      const txt = el.textContent.trim();
-      if (
-        style.includes('#fef3c7') || style.includes('#dcfce7') ||
-        style.includes('fcd34d') || style.includes('86efac') ||
-        txt === 'Pending' || txt === 'Done' || txt === 'Finished'
-      ) {
-        badge = el;
-        break;
-      }
-    }
-  }
-
-  if (!badge) return;
-  updateStatusBadgeEl(badge, isDone);
+  const badgeIdMap = {
+    'quiz-detail':       'quiz-status-badge',
+    'material-detail':   'mat-status-badge',
+    'assignment-detail': 'assignment-status-badge'
+  };
+  const badgeId = badgeIdMap[state.currentView];
+  if (!badgeId) return;
+  const badge = document.getElementById(badgeId);
+  if (badge) updateStatusBadgeEl(badge, isDone);
 }
 
 function updateStatusBadgeEl(el, isDone) {
   if (!el) return;
+
+  const textSpanMap = {
+    'quiz-status-badge':       'quiz-status-text',
+    'mat-status-badge':        'mat-status-text',
+    'assignment-status-badge': 'assignment-status-text'
+  };
+
+  const spanId = textSpanMap[el.id];
+  const textSpan = spanId
+    ? document.getElementById(spanId)
+    : el.querySelector('span');
+  const icon = el.querySelector('i');
+
   if (isDone) {
-    el.innerHTML = '<i class="fa-solid fa-circle-check" style="color:#16a34a;margin-right:4px;"></i><span style="color:#16a34a;font-weight:600;">Finished</span>';
     el.style.background = '#dcfce7';
-    el.style.border = '1.5px solid #86efac';
-    el.style.color = '#16a34a';
+    el.style.border     = '1.5px solid #86efac';
+    el.style.color      = '#16a34a';
+    if (icon) {
+      icon.className       = 'fa-solid fa-circle-check';
+      icon.style.color     = '#16a34a';
+      icon.style.marginRight = '4px';
+    }
+    if (textSpan) {
+      textSpan.textContent  = 'Finished';
+      textSpan.style.color  = '#16a34a';
+      textSpan.style.fontWeight = '600';
+    }
   } else {
-    el.innerHTML = '<i class="fa-regular fa-circle" style="color:#d97706;margin-right:4px;"></i><span style="color:#d97706;font-weight:600;">Pending</span>';
     el.style.background = '#fef3c7';
-    el.style.border = '1.5px solid #fcd34d';
-    el.style.color = '#d97706';
+    el.style.border     = '1.5px solid #fcd34d';
+    el.style.color      = '#d97706';
+    if (icon) {
+      icon.className       = 'fa-regular fa-circle';
+      icon.style.color     = '#d97706';
+      icon.style.marginRight = '4px';
+    }
+    if (textSpan) {
+      textSpan.textContent  = 'Pending';
+      textSpan.style.color  = '#d97706';
+      textSpan.style.fontWeight = '600';
+    }
   }
 }
 
@@ -910,8 +900,9 @@ function openMaterialDetail(mat, className) {
   }
 
   refreshMarkDoneButton('material', mat.id);
-  updateStatusBadge(state.done.has(completionKey('material', mat.id)));
+
   showView('material-detail');
+  updateStatusBadge(state.done.has(completionKey('material', mat.id)));
 }
 
 // ── QUIZ DETAIL ──────────────────────────────────────────────────
@@ -995,9 +986,8 @@ function openQuizDetail(quiz, className) {
     }
   }
 
-  // FIX #4: Always update badge on open
-  updateStatusBadge(isDone);
   showView('quiz-detail');
+  updateStatusBadge(isDone);
 }
 
 // ── ASSIGNMENT DETAIL ────────────────────────────────────────────
@@ -1078,9 +1068,8 @@ function openAssignmentDetail(assign, className) {
     }
   }
 
-  // FIX #4: Always update badge on open
-  updateStatusBadge(isDone);
   showView('assignment-detail');
+  updateStatusBadge(isDone);
 }
 
 // ── REFRESH MARK-DONE BUTTON ─────────────────────────────────────
@@ -1227,10 +1216,7 @@ async function markDone(type) {
           body: JSON.stringify({ userId: DATA.profile.id, itemType: type, itemId: id })
         });
         state.done.delete(key);
-
-        // FIX #4: Force badge to Pending immediately
         updateStatusBadge(false);
-
         refreshMarkDoneButton(type, id);
         updateItemDisplay(type, id, false);
         if (state.currentView === 'progress') renderProgress();
@@ -1251,10 +1237,7 @@ async function markDone(type) {
         body: JSON.stringify({ userId: DATA.profile.id, itemType: type, itemId: id })
       });
       state.done.add(key);
-
-      // FIX #4: Force badge to Finished immediately
       updateStatusBadge(true);
-
       if (btn) {
         btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
         btn.className = 'mark-done-btn done-state';
@@ -1263,7 +1246,6 @@ async function markDone(type) {
         btn.style.cursor = '';
         btn.onclick = () => markDone(type);
       }
-
       updateItemDisplay(type, id, true);
       if (state.currentView === 'progress') renderProgress();
       if (state.currentView === 'home') renderHome();
@@ -1303,6 +1285,7 @@ function updateItemDisplay(type, id, isDone) {
 }
 
 // ── RENDER TODO PAGE ─────────────────────────────────────────────
+// FIX 1: stat counters (#todo-stat-assigned, #todo-stat-missing) are now updated.
 
 function renderTodo() {
   const now = new Date();
@@ -1330,7 +1313,13 @@ function renderTodo() {
   }
 
   const assigned = allTodos.filter(t => t.dueDate >= now).sort((a, b) => a.dueDate - b.dueDate);
-  const missing = allTodos.filter(t => t.dueDate < now).sort((a, b) => a.dueDate - b.dueDate);
+  const missing  = allTodos.filter(t => t.dueDate < now).sort((a, b) => a.dueDate - b.dueDate);
+
+  // ── FIX 1: update the stat counters ──
+  const statAssigned = document.getElementById('todo-stat-assigned');
+  const statMissing  = document.getElementById('todo-stat-missing');
+  if (statAssigned) statAssigned.textContent = assigned.length;
+  if (statMissing)  statMissing.textContent  = missing.length;
 
   const assignedList = document.getElementById('todo-assigned-list');
   if (assignedList) {
@@ -1450,11 +1439,13 @@ function renderProgress() {
 }
 
 // ── SCORES MODAL ─────────────────────────────────────────────────
+// FIX 2: Items are built with createElement so click handlers can be attached.
+//         Each completedItems entry now carries a rawItem reference.
 
 async function openScoresModal(cls) {
   const modal = document.getElementById('scores-modal-overlay');
   const title = document.getElementById('scores-modal-title');
-  const body = document.getElementById('scores-modal-body');
+  const body  = document.getElementById('scores-modal-body');
   if (!modal || !body) return;
 
   title.textContent = cls.title + ' - Your Progress';
@@ -1470,24 +1461,44 @@ async function openScoresModal(cls) {
     const response = await fetch(`/api/student/scores/${DATA.profile.id}`);
     if (!response.ok) throw new Error('Failed to fetch scores');
     const allScores = await response.json();
+
+    // Build completedItems – each entry carries rawItem for navigation
     const completedItems = [];
 
     (cls.materials || []).forEach(m => {
       if (state.done.has(completionKey('material', m.id))) {
         const scoreData = allScores.find(s => s.item_type === 'material' && s.item_id === m.id);
-        completedItems.push({ title: m.title, type: 'material', typeLabel: 'Lesson', icon: 'fa-solid fa-book-open', iconClass: 'score-item-icon', completedAt: scoreData?.completed_at || null, score: scoreData?.score ?? null });
+        completedItems.push({
+          title: m.title, type: 'material', typeLabel: 'Lesson',
+          icon: 'fa-solid fa-book-open', iconClass: 'score-item-icon',
+          completedAt: scoreData?.completed_at || null,
+          score: scoreData?.score ?? null,
+          rawItem: m   // ← reference to original object for navigation
+        });
       }
     });
     (cls.quizzes || []).forEach(q => {
       if (state.done.has(completionKey('quiz', q.id))) {
         const scoreData = allScores.find(s => s.item_type === 'quiz' && s.item_id === q.id);
-        completedItems.push({ title: q.title, type: 'quiz', typeLabel: 'Quiz', icon: 'fa-solid fa-clipboard-question', iconClass: 'score-item-icon quiz-icon', completedAt: scoreData?.completed_at || null, score: scoreData?.score ?? null });
+        completedItems.push({
+          title: q.title, type: 'quiz', typeLabel: 'Quiz',
+          icon: 'fa-solid fa-clipboard-question', iconClass: 'score-item-icon quiz-icon',
+          completedAt: scoreData?.completed_at || null,
+          score: scoreData?.score ?? null,
+          rawItem: q
+        });
       }
     });
     (cls.assignments || []).forEach(a => {
       if (state.done.has(completionKey('assignment', a.id))) {
         const scoreData = allScores.find(s => s.item_type === 'assignment' && s.item_id === a.id);
-        completedItems.push({ title: a.title, type: 'assignment', typeLabel: 'Assignment', icon: 'fa-solid fa-file-lines', iconClass: 'score-item-icon assignment-icon', completedAt: scoreData?.completed_at || null, score: scoreData?.score ?? null });
+        completedItems.push({
+          title: a.title, type: 'assignment', typeLabel: 'Assignment',
+          icon: 'fa-solid fa-file-lines', iconClass: 'score-item-icon assignment-icon',
+          completedAt: scoreData?.completed_at || null,
+          score: scoreData?.score ?? null,
+          rawItem: a
+        });
       }
     });
 
@@ -1496,36 +1507,71 @@ async function openScoresModal(cls) {
       ? Math.round(scoredItems.reduce((sum, i) => sum + parseFloat(i.score), 0) / scoredItems.length)
       : null;
 
-    let html = '';
+    // Clear body and build DOM nodes instead of concatenating HTML strings
+    body.innerHTML = '';
+
     if (avgScore !== null) {
-      html += `<div class="scores-summary"><span class="scores-summary-label"><i class="fa-solid fa-calculator"></i> Average Score</span><span class="scores-summary-value">${avgScore}%</span></div>`;
+      const summaryEl = document.createElement('div');
+      summaryEl.className = 'scores-summary';
+      summaryEl.innerHTML = `
+        <span class="scores-summary-label"><i class="fa-solid fa-calculator"></i> Average Score</span>
+        <span class="scores-summary-value">${avgScore}%</span>
+      `;
+      body.appendChild(summaryEl);
     }
 
     if (completedItems.length === 0) {
-      html += `<div class="scores-empty"><i class="fa-solid fa-clipboard-list"></i><p>No finished items yet.<br>Mark quizzes and assignments as done to see your progress here.</p></div>`;
+      const emptyEl = document.createElement('div');
+      emptyEl.className = 'scores-empty';
+      emptyEl.innerHTML = `
+        <i class="fa-solid fa-clipboard-list"></i>
+        <p>No finished items yet.<br>Mark quizzes and assignments as done to see your progress here.</p>
+      `;
+      body.appendChild(emptyEl);
     } else {
       completedItems.forEach(item => {
         const dateStr = item.completedAt
           ? new Date(item.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
           : '';
-        const scoreDisplay = item.score !== null && item.score !== undefined
-          ? `<div class="score-item-value ${item.score >= 75 ? 'score-pass' : 'score-fail'}">${item.score}<span class="score-item-max">/100</span></div>`
-          : `<div class="score-item-value no-score">Not yet graded</div>`;
-        html += `
-          <div class="score-item-card">
-            <div class="${item.iconClass}"><i class="${item.icon}"></i></div>
-            <div class="score-item-info">
-              <div class="score-item-title">${escapeHtml(item.title)}</div>
-              <div class="score-item-type">${item.typeLabel}</div>
-              ${dateStr ? `<div class="score-item-date">Finished: ${dateStr}</div>` : ''}
-            </div>
-            ${scoreDisplay}
+
+        // Materials are lessons — no grade column shown at all
+        const scoreDisplay = item.type === 'material'
+          ? ''
+          : item.score !== null && item.score !== undefined
+            ? `<div class="score-item-value ${item.score >= 75 ? 'score-pass' : 'score-fail'}">${item.score}<span class="score-item-max">/100</span></div>`
+            : `<div class="score-item-value no-score">Not yet graded</div>`;
+
+        // ── FIX 2: use createElement so we can attach a real click handler ──
+        const card = document.createElement('div');
+        card.className = 'score-item-card';
+        card.style.cssText = 'cursor:pointer;transition:background 0.15s;';
+        card.innerHTML = `
+          <div class="${item.iconClass}"><i class="${item.icon}"></i></div>
+          <div class="score-item-info">
+            <div class="score-item-title">${escapeHtml(item.title)}</div>
+            <div class="score-item-type">${item.typeLabel}</div>
+            ${dateStr ? `<div class="score-item-date">Finished: ${dateStr}</div>` : ''}
           </div>
+          ${scoreDisplay}
         `;
+
+        // Hover highlight
+        card.addEventListener('mouseenter', () => { card.style.background = '#f8fafc'; });
+        card.addEventListener('mouseleave', () => { card.style.background = ''; });
+
+        // Navigate to the item on click
+        card.addEventListener('click', () => {
+          closeScoresModal();
+          setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
+          openClassDetail(cls);
+          if (item.type === 'material')   openMaterialDetail(item.rawItem, cls.title);
+          else if (item.type === 'quiz')  openQuizDetail(item.rawItem, cls.title);
+          else                            openAssignmentDetail(item.rawItem, cls.title);
+        });
+
+        body.appendChild(card);
       });
     }
-
-    body.innerHTML = html;
   } catch (err) {
     body.innerHTML = `<div class="scores-empty"><i class="fa-solid fa-triangle-exclamation"></i><p>Failed to load scores. Please try again.</p></div>`;
   }
@@ -1596,12 +1642,12 @@ document.querySelectorAll('.nav-item').forEach(link => {
     const view = this.getAttribute('data-view');
     if (!view) return;
     switch (view) {
-      case 'home': await renderHome(); showView('home'); break;
-      case 'classes': await renderClasses(); showView('classes'); break;
-      case 'progress': renderProgress(); showView('progress'); break;
-      case 'todo': renderTodo(); showView('todo'); break;
+      case 'home':          await renderHome(); showView('home'); break;
+      case 'classes':       await renderClasses(); showView('classes'); break;
+      case 'progress':      renderProgress(); showView('progress'); break;
+      case 'todo':          renderTodo(); showView('todo'); break;
       case 'announcements': await renderFullAnnouncements(); showView('announcements'); break;
-      case 'profile': renderProfile(); showView('profile'); break;
+      case 'profile':       renderProfile(); showView('profile'); break;
     }
   });
 });
@@ -1609,10 +1655,10 @@ document.querySelectorAll('.nav-item').forEach(link => {
 // ── BACK BUTTONS ─────────────────────────────────────────────────
 
 document.addEventListener('click', async e => {
-  if (e.target.closest('#back-to-classes')) { goBackToClasses(); return; }
-  if (e.target.closest('#back-to-class-from-material')) { goBackToClassDetail(); return; }
-  if (e.target.closest('#back-to-class-from-assignment')) { goBackToClassDetail(); return; }
-  if (e.target.closest('#back-to-class-from-quiz')) { goBackToClassDetail(); return; }
+  if (e.target.closest('#back-to-classes'))                 { goBackToClasses(); return; }
+  if (e.target.closest('#back-to-class-from-material'))     { goBackToClassDetail(); return; }
+  if (e.target.closest('#back-to-class-from-assignment'))   { goBackToClassDetail(); return; }
+  if (e.target.closest('#back-to-class-from-quiz'))         { goBackToClassDetail(); return; }
 });
 
 // ── FILE UPLOAD ──────────────────────────────────────────────────
@@ -1687,11 +1733,11 @@ document.addEventListener('click', async e => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     const vcSection = document.getElementById('verification-code-section');
-    const sendBtn = document.getElementById('btn-send-code');
-    const saveBtn = document.getElementById('btn-save-password');
+    const sendBtn   = document.getElementById('btn-send-code');
+    const saveBtn   = document.getElementById('btn-save-password');
     if (vcSection) vcSection.style.display = 'none';
-    if (sendBtn) sendBtn.style.display = 'block';
-    if (saveBtn) saveBtn.style.display = 'none';
+    if (sendBtn)   sendBtn.style.display   = 'block';
+    if (saveBtn)   saveBtn.style.display   = 'none';
   }
 
   if (e.target.id === 'btn-send-code') {
@@ -1718,9 +1764,9 @@ document.addEventListener('click', async e => {
     const updated = {
       userId: DATA.profile.id,
       firstName: document.getElementById('edit-firstname').value.trim(),
-      lastName: document.getElementById('edit-lastname').value.trim(),
-      username: document.getElementById('edit-username').value.trim(),
-      email: document.getElementById('edit-email').value.trim()
+      lastName:  document.getElementById('edit-lastname').value.trim(),
+      username:  document.getElementById('edit-username').value.trim(),
+      email:     document.getElementById('edit-email').value.trim()
     };
     if (!updated.firstName || !updated.lastName || !updated.username || !updated.email) {
       Swal.fire('Missing', 'All fields are required', 'warning'); return;
@@ -1749,8 +1795,8 @@ document.addEventListener('click', async e => {
   }
 
   if (e.target.id === 'btn-save-password') {
-    const code = document.getElementById('pw-verification-code').value.trim();
-    const newPw = document.getElementById('pw-new').value.trim();
+    const code    = document.getElementById('pw-verification-code').value.trim();
+    const newPw   = document.getElementById('pw-new').value.trim();
     const confirm = document.getElementById('pw-confirm').value.trim();
     if (!code || !newPw || !confirm) { Swal.fire('Missing', 'All fields are required', 'warning'); return; }
     if (code.length !== 6) { Swal.fire('Invalid', 'Enter 6-digit code', 'warning'); return; }
@@ -1791,7 +1837,7 @@ document.addEventListener('click', async e => {
 // ── SEARCH ───────────────────────────────────────────────────────
 
 (function setupSearch() {
-  const input = document.getElementById('search-input');
+  const input    = document.getElementById('search-input');
   const dropdown = document.getElementById('search-dropdown');
   if (!input || !dropdown) return;
 
@@ -1803,9 +1849,9 @@ document.addEventListener('click', async e => {
     const results = [];
     DATA.classes.forEach(cls => {
       if (cls.title.toLowerCase().includes(q)) results.push({ type: 'class', label: cls.title, sub: cls.professor, cls });
-      (cls.materials || []).forEach(m => { if (m.title.toLowerCase().includes(q)) results.push({ type: 'material', label: m.title, sub: cls.title, cls, item: m }); });
-      (cls.quizzes || []).forEach(qz => { if (qz.title.toLowerCase().includes(q)) results.push({ type: 'quiz', label: qz.title, sub: cls.title, cls, item: qz }); });
-      (cls.assignments || []).forEach(a => { if (a.title.toLowerCase().includes(q)) results.push({ type: 'assignment', label: a.title, sub: cls.title, cls, item: a }); });
+      (cls.materials   || []).forEach(m  => { if (m.title.toLowerCase().includes(q))  results.push({ type: 'material',   label: m.title,  sub: cls.title, cls, item: m  }); });
+      (cls.quizzes     || []).forEach(qz => { if (qz.title.toLowerCase().includes(q)) results.push({ type: 'quiz',       label: qz.title, sub: cls.title, cls, item: qz }); });
+      (cls.assignments || []).forEach(a  => { if (a.title.toLowerCase().includes(q))  results.push({ type: 'assignment', label: a.title,  sub: cls.title, cls, item: a  }); });
     });
 
     if (results.length === 0) {
@@ -1826,9 +1872,9 @@ document.addEventListener('click', async e => {
         input.value = '';
         dropdown.classList.add('hidden');
         setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
-        if (r.type === 'class') { renderClasses(); showView('classes'); openClassDetail(r.cls); }
-        else if (r.type === 'material') { openClassDetail(r.cls); openMaterialDetail(r.item, r.cls.title); }
-        else if (r.type === 'quiz') { openClassDetail(r.cls); openQuizDetail(r.item, r.cls.title); }
+        if (r.type === 'class')       { renderClasses(); showView('classes'); openClassDetail(r.cls); }
+        else if (r.type === 'material')   { openClassDetail(r.cls); openMaterialDetail(r.item, r.cls.title); }
+        else if (r.type === 'quiz')       { openClassDetail(r.cls); openQuizDetail(r.item, r.cls.title); }
         else if (r.type === 'assignment') { openClassDetail(r.cls); openAssignmentDetail(r.item, r.cls.title); }
       });
       dropdown.appendChild(el);
@@ -1861,15 +1907,15 @@ document.addEventListener('click', async e => {
 // ── ASSIGNMENT SUBMISSION ────────────────────────────────────────
 
 (function () {
-  const submitFileZone = document.getElementById('assignment-submit-file-zone');
-  const submitFileInput = document.getElementById('assignment-submit-file-input');
-  const submitBrowseBtn = document.getElementById('assignment-submit-browse-btn');
-  const submitFilePreview = document.getElementById('assignment-submit-file-preview');
-  const submitFileTypeBtn = document.getElementById('assign-submit-file-type-btn');
-  const submitLinkTypeBtn = document.getElementById('assign-submit-link-type-btn');
-  const submitLinkGroup = document.getElementById('assignment-submit-link-group');
-  const submitBtn = document.getElementById('btn-submit-assignment');
-  const successMsg = document.getElementById('submission-success-msg');
+  const submitFileZone     = document.getElementById('assignment-submit-file-zone');
+  const submitFileInput    = document.getElementById('assignment-submit-file-input');
+  const submitBrowseBtn    = document.getElementById('assignment-submit-browse-btn');
+  const submitFilePreview  = document.getElementById('assignment-submit-file-preview');
+  const submitFileTypeBtn  = document.getElementById('assign-submit-file-type-btn');
+  const submitLinkTypeBtn  = document.getElementById('assign-submit-link-type-btn');
+  const submitLinkGroup    = document.getElementById('assignment-submit-link-group');
+  const submitBtn          = document.getElementById('btn-submit-assignment');
+  const successMsg         = document.getElementById('submission-success-msg');
 
   let selectedFile = null;
 
@@ -1877,14 +1923,14 @@ document.addEventListener('click', async e => {
     submitFileTypeBtn.addEventListener('click', function () {
       submitFileTypeBtn.classList.add('active');
       submitLinkTypeBtn.classList.remove('active');
-      if (submitFileZone) submitFileZone.classList.remove('hidden');
+      if (submitFileZone)  submitFileZone.classList.remove('hidden');
       if (submitLinkGroup) submitLinkGroup.classList.add('hidden');
     });
     submitLinkTypeBtn.addEventListener('click', function () {
       submitLinkTypeBtn.classList.add('active');
       submitFileTypeBtn.classList.remove('active');
       if (submitLinkGroup) submitLinkGroup.classList.remove('hidden');
-      if (submitFileZone) submitFileZone.classList.add('hidden');
+      if (submitFileZone)  submitFileZone.classList.add('hidden');
     });
   }
 
@@ -1893,10 +1939,10 @@ document.addEventListener('click', async e => {
   }
 
   if (submitFileZone && submitFileInput) {
-    submitFileZone.addEventListener('click', function () { submitFileInput.click(); });
+    submitFileZone.addEventListener('click',    function () { submitFileInput.click(); });
     submitFileZone.addEventListener('dragover', function (e) { e.preventDefault(); submitFileZone.classList.add('drag-over'); });
-    submitFileZone.addEventListener('dragleave', function (e) { e.preventDefault(); submitFileZone.classList.remove('drag-over'); });
-    submitFileZone.addEventListener('drop', function (e) {
+    submitFileZone.addEventListener('dragleave',function (e) { e.preventDefault(); submitFileZone.classList.remove('drag-over'); });
+    submitFileZone.addEventListener('drop',     function (e) {
       e.preventDefault();
       submitFileZone.classList.remove('drag-over');
       if (e.dataTransfer.files.length > 0) handleFileSelection(e.dataTransfer.files[0]);
@@ -1973,9 +2019,9 @@ document.addEventListener('click', async e => {
 
   async function submitAssignmentSubmission(link, file) {
     const formData = new FormData();
-    formData.append('studentId', DATA.profile.id);
+    formData.append('studentId',    DATA.profile.id);
     formData.append('assignmentId', state.currentItem.id);
-    formData.append('sectionId', state.currentClass?.section_id || '');
+    formData.append('sectionId',    state.currentClass?.section_id || '');
     if (link) formData.append('submissionLink', link);
     if (file) formData.append('submissionFile', file);
 
@@ -1997,11 +2043,10 @@ document.addEventListener('click', async e => {
         if (assignMarkBtn) {
           assignMarkBtn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
           assignMarkBtn.className = 'mark-done-btn done-state';
-          assignMarkBtn.disabled = false;
+          assignMarkBtn.disabled  = false;
           assignMarkBtn.style.opacity = '';
-          assignMarkBtn.onclick = () => markDone('assignment');
+          assignMarkBtn.onclick   = () => markDone('assignment');
         }
-        // FIX #4: Update badge on submission
         updateStatusBadge(true);
         updateItemDisplay('assignment', state.currentItem.id, true);
       } else {
@@ -2016,15 +2061,15 @@ document.addEventListener('click', async e => {
 // ── QUIZ SUBMISSION ──────────────────────────────────────────────
 
 (function () {
-  const quizSubmitFileZone = document.getElementById('quiz-submit-file-zone');
-  const quizSubmitFileInput = document.getElementById('quiz-submit-file-input');
-  const quizSubmitBrowseBtn = document.getElementById('quiz-submit-browse-btn');
+  const quizSubmitFileZone    = document.getElementById('quiz-submit-file-zone');
+  const quizSubmitFileInput   = document.getElementById('quiz-submit-file-input');
+  const quizSubmitBrowseBtn   = document.getElementById('quiz-submit-browse-btn');
   const quizSubmitFilePreview = document.getElementById('quiz-submit-file-preview');
   const quizSubmitFileTypeBtn = document.getElementById('quiz-submit-file-type-btn');
   const quizSubmitLinkTypeBtn = document.getElementById('quiz-submit-link-type-btn');
-  const quizSubmitLinkGroup = document.getElementById('quiz-submit-link-group');
-  const quizSubmitBtn = document.getElementById('btn-submit-quiz');
-  const quizSuccessMsg = document.getElementById('quiz-submission-success-msg');
+  const quizSubmitLinkGroup   = document.getElementById('quiz-submit-link-group');
+  const quizSubmitBtn         = document.getElementById('btn-submit-quiz');
+  const quizSuccessMsg        = document.getElementById('quiz-submission-success-msg');
 
   let quizSelectedFile = null;
 
@@ -2032,14 +2077,14 @@ document.addEventListener('click', async e => {
     quizSubmitFileTypeBtn.addEventListener('click', function () {
       quizSubmitFileTypeBtn.classList.add('active');
       quizSubmitLinkTypeBtn.classList.remove('active');
-      if (quizSubmitFileZone) quizSubmitFileZone.classList.remove('hidden');
+      if (quizSubmitFileZone)  quizSubmitFileZone.classList.remove('hidden');
       if (quizSubmitLinkGroup) quizSubmitLinkGroup.classList.add('hidden');
     });
     quizSubmitLinkTypeBtn.addEventListener('click', function () {
       quizSubmitLinkTypeBtn.classList.add('active');
       quizSubmitFileTypeBtn.classList.remove('active');
       if (quizSubmitLinkGroup) quizSubmitLinkGroup.classList.remove('hidden');
-      if (quizSubmitFileZone) quizSubmitFileZone.classList.add('hidden');
+      if (quizSubmitFileZone)  quizSubmitFileZone.classList.add('hidden');
     });
   }
 
@@ -2048,10 +2093,10 @@ document.addEventListener('click', async e => {
   }
 
   if (quizSubmitFileZone && quizSubmitFileInput) {
-    quizSubmitFileZone.addEventListener('click', function () { quizSubmitFileInput.click(); });
+    quizSubmitFileZone.addEventListener('click',    function () { quizSubmitFileInput.click(); });
     quizSubmitFileZone.addEventListener('dragover', function (e) { e.preventDefault(); quizSubmitFileZone.classList.add('drag-over'); });
-    quizSubmitFileZone.addEventListener('dragleave', function (e) { e.preventDefault(); quizSubmitFileZone.classList.remove('drag-over'); });
-    quizSubmitFileZone.addEventListener('drop', function (e) {
+    quizSubmitFileZone.addEventListener('dragleave',function (e) { e.preventDefault(); quizSubmitFileZone.classList.remove('drag-over'); });
+    quizSubmitFileZone.addEventListener('drop',     function (e) {
       e.preventDefault();
       quizSubmitFileZone.classList.remove('drag-over');
       if (e.dataTransfer.files.length > 0) handleQuizFileSelection(e.dataTransfer.files[0]);
@@ -2129,7 +2174,7 @@ document.addEventListener('click', async e => {
   async function submitQuizSubmission(link, file) {
     const formData = new FormData();
     formData.append('studentId', DATA.profile.id);
-    formData.append('quizId', state.currentItem.id);
+    formData.append('quizId',    state.currentItem.id);
     formData.append('sectionId', state.currentClass?.section_id || '');
     if (link) formData.append('submissionLink', link);
     if (file) formData.append('submissionFile', file);
@@ -2152,11 +2197,10 @@ document.addEventListener('click', async e => {
         if (quizMarkBtn) {
           quizMarkBtn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
           quizMarkBtn.className = 'mark-done-btn done-state';
-          quizMarkBtn.disabled = false;
+          quizMarkBtn.disabled  = false;
           quizMarkBtn.style.opacity = '';
-          quizMarkBtn.onclick = () => markDone('quiz');
+          quizMarkBtn.onclick   = () => markDone('quiz');
         }
-        // FIX #4: Update badge on submission
         updateStatusBadge(true);
         updateItemDisplay('quiz', state.currentItem.id, true);
       } else {
@@ -2167,3 +2211,130 @@ document.addEventListener('click', async e => {
     }
   }
 })();
+
+// ── STATS MODAL ──────────────────────────────────────────────────
+
+function openStatsModal(type) {
+  const overlay = document.getElementById('stats-overlay');
+  const icon    = document.getElementById('stats-modal-icon');
+  const title   = document.getElementById('stats-modal-title');
+  const body    = document.getElementById('stats-modal-body');
+  body.innerHTML = '';
+
+  const typeDots = { material: '#378ADD', quiz: '#639922', assignment: '#BA7517' };
+
+  if (type === 'classes') {
+    icon.style.cssText = 'background:#dbeafe;color:#1d4ed8;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px';
+    icon.innerHTML = '<i class="fa-solid fa-book-open"></i>';
+    title.textContent = 'Your classes';
+    DATA.classes.forEach(cls => {
+      const allItems = [...(cls.materials||[]), ...(cls.quizzes||[]), ...(cls.assignments||[])];
+      const doneCount = allItems.filter(i =>
+        state.done.has(completionKey('material',   i.id)) ||
+        state.done.has(completionKey('quiz',       i.id)) ||
+        state.done.has(completionKey('assignment', i.id))
+      ).length;
+      const pct = allItems.length > 0 ? Math.round((doneCount / allItems.length) * 100) : 0;
+      const el = document.createElement('div');
+      el.className = 'stats-modal-item';
+      el.innerHTML = `
+        <div class="stats-item-dot" style="background:#7c3aed"></div>
+        <div class="stats-item-info">
+          <div class="stats-item-name">${escapeHtml(cls.title)}</div>
+          <div class="stats-item-meta">${escapeHtml(cls.professor || '')}</div>
+          <div style="margin-top:6px;height:4px;border-radius:2px;background:#e5e7eb;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:#16a34a;border-radius:2px"></div>
+          </div>
+          <div style="font-size:11px;color:#6b7280;margin-top:3px">${doneCount}/${allItems.length} items finished</div>
+        </div>
+        <span class="stats-item-badge score">${pct}%</span>`;
+      body.appendChild(el);
+    });
+
+  } else if (type === 'completed') {
+    icon.style.cssText = 'background:#dcfce7;color:#16a34a;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px';
+    icon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+    const items = [];
+    DATA.classes.forEach(cls => {
+      (cls.materials   ||[]).forEach(m => { if (state.done.has(completionKey('material',   m.id))) items.push({...m, type:'material',   cls}); });
+      (cls.quizzes     ||[]).forEach(q => { if (state.done.has(completionKey('quiz',       q.id))) items.push({...q, type:'quiz',       cls}); });
+      (cls.assignments ||[]).forEach(a => { if (state.done.has(completionKey('assignment', a.id))) items.push({...a, type:'assignment', cls}); });
+    });
+    title.textContent = `${items.length} completed items`;
+    body.innerHTML = `<div class="stats-modal-summary"><span>Total completed</span><strong>${items.length} items</strong></div>`;
+    items.forEach(item => {
+      const key = completionKey(item.type, item.id);
+      const scoreData = DATA.scores[key];
+      const hasScore  = scoreData && scoreData.score != null;
+      const badgeHtml = hasScore
+        ? `<span class="stats-item-badge score">⭐ ${scoreData.score}/100</span>`
+        : `<span class="stats-item-badge done">✓ Done</span>`;
+      const el = document.createElement('div');
+      el.className = 'stats-modal-item';
+      el.innerHTML = `
+        <div class="stats-item-dot" style="background:${typeDots[item.type]||'#888'}"></div>
+        <div class="stats-item-info">
+          <div class="stats-item-name">${escapeHtml(item.title)}</div>
+          <div class="stats-item-meta">${item.type.charAt(0).toUpperCase()+item.type.slice(1)} · ${escapeHtml(item.cls.title)}</div>
+        </div>
+        ${badgeHtml}`;
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', () => {
+        closeStatsModal();
+        openClassDetail(item.cls);
+        if (item.type === 'material')        openMaterialDetail(item, item.cls.title);
+        else if (item.type === 'quiz')       openQuizDetail(item, item.cls.title);
+        else                                 openAssignmentDetail(item, item.cls.title);
+      });
+      body.appendChild(el);
+    });
+
+  } else { // pending
+    icon.style.cssText = 'background:#fef3c7;color:#d97706;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px';
+    icon.innerHTML = '<i class="fa-solid fa-clock"></i>';
+    const now = new Date();
+    const items = [];
+    DATA.classes.forEach(cls => {
+      [...(cls.materials   ||[]).map(m=>({...m,type:'material',   cls})),
+       ...(cls.quizzes     ||[]).map(q=>({...q,type:'quiz',       cls})),
+       ...(cls.assignments ||[]).map(a=>({...a,type:'assignment', cls}))]
+      .forEach(entry => {
+        const key = completionKey(entry.type, entry.id);
+        if (!state.done.has(key) && entry.due_date && new Date(entry.due_date) >= now)
+          items.push(entry);
+      });
+    });
+    items.sort((a,b) => new Date(a.due_date)-new Date(b.due_date));
+    title.textContent = `${items.length} pending items`;
+    body.innerHTML = `<div class="stats-modal-summary"><span>Upcoming tasks</span><strong>${items.length} items</strong></div>`;
+    if (items.length === 0) {
+      body.innerHTML += '<div style="text-align:center;padding:2rem;color:#6b7280;font-size:13px">🎉 All caught up!</div>';
+    }
+    items.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'stats-modal-item';
+      el.innerHTML = `
+        <div class="stats-item-dot" style="background:${typeDots[item.type]||'#888'}"></div>
+        <div class="stats-item-info">
+          <div class="stats-item-name">${escapeHtml(item.title)}</div>
+          <div class="stats-item-meta">${item.type.charAt(0).toUpperCase()+item.type.slice(1)} · ${escapeHtml(item.cls.title)}</div>
+        </div>
+        <span class="stats-item-badge pending">Due ${formatDueDate(item.due_date)}</span>`;
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', () => {
+        closeStatsModal();
+        openClassDetail(item.cls);
+        if (item.type === 'material')        openMaterialDetail(item, item.cls.title);
+        else if (item.type === 'quiz')       openQuizDetail(item, item.cls.title);
+        else                                 openAssignmentDetail(item, item.cls.title);
+      });
+      body.appendChild(el);
+    });
+  }
+
+  overlay.classList.add('active');
+}
+
+function closeStatsModal() { document.getElementById('stats-overlay').classList.remove('active'); }
+function handleStatsOverlayClick(e) { if (e.target === document.getElementById('stats-overlay')) closeStatsModal(); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeStatsModal(); });
