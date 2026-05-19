@@ -1207,6 +1207,82 @@ app.get('/api/teacher/submissions', async (req, res) => {
     }
 });
 // =====================================================
+// STUDENT: SUBMIT QUIZ
+// =====================================================
+
+const quizSubmissionStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = path.join(__dirname, "..", "..", "frontend", "uploads", "submissions");
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, 'quiz-submission-' + uniqueSuffix + ext);
+    }
+});
+
+const uploadQuizSubmission = multer({ storage: quizSubmissionStorage });
+
+app.post("/api/submit-quiz", uploadQuizSubmission.single('submissionFile'), async (req, res) => {
+    const { studentId, quizId, sectionId, submissionLink } = req.body;
+
+    if (!studentId || !quizId) {
+        return res.status(400).json({
+            success: false,
+            message: "Missing required fields: studentId and quizId are required"
+        });
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+
+        let submissionUrl = null;
+        if (req.file) {
+            submissionUrl = `/uploads/submissions/${req.file.filename}`;
+        } else if (submissionLink) {
+            submissionUrl = submissionLink;
+        }
+
+        const existing = await conn.query(
+            "SELECT id FROM task_completions WHERE user_id = ? AND item_type = 'quiz' AND item_id = ?",
+            [studentId, quizId]
+        );
+
+        if (existing.length > 0) {
+            await conn.query(
+                "UPDATE task_completions SET completed_at = NOW(), submission_url = ? WHERE user_id = ? AND item_type = 'quiz' AND item_id = ?",
+                [submissionUrl, studentId, quizId]
+            );
+        } else {
+            await conn.query(
+                "INSERT INTO task_completions (user_id, item_type, item_id, completed_at, submission_url) VALUES (?, 'quiz', ?, NOW(), ?)",
+                [studentId, quizId, submissionUrl]
+            );
+        }
+
+        res.json({
+            success: true,
+            message: "Quiz submitted successfully",
+            submissionUrl,
+            quizId
+        });
+
+    } catch (error) {
+        console.error('Quiz submission error:', error);
+        res.status(500).json({
+            success: false,
+            message: "Server error: " + error.message
+        });
+    } finally {
+        if (conn) conn.release();
+    }
+});
+// =====================================================
 // TEACHER: SUBMITTED FILES API
 // =====================================================
 app.get("/api/teacher/submitted-files", async (req, res) => {
@@ -1643,7 +1719,8 @@ app.get("/api/teacher/quizzes", async (req, res) => {
     try {
         conn = await pool.getConnection();
         const quizzes = await conn.query(
-            "SELECT id, section_id, title, description, link, link_label, due_date, created_at FROM quizzes WHERE section_id = ? ORDER BY id",
+            // Add 'points' to the SELECT:
+            "SELECT id, section_id, title, description, link, link_label, due_date, points, created_at FROM quizzes WHERE section_id = ? ORDER BY id",
             [sectionId]
         );
         res.json(quizzes);

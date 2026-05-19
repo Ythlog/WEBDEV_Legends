@@ -8,12 +8,12 @@
 // TEACHER DATA
 // =============================================
 const TEACHER_DATA = {
-  profile: { 
-    id: null, 
-    firstName: '', 
-    lastName: '', 
-    username: '', 
-    email: '', 
+  profile: {
+    id: null,
+    firstName: '',
+    lastName: '',
+    username: '',
+    email: '',
     role: '',
     profilePicture: null
   },
@@ -84,13 +84,13 @@ function updateTeacherProfilePicture() {
   const profileImg = document.getElementById('profile-picture-img');
   const profileIcon = document.getElementById('profile-picture-icon');
   const topBarAvatar = document.getElementById('top-bar-avatar');
-  
+
   const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(TEACHER_DATA.profile.firstName + ' ' + TEACHER_DATA.profile.lastName)}&background=6366f1&color=fff`;
-  
+
   if (TEACHER_DATA.profile.profilePicture) {
     const timestamp = new Date().getTime();
     const imgUrl = `/uploads/profile-pictures/${TEACHER_DATA.profile.profilePicture}?t=${timestamp}`;
-    
+
     if (profileImg) {
       profileImg.src = imgUrl;
       profileImg.style.display = 'block';
@@ -133,10 +133,10 @@ async function fetchTeacherProfilePicture() {
 }
 
 // Profile picture upload handler
-document.addEventListener('change', function(e) {
+document.addEventListener('change', function (e) {
   if (e.target.id === 'profile-picture-input' && e.target.files && e.target.files[0]) {
     const file = e.target.files[0];
-    
+
     if (!['image/jpeg', 'image/jpg', 'image/png', 'image/gif'].includes(file.type)) {
       Swal.fire('Error', 'Only JPG, PNG, GIF allowed', 'error');
       return;
@@ -145,11 +145,11 @@ document.addEventListener('change', function(e) {
       Swal.fire('Error', 'File size must be less than 5MB', 'error');
       return;
     }
-    
+
     const formData = new FormData();
     formData.append('profilePicture', file);
     formData.append('userId', TEACHER_DATA.profile.id);
-    
+
     fetch('/api/upload-profile-picture', { method: 'POST', body: formData })
       .then(res => res.json())
       .then(data => {
@@ -165,13 +165,13 @@ document.addEventListener('change', function(e) {
   }
 });
 
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
   if (e.target.id === 'upload-picture-btn' || e.target.closest('#upload-picture-btn')) {
     document.getElementById('profile-picture-input').click();
   }
 });
 
-document.addEventListener('click', async function(e) {
+document.addEventListener('click', async function (e) {
   if (e.target.id === 'remove-picture-btn' || e.target.closest('#remove-picture-btn')) {
     const result = await Swal.fire({
       title: 'Remove picture?',
@@ -650,7 +650,7 @@ function renderSectionsList() {
     try {
       const students = await apiGet(`/api/teacher/students?sectionId=${sec.id}`);
       enrolledCount = students.filter(s => s.status === 'enrolled').length;
-    } catch (e) {}
+    } catch (e) { }
     const card = document.createElement('div');
     card.className = 'section-card';
     card.innerHTML = `
@@ -934,7 +934,14 @@ function openQuizDetail(quiz) {
   state.activeCompletionTab.quiz = 'pending';
   const completionTabs = document.querySelector('#view-quiz-detail .completion-tabs');
   if (completionTabs) renderCompletionTabs(completionTabs, 'quiz');
-  renderCompletionStudents('quiz-done-students', 'quiz', quiz.id, 'pending');
+
+  // Re-fetch quizzes so maxPoints is always fresh, then render
+  apiGet(`/api/teacher/quizzes?sectionId=${state.currentSectionId}`).then(freshQuizzes => {
+    TEACHER_DATA.quizzes = freshQuizzes;
+    renderCompletionStudents('quiz-done-students', 'quiz', quiz.id, 'pending');
+  }).catch(() => {
+    renderCompletionStudents('quiz-done-students', 'quiz', quiz.id, 'pending');
+  });
 
   // Inject & refresh Submitted Files section
   injectSubmittedFilesSection('#view-quiz-detail', 'quiz-submitted-files', 'quiz', quiz.id);
@@ -1031,7 +1038,14 @@ function openAssignmentDetail(assign) {
   state.activeCompletionTab.assign = 'pending';
   const completionTabs = document.querySelector('#view-assignment-detail .completion-tabs');
   if (completionTabs) renderCompletionTabs(completionTabs, 'assign');
-  renderCompletionStudents('assign-done-students', 'assignment', assign.id, 'pending');
+
+  // Re-fetch assignments so maxPoints is always fresh, then render
+  apiGet(`/api/teacher/assignments?sectionId=${state.currentSectionId}`).then(freshAssignments => {
+    TEACHER_DATA.assignments = freshAssignments;
+    renderCompletionStudents('assign-done-students', 'assignment', assign.id, 'pending');
+  }).catch(() => {
+    renderCompletionStudents('assign-done-students', 'assignment', assign.id, 'pending');
+  });
 
   // Inject & refresh Submitted Files section
   injectSubmittedFilesSection('#view-assignment-detail', 'assign-submitted-files', 'assignment', assign.id);
@@ -1087,13 +1101,25 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
       score: s.score || null
     }));
 
+    // Get max points with type coercion to handle string/number mismatch from API
+    let maxPoints = 100;
+    if (type === 'quiz') {
+      const quiz = TEACHER_DATA.quizzes.find(q => Number(q.id) === Number(itemId));
+      const pts = parseFloat(quiz?.points);
+      maxPoints = (!isNaN(pts) && pts > 0) ? pts : 100;
+    } else if (type === 'assignment') {
+      const assign = TEACHER_DATA.assignments.find(a => Number(a.id) === Number(itemId));
+      const pts = parseFloat(assign?.points);
+      maxPoints = (!isNaN(pts) && pts > 0) ? pts : 100;
+    }
+
     if (type !== 'material') {
       let dueDate = null;
       if (type === 'quiz') {
-        const quiz = TEACHER_DATA.quizzes.find(q => q.id === itemId);
+        const quiz = TEACHER_DATA.quizzes.find(q => Number(q.id) === Number(itemId));
         dueDate = quiz?.due_date;
       } else if (type === 'assignment') {
-        const assign = TEACHER_DATA.assignments.find(a => a.id === itemId);
+        const assign = TEACHER_DATA.assignments.find(a => Number(a.id) === Number(itemId));
         dueDate = assign?.due_date;
       }
       if (dueDate) {
@@ -1110,7 +1136,12 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
     filtered = filtered.filter(s => s.status === matchStatus);
 
     if (!filtered.length) {
-      const labels = { pending: 'No pending students.', finished: 'No students have finished yet.', passed: 'No students have passed yet.', missed: 'No students missed this.' };
+      const labels = {
+        pending: 'No pending students.',
+        finished: 'No students have finished yet.',
+        passed: 'No students have passed yet.',
+        missed: 'No students missed this.'
+      };
       container.innerHTML = `<div class="empty-state">${labels[filterStatus] || 'No students.'}</div>`;
       return;
     }
@@ -1135,19 +1166,20 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
             <input 
               type="number" class="score-input"
               data-student-id="${studentId}" data-item-id="${itemId}" data-item-type="${type}"
+              data-max-points="${maxPoints}"
               data-original-value="${s.score !== null && s.score !== undefined ? s.score : ''}"
               value="${s.score !== null && s.score !== undefined ? s.score : ''}"
-              placeholder="Score" min="0" max="100" step="1"
+              placeholder="Score" min="0" max="${maxPoints}" step="1"
               style="width:70px;padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;text-align:center;outline:none;transition:all 0.2s;"
               onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px rgba(59,108,247,0.1)';"
               onblur="saveStudentScore(this); this.style.borderColor='var(--border)'; this.style.boxShadow='none';"
               onkeydown="if(event.key==='Enter'){this.blur();}"
             />
-            <span style="font-size:11px;color:var(--text-muted);">/ 100</span>
+            <span style="font-size:11px;color:var(--text-muted);">/ ${maxPoints}</span>
             <i class="fa-solid fa-check score-saved-icon" style="display:none;color:#10b981;font-size:14px;"></i>
           </div>`;
       } else if (s.score !== null && s.score !== undefined && (type === 'quiz' || type === 'assignment')) {
-        scoreHtml = `<span style="font-weight:700;color:var(--accent);font-size:13px;margin-left:12px;flex-shrink:0;">${s.score}/100</span>`;
+        scoreHtml = `<span style="font-weight:700;color:var(--accent);font-size:13px;margin-left:12px;flex-shrink:0;">${s.score}/${maxPoints}</span>`;
       }
 
       card.innerHTML = `
@@ -1177,6 +1209,7 @@ async function saveStudentScore(inputElement) {
   const studentId = inputElement.dataset.studentId;
   const itemId = inputElement.dataset.itemId;
   const itemType = inputElement.dataset.itemType;
+  const maxPoints = parseFloat(inputElement.dataset.maxPoints) || 100;
   const score = inputElement.value.trim();
   const savedIcon = inputElement.parentElement.querySelector('.score-saved-icon');
 
@@ -1199,8 +1232,8 @@ async function saveStudentScore(inputElement) {
   }
 
   const numScore = parseFloat(score);
-  if (isNaN(numScore) || numScore < 0 || numScore > 100) {
-    Swal.fire('Invalid Score', 'Score must be between 0 and 100', 'warning');
+  if (isNaN(numScore) || numScore < 0 || numScore > maxPoints) {
+    Swal.fire('Invalid Score', `Score must be between 0 and ${maxPoints}`, 'warning');
     inputElement.value = inputElement.dataset.originalValue || '';
     return;
   }
@@ -1351,21 +1384,21 @@ function renderSubmittedFilesEmpty(container, type) {
 
 function renderSubmittedFilesList(container, submissions) {
   const fileIconMap = {
-    pdf:  { icon: 'fa-file-pdf',        color: '#ef4444' },
-    doc:  { icon: 'fa-file-word',        color: '#2563eb' },
-    docx: { icon: 'fa-file-word',        color: '#2563eb' },
-    ppt:  { icon: 'fa-file-powerpoint',  color: '#f97316' },
-    pptx: { icon: 'fa-file-powerpoint',  color: '#f97316' },
-    xls:  { icon: 'fa-file-excel',       color: '#16a34a' },
-    xlsx: { icon: 'fa-file-excel',       color: '#16a34a' },
-    png:  { icon: 'fa-file-image',       color: '#8b5cf6' },
-    jpg:  { icon: 'fa-file-image',       color: '#8b5cf6' },
-    jpeg: { icon: 'fa-file-image',       color: '#8b5cf6' },
-    gif:  { icon: 'fa-file-image',       color: '#8b5cf6' },
-    zip:  { icon: 'fa-file-zipper',      color: '#f59e0b' },
-    rar:  { icon: 'fa-file-zipper',      color: '#f59e0b' },
-    mp4:  { icon: 'fa-file-video',       color: '#06b6d4' },
-    mp3:  { icon: 'fa-file-audio',       color: '#ec4899' },
+    pdf: { icon: 'fa-file-pdf', color: '#ef4444' },
+    doc: { icon: 'fa-file-word', color: '#2563eb' },
+    docx: { icon: 'fa-file-word', color: '#2563eb' },
+    ppt: { icon: 'fa-file-powerpoint', color: '#f97316' },
+    pptx: { icon: 'fa-file-powerpoint', color: '#f97316' },
+    xls: { icon: 'fa-file-excel', color: '#16a34a' },
+    xlsx: { icon: 'fa-file-excel', color: '#16a34a' },
+    png: { icon: 'fa-file-image', color: '#8b5cf6' },
+    jpg: { icon: 'fa-file-image', color: '#8b5cf6' },
+    jpeg: { icon: 'fa-file-image', color: '#8b5cf6' },
+    gif: { icon: 'fa-file-image', color: '#8b5cf6' },
+    zip: { icon: 'fa-file-zipper', color: '#f59e0b' },
+    rar: { icon: 'fa-file-zipper', color: '#f59e0b' },
+    mp4: { icon: 'fa-file-video', color: '#06b6d4' },
+    mp3: { icon: 'fa-file-audio', color: '#ec4899' },
   };
 
   function getFileInfo(filename) {
@@ -1385,9 +1418,9 @@ function renderSubmittedFilesList(container, submissions) {
 
     const submittedAt = sub.submitted_at
       ? new Date(sub.submitted_at).toLocaleString('en-US', {
-          month: 'short', day: 'numeric', year: 'numeric',
-          hour: 'numeric', minute: '2-digit', hour12: true
-        })
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: 'numeric', minute: '2-digit', hour12: true
+      })
       : 'Unknown time';
 
     // Build file chip(s)
@@ -1400,14 +1433,14 @@ function renderSubmittedFilesList(container, submissions) {
         filesHtml += buildFileChip(f.url, f.name, fi, null);
       });
 
-    // Case 2: single file_url
+      // Case 2: single file_url
     } else if (sub.file_url) {
       const displayName = sub.file_name || sub.filename || 'File';
       const fi = getFileInfo(displayName);
       const size = sub.file_size ? formatFileSize(sub.file_size) : null;
       filesHtml = buildFileChip(sub.file_url, displayName, fi, size);
 
-    // Case 3: link submission
+      // Case 3: link submission
     } else if (sub.link) {
       const shortLink = sub.link.length > 55 ? sub.link.slice(0, 52) + '…' : sub.link;
       filesHtml = `
@@ -1583,7 +1616,7 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
 });
 document.querySelectorAll('.close-modal').forEach(btn => {
-  btn.addEventListener('click', function() { const m = this.closest('.modal-overlay'); if (m) m.classList.add('hidden'); });
+  btn.addEventListener('click', function () { const m = this.closest('.modal-overlay'); if (m) m.classList.add('hidden'); });
 });
 
 // ---- Class Modal ----
@@ -1697,7 +1730,7 @@ function handleFileSelect(file, previewContainer, stateKey) {
     </div>`;
 }
 
-window.removeFile = function(stateKey, previewId) {
+window.removeFile = function (stateKey, previewId) {
   state[stateKey] = null;
   const inputMap = { materialFile: 'material-file-input', assignmentFile: 'assignment-file-input', quizFile: 'quiz-file-input' };
   const inputId = inputMap[stateKey];
@@ -2025,7 +2058,7 @@ async function renderProgressView() {
           try {
             const completions = await apiGet(`/api/teacher/completions?itemType=${itemType}&itemId=${item.id}&sectionId=${sec.id}`);
             doneCount += completions.filter(c => c.completed_at).length;
-          } catch (e) {}
+          } catch (e) { }
         }
         const pct = possible > 0 ? Math.round((doneCount / possible) * 100) : 0;
         const card = document.createElement('div');
@@ -2190,7 +2223,7 @@ function renderAnnouncementList() {
   });
 }
 
-window.editAnnouncementFromList = async function(id) {
+window.editAnnouncementFromList = async function (id) {
   const a = state.announcements.find(an => an.id === id);
   if (!a) return;
   state.editingAnnouncementId = id;
@@ -2206,7 +2239,7 @@ window.editAnnouncementFromList = async function(id) {
   openModal('modal-announcement');
 };
 
-window.deleteAnnouncementFromList = async function(id) {
+window.deleteAnnouncementFromList = async function (id) {
   const result = await Swal.fire({ title: 'Delete announcement?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Delete', confirmButtonColor: '#cc0000' });
   if (result.isConfirmed) {
     try {
@@ -2434,7 +2467,7 @@ function escapeHtml(str) {
 // SEARCH BAR - TEACHER DASHBOARD
 // =============================================
 (function setupTeacherSearch() {
-  const input    = document.getElementById('search-input');
+  const input = document.getElementById('search-input');
   const dropdown = document.getElementById('search-dropdown');
   if (!input || !dropdown) return;
 
@@ -2485,12 +2518,12 @@ function escapeHtml(str) {
     }
 
     const typeColors = {
-      class:      { bg: '#eff6ff', color: '#2563eb' },
-      section:    { bg: '#f0fdf4', color: '#16a34a' },
-      material:   { bg: '#faf5ff', color: '#7c3aed' },
-      quiz:       { bg: '#fff7ed', color: '#ea580c' },
+      class: { bg: '#eff6ff', color: '#2563eb' },
+      section: { bg: '#f0fdf4', color: '#16a34a' },
+      material: { bg: '#faf5ff', color: '#7c3aed' },
+      quiz: { bg: '#fff7ed', color: '#ea580c' },
       assignment: { bg: '#fff1f2', color: '#e11d48' },
-      student:    { bg: '#f0f9ff', color: '#0284c7' }
+      student: { bg: '#f0f9ff', color: '#0284c7' }
     };
 
     results.slice(0, 5).forEach(r => {
