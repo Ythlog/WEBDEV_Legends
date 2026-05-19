@@ -759,7 +759,6 @@ function renderSectionsList() {
             <span style="font-size: 14px; font-weight: 600; background: #f0fdf4; padding: 2px 8px; border-radius: 4px; font-family: monospace;">${sec.enrollment_code || 'N/A'}</span>
             <button class="copy-code-btn" data-code="${sec.enrollment_code}" style="margin-left: 8px; padding: 2px 8px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fa-solid fa-copy"></i> Copy</button>
           </div>
-          <div style="font-size: 11px; color: #999; margin-top: 4px;">Display Code: ${sec.code}</div>
         </div>
       </div>
       <div class="section-card-right">
@@ -805,17 +804,13 @@ function openEditSectionModal(sectionId) {
   const sec = TEACHER_DATA.sections.find(s => s.id === sectionId);
   document.getElementById('edit-section-name-input').value = sec.name;
   
-  document.getElementById('edit-modal-code-display').innerHTML = `
-    <div style="margin-bottom: 8px;">
-      <strong style="color: #666;">Display Code:</strong> 
-      <span style="font-family: monospace;">${sec.code}</span>
-    </div>
+document.getElementById('edit-modal-code-display').innerHTML = `
     <div>
       <strong style="color: #666;"><i class="fa-solid fa-key"></i> Enrollment Code (share with students):</strong><br/>
       <span style="font-family: monospace; font-size: 18px; font-weight: bold; background: #f0fdf4; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px;">${sec.enrollment_code || 'N/A'}</span>
       <button class="copy-code-modal-btn" data-code="${sec.enrollment_code}" style="margin-left: 10px; padding: 4px 12px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-copy"></i> Copy</button>
     </div>
-  `;
+`;
   
   setTimeout(() => {
     const copyBtn = document.querySelector('.copy-code-modal-btn');
@@ -1660,21 +1655,20 @@ if (saveSectionModal) {
       const result = await apiPost('/api/teacher/sections', { classId: state.currentClassId, name });
       closeModal('modal-section');
       
-      Swal.fire({
-        icon: 'success',
-        title: 'Section Created!',
-        html: `
-          <div style="text-align: left;">
-            <p><strong>Section Name:</strong> ${escapeHtml(name)}</p>
-            <p><strong>Display Code:</strong> <code>${result.code}</code></p>
-            <p><strong><i class="fa-solid fa-key"></i> Enrollment Code (SHARE THIS WITH STUDENTS):</strong><br/>
-            <span style="background: #f0fdf4; padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 18px; font-weight: bold; display: inline-block; margin-top: 5px;">${result.enrollment_code}</span></p>
-            <button id="copy-enrollment-code" style="margin-top: 10px; padding: 5px 12px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-copy"></i> Copy Enrollment Code</button>
-          </div>
-        `,
-        showConfirmButton: true,
-        confirmButtonText: 'OK'
-      });
+    Swal.fire({
+      icon: 'success',
+      title: 'Section Created!',
+      html: `
+        <div style="text-align: left;">
+          <p><strong>Section Name:</strong> ${escapeHtml(name)}</p>
+          <p><strong><i class="fa-solid fa-key"></i> Enrollment Code (SHARE THIS WITH STUDENTS):</strong><br/>
+          <span style="background: #f0fdf4; padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 18px; font-weight: bold; display: inline-block; margin-top: 5px;">${result.enrollment_code}</span></p>
+          <button id="copy-enrollment-code" style="margin-top: 10px; padding: 5px 12px; background: #6366f1; color: white; border: none; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-copy"></i> Copy Enrollment Code</button>
+        </div>
+      `,
+      showConfirmButton: true,
+      confirmButtonText: 'OK'
+    });
       
       setTimeout(() => {
         const copyBtn = document.getElementById('copy-enrollment-code');

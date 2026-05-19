@@ -1097,13 +1097,11 @@ function refreshMarkDoneButton(type, itemId) {
   }
 
   if (!opened) {
-    const actionLabel = type === 'material' ? 'Download PDF first'
-      : type === 'quiz' ? 'Open quiz link first'
-      : 'Open assignment link first';
+    const actionLabel = 'Mark as Done'; 
     btn.innerHTML = `<i class="fa-solid fa-lock"></i> ${actionLabel}`;
     btn.className = 'mark-done-btn dark';
     btn.disabled = true;
-    btn.title = getOpenGateMessage(type);
+    btn.title = getOpenGateMessage(type);  
     btn.style.opacity = '0.55';
     btn.style.cursor = 'not-allowed';
     btn.onclick = null;
