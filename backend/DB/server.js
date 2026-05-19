@@ -1163,6 +1163,105 @@ app.post("/api/teacher/classes", async (req, res) => {
         if (conn) conn.release();
     }
 });
+app.get('/api/teacher/submissions', async (req, res) => {
+    try {
+        const { itemType, itemId, sectionId } = req.query;
+        
+        if (!itemType || !itemId || !sectionId) {
+            return res.status(400).json({ message: 'Missing required parameters' });
+        }
+        
+        // Determine which table to query based on itemType
+        let tableName;
+        if (itemType === 'assignment') {
+            tableName = 'assignment_submissions';
+        } else if (itemType === 'quiz') {
+            tableName = 'quiz_submissions';
+        } else {
+            // Materials don't have submissions
+            return res.json([]);
+        }
+        
+        const query = `
+            SELECT 
+                s.*,
+                u.id as user_id,
+                u.first_name,
+                u.last_name,
+                u.email,
+                up.profile_picture
+            FROM ${tableName} s
+            JOIN users u ON s.student_id = u.id
+            LEFT JOIN user_profiles up ON u.id = up.user_id
+            WHERE s.${itemType}_id = ? 
+                AND s.section_id = ?
+            ORDER BY s.submitted_at DESC
+        `;
+        
+        const submissions = await conn.query(query, [itemId, sectionId]);
+        
+        res.json(submissions);
+    } catch (error) {
+        console.error('Error fetching submissions:', error);
+        res.status(500).json({ message: 'Failed to fetch submissions' });
+    }
+});
+// =====================================================
+// TEACHER: SUBMITTED FILES API
+// =====================================================
+app.get("/api/teacher/submitted-files", async (req, res) => {
+    const { itemType, itemId, sectionId } = req.query;
+
+    if (!itemType || !itemId || !sectionId) {
+        return res.status(400).json({ message: "Missing required parameters" });
+    }
+
+    // Materials don't have file submissions
+    if (itemType === 'material') {
+        return res.json([]);
+    }
+
+    let conn;
+    try {
+        conn = await pool.getConnection();
+
+        const submissions = await conn.query(
+            `SELECT 
+                tc.id,
+                tc.submission_url as file_url,
+                tc.completed_at as submitted_at,
+                u.id as user_id,
+                u.first_name,
+                u.last_name,
+                u.email,
+                u.profile_picture
+             FROM task_completions tc
+             JOIN users u ON tc.user_id = u.id
+             JOIN section_students ss ON ss.student_id = u.id AND ss.section_id = ?
+             WHERE tc.item_type = ? 
+               AND tc.item_id = ?
+               AND tc.completed_at IS NOT NULL
+               AND tc.submission_url IS NOT NULL
+             ORDER BY tc.completed_at DESC`,
+            [sectionId, itemType, itemId]
+        );
+
+        // Enrich with filename derived from URL
+        const enriched = submissions.map(sub => ({
+            ...sub,
+            file_name: sub.file_url
+                ? decodeURIComponent(sub.file_url.split('/').pop())
+                : null
+        }));
+
+        res.json(enriched);
+    } catch (err) {
+        console.error("Get submitted files error:", err);
+        res.status(500).json({ message: "Server error: " + err.message });
+    } finally {
+        if (conn) conn.release();
+    }
+});
 
 app.put("/api/teacher/classes/:id", async (req, res) => {
     const { id } = req.params;
