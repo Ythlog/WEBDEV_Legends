@@ -82,11 +82,6 @@ const transporter = nodemailer.createTransport({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "..", "..", "frontend")));
-
-
-
-
-
 const MIME_MAP = {
     'pdf':  'application/pdf',
     'txt':  'text/plain; charset=utf-8',

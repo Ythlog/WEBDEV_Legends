@@ -41,9 +41,6 @@ let state = {
   quizUploadType: 'file'
 };
 
-
-
-
 async function fetchTeacherProfile() {
   const savedUser = localStorage.getItem('eduhub_user');
   if (savedUser) {

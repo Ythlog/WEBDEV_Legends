@@ -1421,11 +1421,6 @@ function renderProgress() {
     `;
   }
 }
-
-
-
-
-
 async function openScoresModal(cls) {
   const modal = document.getElementById('scores-modal-overlay');
   const title = document.getElementById('scores-modal-title');
