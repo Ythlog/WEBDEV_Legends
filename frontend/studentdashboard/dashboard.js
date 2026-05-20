@@ -874,6 +874,14 @@ function openQuizDetail(quiz, className) {
   state.currentItem = quiz;
   state.currentType = 'quiz';
 
+  // ── compute FIRST before any DOM setup ──
+  const key = completionKey('quiz', quiz.id);
+  const scoreData = DATA.scores[key];
+  const hasScore = scoreData && scoreData.score !== null && scoreData.score !== undefined;
+  const isDone = state.done.has(key) || hasScore;
+  const dueDate = quiz.due_date ? new Date(quiz.due_date) : null;
+  const isOverdue = dueDate && new Date() > dueDate;
+
   const titleEl = document.getElementById('quiz-title');
   if (titleEl) titleEl.textContent = quiz.title;
 
@@ -892,10 +900,18 @@ function openQuizDetail(quiz, className) {
       const newLinkEl = linkEl.cloneNode(true);
       newLinkEl.textContent = quiz.link_label || 'Open Quiz';
       linkEl.parentNode.replaceChild(newLinkEl, linkEl);
-      newLinkEl.addEventListener('click', () => {
-        markAsOpened('quiz', quiz.id);
-        setTimeout(() => refreshMarkDoneButton('quiz', quiz.id), 300);
-      });
+
+      if (isOverdue && !isDone) {
+        newLinkEl.removeAttribute('href');
+        newLinkEl.style.pointerEvents = 'none';
+        newLinkEl.style.opacity = '0.5';
+        newLinkEl.style.cursor = 'not-allowed';
+      } else {
+        newLinkEl.addEventListener('click', () => {
+          markAsOpened('quiz', quiz.id);
+          setTimeout(() => refreshMarkDoneButton('quiz', quiz.id), 300);
+        });
+      }
     } else {
       linkEl.style.display = 'none';
     }
@@ -910,10 +926,6 @@ function openQuizDetail(quiz, className) {
     quizDueEl.style.display = quiz.due_date ? 'block' : 'none';
   }
 
-  const key = completionKey('quiz', quiz.id);
-  const scoreData = DATA.scores[key];
-  const hasScore = scoreData && scoreData.score !== null && scoreData.score !== undefined;
-
   const scoreDisplayEl = document.getElementById('quiz-score-display');
   if (scoreDisplayEl) {
     if (hasScore) {
@@ -924,13 +936,59 @@ function openQuizDetail(quiz, className) {
     }
   }
 
-  const isDone = state.done.has(key) || hasScore;
+  // ── Submit section state ──
+  const quizSubmitBtn   = document.getElementById('btn-submit-quiz');
+  const quizFileZone    = document.getElementById('quiz-submit-file-zone');
+  const quizBrowseBtn   = document.getElementById('quiz-submit-browse-btn');
+  const quizFileInput   = document.getElementById('quiz-submit-file-input');
+  const quizFileTypeBtn = document.getElementById('quiz-submit-file-type-btn');
+  const quizLinkTypeBtn = document.getElementById('quiz-submit-link-type-btn');
+  const quizLinkInput   = document.getElementById('quiz-submit-link-input');
 
+  if (isDone) {
+    if (quizSubmitBtn) {
+      quizSubmitBtn.disabled = true;
+      quizSubmitBtn.style.opacity = '0.55';
+      quizSubmitBtn.style.cursor = 'not-allowed';
+      quizSubmitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted';
+    }
+    if (quizFileZone)    { quizFileZone.style.pointerEvents = 'none'; quizFileZone.style.opacity = '0.5'; }
+    if (quizBrowseBtn)   { quizBrowseBtn.disabled = true; quizBrowseBtn.style.opacity = '0.55'; quizBrowseBtn.style.cursor = 'not-allowed'; }
+    if (quizFileInput)   { quizFileInput.disabled = true; }
+    if (quizFileTypeBtn) { quizFileTypeBtn.disabled = true; quizFileTypeBtn.style.opacity = '0.55'; quizFileTypeBtn.style.cursor = 'not-allowed'; }
+    if (quizLinkTypeBtn) { quizLinkTypeBtn.disabled = true; quizLinkTypeBtn.style.opacity = '0.55'; quizLinkTypeBtn.style.cursor = 'not-allowed'; }
+    if (quizLinkInput)   { quizLinkInput.disabled = true; quizLinkInput.style.opacity = '0.55'; }
+  } else if (isOverdue) {
+    if (quizSubmitBtn) {
+      quizSubmitBtn.disabled = true;
+      quizSubmitBtn.style.opacity = '0.55';
+      quizSubmitBtn.style.cursor = 'not-allowed';
+      quizSubmitBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Submission Closed';
+    }
+    if (quizFileZone)    { quizFileZone.style.pointerEvents = 'none'; quizFileZone.style.opacity = '0.5'; }
+    if (quizBrowseBtn)   { quizBrowseBtn.disabled = true; quizBrowseBtn.style.opacity = '0.55'; quizBrowseBtn.style.cursor = 'not-allowed'; }
+    if (quizFileInput)   { quizFileInput.disabled = true; }
+    if (quizFileTypeBtn) { quizFileTypeBtn.disabled = true; quizFileTypeBtn.style.opacity = '0.55'; quizFileTypeBtn.style.cursor = 'not-allowed'; }
+    if (quizLinkTypeBtn) { quizLinkTypeBtn.disabled = true; quizLinkTypeBtn.style.opacity = '0.55'; quizLinkTypeBtn.style.cursor = 'not-allowed'; }
+    if (quizLinkInput)   { quizLinkInput.disabled = true; quizLinkInput.style.opacity = '0.55'; }
+  } else {
+    if (quizSubmitBtn) {
+      quizSubmitBtn.disabled = false;
+      quizSubmitBtn.style.opacity = '';
+      quizSubmitBtn.style.cursor = '';
+      quizSubmitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Quiz';
+    }
+    if (quizFileZone)    { quizFileZone.style.pointerEvents = ''; quizFileZone.style.opacity = ''; }
+    if (quizBrowseBtn)   { quizBrowseBtn.disabled = false; quizBrowseBtn.style.opacity = ''; quizBrowseBtn.style.cursor = ''; }
+    if (quizFileInput)   { quizFileInput.disabled = false; }
+    if (quizFileTypeBtn) { quizFileTypeBtn.disabled = false; quizFileTypeBtn.style.opacity = ''; quizFileTypeBtn.style.cursor = ''; }
+    if (quizLinkTypeBtn) { quizLinkTypeBtn.disabled = false; quizLinkTypeBtn.style.opacity = ''; quizLinkTypeBtn.style.cursor = ''; }
+    if (quizLinkInput)   { quizLinkInput.disabled = false; quizLinkInput.style.opacity = ''; }
+  }
+
+  // ── Mark-done button state ──
   const btn = document.getElementById('quiz-mark-btn');
   if (btn) {
-    const dueDate = quiz.due_date ? new Date(quiz.due_date) : null;
-    const isOverdue = dueDate && new Date() > dueDate;
-
     if (isDone) {
       btn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
       btn.className = 'mark-done-btn done-state';
@@ -943,6 +1001,7 @@ function openQuizDetail(quiz, className) {
       btn.className = 'mark-done-btn dark';
       btn.disabled = true;
       btn.style.opacity = '0.55';
+      btn.style.cursor = 'not-allowed';
       btn.onclick = null;
     } else {
       refreshMarkDoneButton('quiz', quiz.id);
@@ -956,6 +1015,14 @@ function openQuizDetail(quiz, className) {
 function openAssignmentDetail(assign, className) {
   state.currentItem = assign;
   state.currentType = 'assignment';
+
+  // ── compute FIRST before any DOM setup ──
+  const key = completionKey('assignment', assign.id);
+  const scoreData = DATA.scores[key];
+  const hasScore = scoreData && scoreData.score !== null && scoreData.score !== undefined;
+  const isDone = state.done.has(key) || hasScore;
+  const dueDate = assign.due_date ? new Date(assign.due_date) : null;
+  const isOverdue = dueDate && new Date() > dueDate;
 
   const titleEl = document.getElementById('assignment-title');
   if (titleEl) titleEl.textContent = assign.title;
@@ -973,10 +1040,18 @@ function openAssignmentDetail(assign, className) {
       linkEl.style.display = '';
       const newLinkEl = linkEl.cloneNode(true);
       linkEl.parentNode.replaceChild(newLinkEl, linkEl);
-      newLinkEl.addEventListener('click', () => {
-        markAsOpened('assignment', assign.id);
-        setTimeout(() => refreshMarkDoneButton('assignment', assign.id), 300);
-      });
+
+      if (isOverdue && !isDone) {
+        newLinkEl.removeAttribute('href');
+        newLinkEl.style.pointerEvents = 'none';
+        newLinkEl.style.opacity = '0.5';
+        newLinkEl.style.cursor = 'not-allowed';
+      } else {
+        newLinkEl.addEventListener('click', () => {
+          markAsOpened('assignment', assign.id);
+          setTimeout(() => refreshMarkDoneButton('assignment', assign.id), 300);
+        });
+      }
     } else {
       linkEl.href = '#';
       linkEl.style.display = 'none';
@@ -988,10 +1063,6 @@ function openAssignmentDetail(assign, className) {
 
   const dueEl = document.getElementById('assignment-due-text');
   if (dueEl) dueEl.textContent = assign.due_date ? 'Due ' + formatDueDate(assign.due_date) : '';
-
-  const key = completionKey('assignment', assign.id);
-  const scoreData = DATA.scores[key];
-  const hasScore = scoreData && scoreData.score !== null && scoreData.score !== undefined;
 
   const scoreDisplayEl = document.getElementById('assignment-score-display');
   if (scoreDisplayEl) {
@@ -1013,8 +1084,57 @@ function openAssignmentDetail(assign, className) {
     }
   }
 
-  const isDone = state.done.has(key) || hasScore;
+  // ── Submit section state ──
+  const assignSubmitBtn   = document.getElementById('btn-submit-assignment');
+  const assignFileZone    = document.getElementById('assignment-submit-file-zone');
+  const assignBrowseBtn   = document.getElementById('assignment-submit-browse-btn');
+  const assignFileInput   = document.getElementById('assignment-submit-file-input');
+  const assignFileTypeBtn = document.getElementById('assign-submit-file-type-btn');
+  const assignLinkTypeBtn = document.getElementById('assign-submit-link-type-btn');
+  const assignLinkInput   = document.getElementById('assignment-submit-link-input');
 
+  if (isDone) {
+    if (assignSubmitBtn) {
+      assignSubmitBtn.disabled = true;
+      assignSubmitBtn.style.opacity = '0.55';
+      assignSubmitBtn.style.cursor = 'not-allowed';
+      assignSubmitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted';
+    }
+    if (assignFileZone)    { assignFileZone.style.pointerEvents = 'none'; assignFileZone.style.opacity = '0.5'; }
+    if (assignBrowseBtn)   { assignBrowseBtn.disabled = true; assignBrowseBtn.style.opacity = '0.55'; assignBrowseBtn.style.cursor = 'not-allowed'; }
+    if (assignFileInput)   { assignFileInput.disabled = true; }
+    if (assignFileTypeBtn) { assignFileTypeBtn.disabled = true; assignFileTypeBtn.style.opacity = '0.55'; assignFileTypeBtn.style.cursor = 'not-allowed'; }
+    if (assignLinkTypeBtn) { assignLinkTypeBtn.disabled = true; assignLinkTypeBtn.style.opacity = '0.55'; assignLinkTypeBtn.style.cursor = 'not-allowed'; }
+    if (assignLinkInput)   { assignLinkInput.disabled = true; assignLinkInput.style.opacity = '0.55'; }
+  } else if (isOverdue) {
+    if (assignSubmitBtn) {
+      assignSubmitBtn.disabled = true;
+      assignSubmitBtn.style.opacity = '0.55';
+      assignSubmitBtn.style.cursor = 'not-allowed';
+      assignSubmitBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Submission Closed';
+    }
+    if (assignFileZone)    { assignFileZone.style.pointerEvents = 'none'; assignFileZone.style.opacity = '0.5'; }
+    if (assignBrowseBtn)   { assignBrowseBtn.disabled = true; assignBrowseBtn.style.opacity = '0.55'; assignBrowseBtn.style.cursor = 'not-allowed'; }
+    if (assignFileInput)   { assignFileInput.disabled = true; }
+    if (assignFileTypeBtn) { assignFileTypeBtn.disabled = true; assignFileTypeBtn.style.opacity = '0.55'; assignFileTypeBtn.style.cursor = 'not-allowed'; }
+    if (assignLinkTypeBtn) { assignLinkTypeBtn.disabled = true; assignLinkTypeBtn.style.opacity = '0.55'; assignLinkTypeBtn.style.cursor = 'not-allowed'; }
+    if (assignLinkInput)   { assignLinkInput.disabled = true; assignLinkInput.style.opacity = '0.55'; }
+  } else {
+    if (assignSubmitBtn) {
+      assignSubmitBtn.disabled = false;
+      assignSubmitBtn.style.opacity = '';
+      assignSubmitBtn.style.cursor = '';
+      assignSubmitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Submit Assignment';
+    }
+    if (assignFileZone)    { assignFileZone.style.pointerEvents = ''; assignFileZone.style.opacity = ''; }
+    if (assignBrowseBtn)   { assignBrowseBtn.disabled = false; assignBrowseBtn.style.opacity = ''; assignBrowseBtn.style.cursor = ''; }
+    if (assignFileInput)   { assignFileInput.disabled = false; }
+    if (assignFileTypeBtn) { assignFileTypeBtn.disabled = false; assignFileTypeBtn.style.opacity = ''; assignFileTypeBtn.style.cursor = ''; }
+    if (assignLinkTypeBtn) { assignLinkTypeBtn.disabled = false; assignLinkTypeBtn.style.opacity = ''; assignLinkTypeBtn.style.cursor = ''; }
+    if (assignLinkInput)   { assignLinkInput.disabled = false; assignLinkInput.style.opacity = ''; }
+  }
+
+  // ── Mark-done button state ──
   const btn = document.getElementById('assignment-mark-btn');
   if (btn) {
     if (isDone) {
@@ -1024,6 +1144,13 @@ function openAssignmentDetail(assign, className) {
       btn.style.opacity = '';
       btn.style.cursor = '';
       btn.onclick = () => markDone('assignment');
+    } else if (isOverdue) {
+      btn.innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Past due date';
+      btn.className = 'mark-done-btn dark';
+      btn.disabled = true;
+      btn.style.opacity = '0.55';
+      btn.style.cursor = 'not-allowed';
+      btn.onclick = null;
     } else {
       refreshMarkDoneButton('assignment', assign.id);
     }
@@ -1954,15 +2081,35 @@ document.addEventListener('click', async e => {
         const key = completionKey('assignment', state.currentItem.id);
         state.done.add(key);
         if (successMsg) successMsg.classList.remove('hidden');
-        if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted'; }
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.style.opacity = '0.55';
+          submitBtn.style.cursor = 'not-allowed';
+          submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted';
+        }
+
+        // ── FIX: check overdue before enabling mark-done button ──
+        const dueDate = state.currentItem.due_date ? new Date(state.currentItem.due_date) : null;
+        const isOverdue = dueDate && new Date() > dueDate;
         const assignMarkBtn = document.getElementById('assignment-mark-btn');
         if (assignMarkBtn) {
-          assignMarkBtn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
-          assignMarkBtn.className = 'mark-done-btn done-state';
-          assignMarkBtn.disabled  = false;
-          assignMarkBtn.style.opacity = '';
-          assignMarkBtn.onclick   = () => markDone('assignment');
+          if (isOverdue) {
+            assignMarkBtn.innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Past due date';
+            assignMarkBtn.className = 'mark-done-btn dark';
+            assignMarkBtn.disabled = true;
+            assignMarkBtn.style.opacity = '0.55';
+            assignMarkBtn.style.cursor = 'not-allowed';
+            assignMarkBtn.onclick = null;
+          } else {
+            assignMarkBtn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
+            assignMarkBtn.className = 'mark-done-btn done-state';
+            assignMarkBtn.disabled = false;
+            assignMarkBtn.style.opacity = '';
+            assignMarkBtn.style.cursor = '';
+            assignMarkBtn.onclick = () => markDone('assignment');
+          }
         }
+
         updateStatusBadge(true);
         updateItemDisplay('assignment', state.currentItem.id, true);
       } else {
@@ -2106,15 +2253,35 @@ document.addEventListener('click', async e => {
         const key = completionKey('quiz', state.currentItem.id);
         state.done.add(key);
         if (quizSuccessMsg) quizSuccessMsg.classList.remove('hidden');
-        if (quizSubmitBtn) { quizSubmitBtn.disabled = true; quizSubmitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted'; }
+        if (quizSubmitBtn) {
+          quizSubmitBtn.disabled = true;
+          quizSubmitBtn.style.opacity = '0.55';
+          quizSubmitBtn.style.cursor = 'not-allowed';
+          quizSubmitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Submitted';
+        }
+
+        // ── FIX: check overdue before enabling mark-done button ──
+        const dueDate = state.currentItem.due_date ? new Date(state.currentItem.due_date) : null;
+        const isOverdue = dueDate && new Date() > dueDate;
         const quizMarkBtn = document.getElementById('quiz-mark-btn');
         if (quizMarkBtn) {
-          quizMarkBtn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
-          quizMarkBtn.className = 'mark-done-btn done-state';
-          quizMarkBtn.disabled  = false;
-          quizMarkBtn.style.opacity = '';
-          quizMarkBtn.onclick   = () => markDone('quiz');
+          if (isOverdue) {
+            quizMarkBtn.innerHTML = '<i class="fa-regular fa-circle-xmark"></i> Past due date';
+            quizMarkBtn.className = 'mark-done-btn dark';
+            quizMarkBtn.disabled = true;
+            quizMarkBtn.style.opacity = '0.55';
+            quizMarkBtn.style.cursor = 'not-allowed';
+            quizMarkBtn.onclick = null;
+          } else {
+            quizMarkBtn.innerHTML = '<i class="fa-regular fa-circle-check"></i> ✓ Finished';
+            quizMarkBtn.className = 'mark-done-btn done-state';
+            quizMarkBtn.disabled = false;
+            quizMarkBtn.style.opacity = '';
+            quizMarkBtn.style.cursor = '';
+            quizMarkBtn.onclick = () => markDone('quiz');
+          }
         }
+
         updateStatusBadge(true);
         updateItemDisplay('quiz', state.currentItem.id, true);
       } else {
