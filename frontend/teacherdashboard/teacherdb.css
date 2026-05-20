@@ -1755,7 +1755,7 @@ body {
     padding: 16px;
   }
 
-  .modal-buttons > * ,
+  .modal-buttons > *,
   .panel-actions > * {
     flex: 1 1 100%;
   }
