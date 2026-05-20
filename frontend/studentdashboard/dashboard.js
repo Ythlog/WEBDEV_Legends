@@ -1,15 +1,3 @@
-/* =============================================================
-   Student Dashboard - Fixed Version
-   Fixes:
-   1. Mark as Done button now correctly shows "✓ Finished" state
-   2. Student must open/download PDF or link before marking done
-   3. Progress analytics only counts genuinely submitted/marked items
-   4. Status badge (Pending/Finished) now reliably updates on mark done/undo
-   5. To Do List stat counters now update correctly
-   6. Progress modal items are now clickable
-============================================================= */
-
-// ── DATA OBJECT ──────────────────────────────────────────────────
 const DATA = {
   archivedClasses: [],
   archivedLoaded: false,
@@ -29,8 +17,6 @@ const DATA = {
   },
   scores: {}
 };
-
-// ── STATE ────────────────────────────────────────────────────────
 const state = {
   currentView: 'home',
   currentClass: null,
@@ -39,8 +25,6 @@ const state = {
   done: new Set(),
   opened: new Set()
 };
-
-// ── HELPER FUNCTIONS ─────────────────────────────────────────────
 
 function completionKey(type, id) {
   return `${type}:${id}`;
@@ -77,8 +61,6 @@ function escapeHtml(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// ── OPEN-GATE HELPERS ────────────────────────────────────────────
-
 function markAsOpened(type, id) {
   state.opened.add(completionKey(type, id));
 }
@@ -95,8 +77,6 @@ function getOpenGateMessage(type) {
   };
   return labels[type] || 'Please open the content first.';
 }
-
-// ── STATUS BADGE HELPERS ─────────────────────────────────────────
 
 function updateStatusBadge(isDone) {
   const badgeIdMap = {
@@ -156,8 +136,6 @@ function updateStatusBadgeEl(el, isDone) {
   }
 }
 
-// ── FETCH SCORES FROM SERVER ─────────────────────────────────────
-
 async function fetchStudentScores() {
   if (!DATA.profile.id) return;
   try {
@@ -182,8 +160,6 @@ async function fetchStudentScores() {
     return [];
   }
 }
-
-// ── HOME VIEW CARD BUILDERS ──────────────────────────────────────
 
 function buildAnnouncementCard(title, body, timeAgo, isUnread = false) {
   const d = document.createElement('div');
@@ -252,8 +228,6 @@ function buildEmptyState(icon, title, sub) {
   `;
   return d;
 }
-
-// ── FETCH FUNCTIONS ──────────────────────────────────────────────
 
 async function fetchProfile() {
   const savedUser = localStorage.getItem('eduhub_user');
@@ -389,8 +363,6 @@ async function fetchCompletions() {
   }
 }
 
-// ── JOIN SECTION ─────────────────────────────────────────────────
-
 function showJoinModal() {
   const modal = document.getElementById('join-modal');
   if (modal) {
@@ -505,8 +477,6 @@ function setupJoinButton() {
   }
 }
 
-// ── VIEW SWITCHING ───────────────────────────────────────────────
-
 const allViews = document.querySelectorAll('.page-body');
 
 function showView(viewId) {
@@ -537,8 +507,6 @@ function setActiveNav(el) {
   el.classList.add('active');
 }
 
-// ── TAB SWITCHING ────────────────────────────────────────────────
-
 function switchDetailTab(tabName) {
   document.querySelectorAll('.detail-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tabName);
@@ -552,8 +520,6 @@ document.addEventListener('click', e => {
   const tab = e.target.closest('.detail-tab');
   if (tab && tab.dataset.tab) switchDetailTab(tab.dataset.tab);
 });
-
-// ── RENDER ANNOUNCEMENTS ─────────────────────────────────────────
 
 async function renderFullAnnouncements() {
   if (!DATA.announcementsLoaded) await fetchAnnouncements();
@@ -569,8 +535,6 @@ async function renderFullAnnouncements() {
     listEl.appendChild(buildAnnouncementCard(a.title, a.body, timeAgo, a.unread));
   });
 }
-
-// ── RENDER HOME ──────────────────────────────────────────────────
 
 async function renderHome() {
   if (!DATA.profileLoaded) await fetchProfile();
@@ -681,8 +645,6 @@ async function renderHome() {
   });
 }
 
-// ── CLASS DETAIL ─────────────────────────────────────────────────
-
 function openClassDetail(cls) {
   state.currentClass = cls;
 
@@ -771,8 +733,6 @@ function buildDetailCard(item, type, clickHandler) {
   el.addEventListener('click', clickHandler);
   return el;
 }
-
-// ── RENDER CLASSES ───────────────────────────────────────────────
 
 async function renderClasses() {
   const grid = document.getElementById('classes-grid');
@@ -865,8 +825,6 @@ async function renderClasses() {
   }
 }
 
-// ── MATERIAL DETAIL ──────────────────────────────────────────────
-
 function openMaterialDetail(mat, className) {
   state.currentItem = mat;
   state.currentType = 'material';
@@ -911,8 +869,6 @@ function openMaterialDetail(mat, className) {
   showView('material-detail');
   updateStatusBadge(state.done.has(completionKey('material', mat.id)));
 }
-
-// ── QUIZ DETAIL ──────────────────────────────────────────────────
 
 function openQuizDetail(quiz, className) {
   state.currentItem = quiz;
@@ -997,8 +953,6 @@ function openQuizDetail(quiz, className) {
   updateStatusBadge(isDone);
 }
 
-// ── ASSIGNMENT DETAIL ────────────────────────────────────────────
-
 function openAssignmentDetail(assign, className) {
   state.currentItem = assign;
   state.currentType = 'assignment';
@@ -1079,8 +1033,6 @@ function openAssignmentDetail(assign, className) {
   updateStatusBadge(isDone);
 }
 
-// ── REFRESH MARK-DONE BUTTON ─────────────────────────────────────
-
 function refreshMarkDoneButton(type, itemId) {
   const btnId = type === 'material' ? 'mat-mark-btn'
     : type === 'assignment' ? 'assignment-mark-btn'
@@ -1122,8 +1074,6 @@ function refreshMarkDoneButton(type, itemId) {
     btn.onclick = () => markDone(type);
   }
 }
-
-// ── ARCHIVE / UNARCHIVE ──────────────────────────────────────────
 
 async function fetchArchivedClasses() {
   if (!DATA.profile.id) return;
@@ -1196,8 +1146,6 @@ async function unarchiveClass(cls) {
   }
 }
 
-// ── MARK DONE / UNDO ─────────────────────────────────────────────
-
 async function markDone(type) {
   if (!state.currentItem) return;
   const id = state.currentItem.id;
@@ -1207,7 +1155,6 @@ async function markDone(type) {
   if (btn) btn.disabled = true;
 
   if (state.done.has(key)) {
-    // ── UNDO FLOW ──
     const result = await Swal.fire({
       title: 'Are you sure?', text: 'Do you want to undo marking this as finished?',
       icon: 'warning', showCancelButton: true,
@@ -1234,7 +1181,6 @@ async function markDone(type) {
       if (btn) btn.disabled = false;
     }
   } else {
-    // ── MARK DONE FLOW ──
     try {
       await fetch('/api/mark-done', {
         method: 'POST',
@@ -1289,9 +1235,6 @@ function updateItemDisplay(type, id, isDone) {
   });
 }
 
-// ── RENDER TODO PAGE ─────────────────────────────────────────────
-// FIX 1: stat counters (#todo-stat-assigned, #todo-stat-missing) are now updated.
-
 function renderTodo() {
   const now = new Date();
   const allTodos = [];
@@ -1320,7 +1263,6 @@ function renderTodo() {
   const assigned = allTodos.filter(t => t.dueDate >= now).sort((a, b) => a.dueDate - b.dueDate);
   const missing  = allTodos.filter(t => t.dueDate < now).sort((a, b) => a.dueDate - b.dueDate);
 
-  // ── FIX 1: update the stat counters ──
   const statAssigned = document.getElementById('todo-stat-assigned');
   const statMissing  = document.getElementById('todo-stat-missing');
   if (statAssigned) statAssigned.textContent = assigned.length;
@@ -1378,8 +1320,6 @@ function renderTodo() {
     }
   }
 }
-
-// ── RENDER PROGRESS ──────────────────────────────────────────────
 
 function renderProgress() {
   const list = document.getElementById('progress-list');
@@ -1442,11 +1382,6 @@ function renderProgress() {
     `;
   }
 }
-
-// ── SCORES MODAL ─────────────────────────────────────────────────
-// FIX 2: Items are built with createElement so click handlers can be attached.
-//         Each completedItems entry now carries a rawItem reference.
-
 async function openScoresModal(cls) {
   const modal = document.getElementById('scores-modal-overlay');
   const title = document.getElementById('scores-modal-title');
@@ -1467,7 +1402,6 @@ async function openScoresModal(cls) {
     if (!response.ok) throw new Error('Failed to fetch scores');
     const allScores = await response.json();
 
-    // Build completedItems – each entry carries rawItem for navigation
     const completedItems = [];
 
     (cls.materials || []).forEach(m => {
@@ -1478,7 +1412,7 @@ async function openScoresModal(cls) {
           icon: 'fa-solid fa-book-open', iconClass: 'score-item-icon',
           completedAt: scoreData?.completed_at || null,
           score: scoreData?.score ?? null,
-          rawItem: m   // ← reference to original object for navigation
+          rawItem: m
         });
       }
     });
@@ -1512,7 +1446,6 @@ async function openScoresModal(cls) {
       ? Math.round(scoredItems.reduce((sum, i) => sum + parseFloat(i.score), 0) / scoredItems.length)
       : null;
 
-    // Clear body and build DOM nodes instead of concatenating HTML strings
     body.innerHTML = '';
 
     if (avgScore !== null) {
@@ -1539,14 +1472,12 @@ async function openScoresModal(cls) {
           ? new Date(item.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
           : '';
 
-        // Materials are lessons — no grade column shown at all
         const scoreDisplay = item.type === 'material'
           ? ''
           : item.score !== null && item.score !== undefined
             ? `<div class="score-item-value ${item.score >= 75 ? 'score-pass' : 'score-fail'}">${item.score}<span class="score-item-max">/100</span></div>`
             : `<div class="score-item-value no-score">Not yet graded</div>`;
 
-        // ── FIX 2: use createElement so we can attach a real click handler ──
         const card = document.createElement('div');
         card.className = 'score-item-card';
         card.style.cssText = 'cursor:pointer;transition:background 0.15s;';
@@ -1560,11 +1491,9 @@ async function openScoresModal(cls) {
           ${scoreDisplay}
         `;
 
-        // Hover highlight
         card.addEventListener('mouseenter', () => { card.style.background = '#f8fafc'; });
         card.addEventListener('mouseleave', () => { card.style.background = ''; });
 
-        // Navigate to the item on click
         card.addEventListener('click', () => {
           closeScoresModal();
           setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
@@ -1592,8 +1521,6 @@ document.addEventListener('click', e => {
   if (e.target.id === 'scores-modal-overlay') closeScoresModal();
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeScoresModal(); });
-
-// ── PROFILE ──────────────────────────────────────────────────────
 
 function renderProfile() {
   refreshProfileDisplay();
@@ -1638,8 +1565,6 @@ function showProfilePanel(panel) {
   if (active) active.style.display = 'block';
 }
 
-// ── NAVIGATION ───────────────────────────────────────────────────
-
 document.querySelectorAll('.nav-item').forEach(link => {
   link.addEventListener('click', async function (e) {
     e.preventDefault();
@@ -1657,16 +1582,12 @@ document.querySelectorAll('.nav-item').forEach(link => {
   });
 });
 
-// ── BACK BUTTONS ─────────────────────────────────────────────────
-
 document.addEventListener('click', async e => {
   if (e.target.closest('#back-to-classes'))                 { goBackToClasses(); return; }
   if (e.target.closest('#back-to-class-from-material'))     { goBackToClassDetail(); return; }
   if (e.target.closest('#back-to-class-from-assignment'))   { goBackToClassDetail(); return; }
   if (e.target.closest('#back-to-class-from-quiz'))         { goBackToClassDetail(); return; }
 });
-
-// ── FILE UPLOAD ──────────────────────────────────────────────────
 
 document.addEventListener('change', e => {
   if (e.target.id !== 'profile-picture-input' || !e.target.files?.[0]) return;
@@ -1693,8 +1614,6 @@ document.addEventListener('change', e => {
     })
     .catch(() => Swal.fire('Error', 'Could not upload picture', 'error'));
 });
-
-// ── REMOVE PROFILE PICTURE ───────────────────────────────────────
 
 document.addEventListener('click', async e => {
   if (e.target.id === 'remove-picture-btn' || e.target.closest('#remove-picture-btn')) {
@@ -1723,8 +1642,6 @@ document.addEventListener('click', async e => {
     }
   }
 });
-
-// ── PROFILE BUTTON HANDLERS ──────────────────────────────────────
 
 document.addEventListener('click', async e => {
   if (e.target.id === 'upload-picture-btn') document.getElementById('profile-picture-input').click();
@@ -1839,8 +1756,6 @@ document.addEventListener('click', async e => {
   }
 });
 
-// ── SEARCH ───────────────────────────────────────────────────────
-
 (function setupSearch() {
   const input    = document.getElementById('search-input');
   const dropdown = document.getElementById('search-dropdown');
@@ -1893,8 +1808,6 @@ document.addEventListener('click', async e => {
   });
 })();
 
-// ── INIT ─────────────────────────────────────────────────────────
-
 (async function init() {
   await fetchProfile();
   await fetchClasses();
@@ -1908,8 +1821,6 @@ document.addEventListener('click', async e => {
   await renderHome();
   showView('home');
 })();
-
-// ── ASSIGNMENT SUBMISSION ────────────────────────────────────────
 
 (function () {
   const submitFileZone     = document.getElementById('assignment-submit-file-zone');
@@ -2063,8 +1974,6 @@ document.addEventListener('click', async e => {
   }
 })();
 
-// ── QUIZ SUBMISSION ──────────────────────────────────────────────
-
 (function () {
   const quizSubmitFileZone    = document.getElementById('quiz-submit-file-zone');
   const quizSubmitFileInput   = document.getElementById('quiz-submit-file-input');
@@ -2217,8 +2126,6 @@ document.addEventListener('click', async e => {
   }
 })();
 
-// ── STATS MODAL ──────────────────────────────────────────────────
-
 function openStatsModal(type) {
   const overlay = document.getElementById('stats-overlay');
   const icon    = document.getElementById('stats-modal-icon');
@@ -2294,7 +2201,7 @@ function openStatsModal(type) {
       body.appendChild(el);
     });
 
-  } else { // pending
+  } else { 
     icon.style.cssText = 'background:#fef3c7;color:#d97706;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px';
     icon.innerHTML = '<i class="fa-solid fa-clock"></i>';
     const now = new Date();

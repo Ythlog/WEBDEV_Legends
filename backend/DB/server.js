@@ -9,12 +9,10 @@ require("dotenv").config();
 
 const app = express();
 
-// Verify environment variables
 console.log("EMAIL_USER:", process.env.EMAIL_USER ? "✓ Loaded" : "✗ Missing");
 console.log("EMAIL_APP_PASSWORD:", process.env.EMAIL_APP_PASSWORD ? "✓ Loaded" : "✗ Missing");
 console.log("DB_HOST:", process.env.DB_HOST ? "✓ Loaded" : "✗ Missing");
 
-// Configure multer for profile picture uploads
 const profileStorage = multer.diskStorage({
     destination: function (req, file, cb) {
         const uploadDir = path.join(__dirname, "..", "..", "frontend", "uploads", "profile-pictures");
@@ -30,7 +28,6 @@ const profileStorage = multer.diskStorage({
     }
 });
 
-// Configure multer for material/assignment/quiz file uploads
 const materialStorage = multer.diskStorage({
     destination: function (req, file, cb) {
         const uploadDir = path.join(__dirname, "..", "..", "frontend", "uploads", "materials");
@@ -70,7 +67,6 @@ const uploadMaterial = multer({
     fileFilter: fileFilter
 });
 
-// Nodemailer transporter
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -82,11 +78,6 @@ const transporter = nodemailer.createTransport({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "..", "..", "frontend")));
-
-// =====================================================
-// SERVE ALL MATERIAL FILES INLINE
-// =====================================================
-
 const MIME_MAP = {
     'pdf':  'application/pdf',
     'txt':  'text/plain; charset=utf-8',
@@ -147,7 +138,6 @@ function sendVerificationEmail(email, code, type) {
     });
 }
 
-// Cleanup expired codes every hour
 setInterval(async () => {
     let conn;
     try {
@@ -172,10 +162,6 @@ app.get("/dashboard", (req, res) => {
 app.get("/teacher-dashboard", (req, res) => {
     res.sendFile(path.join(__dirname, "..", "..", "frontend", "teacherdashboard", "teacherdb.html"));
 });
-
-// =====================================================
-// STUDENT: JOIN SECTION WITH ENROLLMENT CODE
-// =====================================================
 
 app.get("/api/section-by-code", async (req, res) => {
     const { code } = req.query;
@@ -318,10 +304,6 @@ app.get("/api/my-classes", async (req, res) => {
     }
 });
 
-// =====================================================
-// COMPLETIONS API
-// =====================================================
-
 app.get("/api/completions", async (req, res) => {
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ message: "Missing userId" });
@@ -414,10 +396,6 @@ app.post("/api/mark-undone", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-// =====================================================
-// AUTHENTICATION ENDPOINTS
-// =====================================================
 
 app.post("/api/send-signup-code", async (req, res) => {
     const { first_name, last_name, username, email, password, role } = req.body;
@@ -622,10 +600,6 @@ app.post("/api/login", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-// =====================================================
-// PROFILE ENDPOINTS
-// =====================================================
 
 app.put("/api/update-profile", async (req, res) => {
     const { userId, firstName, lastName, username, email } = req.body;
@@ -848,10 +822,6 @@ app.put("/api/change-password", async (req, res) => {
     }
 });
 
-// =====================================================
-// ANNOUNCEMENTS API
-// =====================================================
-
 app.get("/api/announcements", async (req, res) => {
     let conn;
     try {
@@ -949,10 +919,6 @@ app.delete("/api/announcements/:id", async (req, res) => {
     }
 });
 
-// =====================================================
-// STUDENT ANNOUNCEMENTS API (FILTERED BY ENROLLMENT)
-// =====================================================
-
 app.get("/api/student/announcements", async (req, res) => {
     const { studentId } = req.query;
     
@@ -1046,14 +1012,6 @@ app.get("/api/my-sections", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-// =====================================================
-// TEACHER: ALL SECTIONS FOR ANNOUNCEMENTS
-// =====================================================
-
-// =====================================================
-// TEACHER: GET ALL SECTIONS FOR ANNOUNCEMENTS
-// =====================================================
 app.get("/api/teacher/all-sections", async (req, res) => {
     const { teacherId } = req.query;
     if (!teacherId) return res.status(400).json({ message: "Missing teacherId" });
@@ -1077,7 +1035,6 @@ app.get("/api/teacher/all-sections", async (req, res) => {
             [teacherId]
         );
 
-        // Group by class for the frontend
         const grouped = {};
         sections.forEach(row => {
             if (!grouped[row.class_id]) {
@@ -1102,10 +1059,6 @@ app.get("/api/teacher/all-sections", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-// =====================================================
-// TEACHER: CLASSES API
-// =====================================================
 
 app.get("/api/teacher/classes", async (req, res) => {
     const { teacherId } = req.query;
@@ -1171,14 +1124,12 @@ app.get('/api/teacher/submissions', async (req, res) => {
             return res.status(400).json({ message: 'Missing required parameters' });
         }
         
-        // Determine which table to query based on itemType
         let tableName;
         if (itemType === 'assignment') {
             tableName = 'assignment_submissions';
         } else if (itemType === 'quiz') {
             tableName = 'quiz_submissions';
         } else {
-            // Materials don't have submissions
             return res.json([]);
         }
         
@@ -1206,9 +1157,6 @@ app.get('/api/teacher/submissions', async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch submissions' });
     }
 });
-// =====================================================
-// STUDENT: SUBMIT QUIZ
-// =====================================================
 
 const quizSubmissionStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -1282,9 +1230,7 @@ app.post("/api/submit-quiz", uploadQuizSubmission.single('submissionFile'), asyn
         if (conn) conn.release();
     }
 });
-// =====================================================
-// TEACHER: SUBMITTED FILES API
-// =====================================================
+
 app.get("/api/teacher/submitted-files", async (req, res) => {
     const { itemType, itemId, sectionId } = req.query;
 
@@ -1292,7 +1238,6 @@ app.get("/api/teacher/submitted-files", async (req, res) => {
         return res.status(400).json({ message: "Missing required parameters" });
     }
 
-    // Materials don't have file submissions
     if (itemType === 'material') {
         return res.json([]);
     }
@@ -1322,7 +1267,6 @@ app.get("/api/teacher/submitted-files", async (req, res) => {
             [sectionId, itemType, itemId]
         );
 
-        // Enrich with filename derived from URL
         const enriched = submissions.map(sub => ({
             ...sub,
             file_name: sub.file_url
@@ -1382,13 +1326,6 @@ app.delete("/api/teacher/classes/:id", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-// =====================================================
-// TEACHER: SECTIONS API
-// =====================================================
-// =====================================================
-// STUDENT: ARCHIVE / UNARCHIVE CLASS
-// =====================================================
 
 app.post("/api/archive-class", async (req, res) => {
     const { studentId, sectionId } = req.body;
@@ -1591,10 +1528,6 @@ app.delete("/api/teacher/sections/:id", async (req, res) => {
     }
 });
 
-// =====================================================
-// TEACHER: MATERIALS API with file upload
-// =====================================================
-
 app.get("/api/teacher/materials", async (req, res) => {
     const { sectionId } = req.query;
     if (!sectionId) return res.status(400).json({ message: "Missing sectionId" });
@@ -1707,10 +1640,6 @@ app.delete("/api/teacher/materials/:id", async (req, res) => {
     }
 });
 
-// =====================================================
-// TEACHER: QUIZZES API
-// =====================================================
-
 app.get("/api/teacher/quizzes", async (req, res) => {
     const { sectionId } = req.query;
     if (!sectionId) return res.status(400).json({ message: "Missing sectionId" });
@@ -1719,7 +1648,7 @@ app.get("/api/teacher/quizzes", async (req, res) => {
     try {
         conn = await pool.getConnection();
         const quizzes = await conn.query(
-            // Add 'points' to the SELECT:
+            
             "SELECT id, section_id, title, description, link, link_label, due_date, points, created_at FROM quizzes WHERE section_id = ? ORDER BY id",
             [sectionId]
         );
@@ -1803,10 +1732,6 @@ app.delete("/api/teacher/quizzes/:id", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-// =====================================================
-// TEACHER: ASSIGNMENTS API with file upload
-// =====================================================
 
 app.get("/api/teacher/assignments", async (req, res) => {
     const { sectionId } = req.query;
@@ -1900,13 +1825,6 @@ app.delete("/api/teacher/assignments/:id", async (req, res) => {
     }
 });
 
-// =====================================================
-// STUDENT: GET COMPLETION STATUS WITH SCORE
-// =====================================================
-// =====================================================
-// TEACHER: GET ALL CLASSES AND SECTIONS FOR ANNOUNCEMENTS
-// =====================================================
-
 app.get("/api/teacher/announcement-sections", async (req, res) => {
     const { teacherId } = req.query;
     if (!teacherId) return res.status(400).json({ message: "Missing teacherId" });
@@ -1915,7 +1833,6 @@ app.get("/api/teacher/announcement-sections", async (req, res) => {
     try {
         conn = await pool.getConnection();
         
-        // Get all classes with their sections for this teacher
         const classes = await conn.query(
             `SELECT 
                 c.id as class_id, 
@@ -1930,7 +1847,6 @@ app.get("/api/teacher/announcement-sections", async (req, res) => {
             [teacherId]
         );
         
-        // Group sections by class
         const groupedData = {};
         classes.forEach(item => {
             if (!groupedData[item.class_id]) {
@@ -1995,10 +1911,6 @@ app.get("/api/student/completion-status", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-// =====================================================
-// STUDENT: SUBMIT ASSIGNMENT (COMPLETE FIXED VERSION)
-// =====================================================
 
 const assignmentSubmissionStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -2099,10 +2011,6 @@ app.post("/api/submit-assignment", uploadSubmission.single('submissionFile'), as
     }
 });
 
-// =====================================================
-// TEACHER: STUDENTS API
-// =====================================================
-
 app.get("/api/teacher/students", async (req, res) => {
     const { sectionId } = req.query;
     
@@ -2188,10 +2096,6 @@ app.get("/api/teacher/class-students", async (req, res) => {
     }
 });
 
-// =====================================================
-// TEACHER: COMPLETIONS API (WITH SCORES)
-// =====================================================
-
 app.get("/api/teacher/completions", async (req, res) => {
     const { itemType, itemId, sectionId } = req.query;
     if (!itemType || !itemId || !sectionId) return res.status(400).json({ message: "Missing fields" });
@@ -2218,10 +2122,6 @@ app.get("/api/teacher/completions", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-// =====================================================
-// TEACHER: SAVE STUDENT SCORE - FIXED VERSION
-// =====================================================
 
 app.put("/api/teacher/scores", async (req, res) => {
     const { studentId, itemType, itemId, sectionId, score } = req.body;
@@ -2290,10 +2190,6 @@ app.put("/api/teacher/scores", async (req, res) => {
     }
 });
 
-// =====================================================
-// GET TEACHER SECTIONS FOR SCORE SAVING
-// =====================================================
-
 app.get("/api/teacher/student-sections/:studentId", async (req, res) => {
     const { studentId } = req.params;
     
@@ -2322,10 +2218,6 @@ app.get("/api/teacher/student-sections/:studentId", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-// =====================================================
-// STUDENT: GET SCORES
-// =====================================================
 
 app.get("/api/student/scores/:studentId", async (req, res) => {
     const { studentId } = req.params;
@@ -2369,10 +2261,6 @@ app.get("/api/student/scores/:studentId", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-// =====================================================
-// STUDENT: GET SCORES BY CLASS
-// =====================================================
 
 app.get("/api/student/scores-by-class/:studentId/:classId", async (req, res) => {
     const { studentId, classId } = req.params;
