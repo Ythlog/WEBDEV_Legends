@@ -14,7 +14,7 @@
 <body>
   <div class="app-wrapper">
 
-    <!-- SIDEBAR -->
+    
     <aside class="sidebar">
       <div class="sidebar-logo">
         <div class="logo-mark">
@@ -44,7 +44,7 @@
 
     <main class="main-content">
 
-      <!-- TOP BAR -->
+      
       <header class="top-bar">
         <div class="search-bar">
           <i class="fa-solid fa-magnifying-glass search-icon"></i>
@@ -53,7 +53,7 @@
         </div>
       </header>
 
-      <!-- SECTION 1: CLASSES LIST VIEW -->
+      
       <div class="page-body" id="view-classes">
         <div class="classes-header">
           <div>
@@ -66,7 +66,7 @@
         <div class="classes-grid" id="classes-grid"></div>
       </div>
 
-      <!-- SECTION 2: CLASS DETAIL VIEW -->
+      
       <div class="page-body hidden" id="view-class-detail">
         <button class="back-btn" id="back-to-classes"><i class="fa-solid fa-arrow-left"></i> Back to Classes</button>
         <div class="detail-header">
@@ -80,7 +80,7 @@
         <div class="sections-list" id="sections-list"></div>
       </div>
 
-      <!-- SECTION 3: SECTION DETAIL VIEW -->
+      
       <div class="page-body hidden" id="view-section-detail">
         <button class="back-btn" id="back-to-class-detail"><i class="fa-solid fa-arrow-left"></i> Back to Class</button>
         <div class="section-top">
@@ -105,7 +105,7 @@
         </div>
 
         <div class="detail-tab-content">
-          <!-- LESSONS TAB -->
+          
           <div class="detail-tab-panel active" id="tab-lessons">
             <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
               <button class="btn btn-dark" id="btn-add-material"><i class="fa-solid fa-plus"></i> Add Material</button>
@@ -113,7 +113,7 @@
             <div class="material-list" id="materials-list"></div>
           </div>
 
-          <!-- ASSIGNMENTS TAB -->
+          
           <div class="detail-tab-panel" id="tab-assignments">
             <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
               <button class="btn btn-dark" id="btn-add-assignment"><i class="fa-solid fa-plus"></i> Add Assignment</button>
@@ -121,7 +121,7 @@
             <div id="assignments-list"></div>
           </div>
 
-          <!-- QUIZZES TAB -->
+          
           <div class="detail-tab-panel" id="tab-quizzes">
             <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
               <button class="btn btn-dark" id="btn-add-quiz"><i class="fa-solid fa-plus"></i> Add Quiz</button>
@@ -129,7 +129,7 @@
             <div id="quizzes-list"></div>
           </div>
 
-          <!-- STUDENTS TAB -->
+          
           <div class="detail-tab-panel" id="tab-students">
             <div class="students-header">
               <p class="classes-section-label" style="margin-bottom:0">Enrolled Students</p>
@@ -138,16 +138,16 @@
           </div>
         </div>
       </div>
-      <!-- END view-section-detail -->
+      
 
-      <!-- SECTION 4: MATERIAL DETAIL VIEW (split layout - redesigned) -->
+      
       <div class="page-body hidden" id="view-material-detail">
         <button class="back-btn" id="back-to-section-lessons"><i class="fa-solid fa-arrow-left"></i> Back to Section</button>
         
         <div class="detail-split-layout">
-          <!-- LEFT SIDE - Material Information -->
+          
           <div class="detail-split-left">
-            <!-- Header card -->
+            
             <div class="detail-header-card">
               <div class="detail-header-icon-wrap blue">
                 <i class="fa-solid fa-book-open"></i>
@@ -158,7 +158,7 @@
               </div>
             </div>
 
-            <!-- Description card -->
+            
             <div class="item-content-card">
               <div class="item-content-section-header">
                 <div class="section-header-icon-wrap">
@@ -169,7 +169,7 @@
               <p class="item-description" id="mat-detail-desc"></p>
             </div>
 
-            <!-- Material link card -->
+            
             <div class="item-link-card blue-link-card" id="mat-link-card">
               <div class="item-link-icon-wrap blue-material-icon">
                 <i class="fa-solid fa-book-open"></i>
@@ -180,7 +180,7 @@
               </div>
             </div>
 
-            <!-- Clickable text link -->
+            
             <div class="material-link-text-wrapper">
               <a href="#" class="material-link-text" id="mat-detail-link" target="_blank">
                 <i class="fa-solid fa-arrow-up-right-from-square"></i>
@@ -188,14 +188,14 @@
               </a>
             </div>
 
-            <!-- Action buttons -->
+            
             <div style="display:flex;gap:8px;margin-top:0;margin-bottom:8px">
               <button class="btn btn-ghost btn-sm" id="btn-edit-material"><i class="fa-solid fa-pen"></i> Edit</button>
               <button class="btn btn-danger btn-sm" id="btn-delete-material"><i class="fa-solid fa-trash"></i> Delete</button>
             </div>
           </div>
 
-          <!-- RIGHT SIDE - Student Completion -->
+          
           <div class="detail-split-right">
             <div class="section-header">
               <div class="section-header-left">
@@ -213,20 +213,20 @@
           </div>
         </div>
 
-        <!-- Hidden elements preserved for JS compatibility -->
+        
         <div style="display:none;">
           <div id="mat-detail-banner"></div>
         </div>
       </div>
 
-      <!-- SECTION 5: QUIZ DETAIL VIEW (split layout - redesigned) -->
+      
       <div class="page-body hidden" id="view-quiz-detail">
         <button class="back-btn" id="back-to-section-quizzes"><i class="fa-solid fa-arrow-left"></i> Back to Section</button>
         
         <div class="detail-split-layout">
-          <!-- LEFT SIDE - Quiz Information -->
+          
           <div class="detail-split-left">
-            <!-- Header card -->
+            
             <div class="detail-header-card">
               <div class="detail-header-icon-wrap purple">
                 <i class="fa-solid fa-clipboard-question"></i>
@@ -237,7 +237,7 @@
               </div>
             </div>
 
-            <!-- Due date badge -->
+            
             <div class="detail-info-row">
               <div class="detail-info-badge due-badge" id="quiz-due-container">
                 <i class="fa-regular fa-clock"></i>
@@ -245,7 +245,7 @@
               </div>
             </div>
 
-            <!-- Description card -->
+            
             <div class="item-content-card">
               <div class="item-content-section-header">
                 <div class="section-header-icon-wrap">
@@ -256,7 +256,7 @@
               <p class="item-description" id="quiz-detail-desc"></p>
             </div>
 
-            <!-- Quiz link card -->
+            
             <div class="item-link-card purple-link-card" id="quiz-link-card">
               <div class="item-link-icon-wrap purple-icon">
                 <i class="fa-solid fa-clipboard-question"></i>
@@ -267,7 +267,7 @@
               </div>
             </div>
 
-            <!-- Clickable text link -->
+            
             <div class="quiz-link-text-wrapper">
               <a href="#" class="quiz-link-text" id="quiz-detail-link" target="_blank">
                 <i class="fa-solid fa-arrow-up-right-from-square"></i>
@@ -275,14 +275,14 @@
               </a>
             </div>
 
-            <!-- Action buttons -->
+            
             <div style="display:flex;gap:8px;margin-top:0;margin-bottom:8px">
               <button class="btn btn-ghost btn-sm" id="btn-edit-quiz"><i class="fa-solid fa-pen"></i> Edit</button>
               <button class="btn btn-danger btn-sm" id="btn-delete-quiz"><i class="fa-solid fa-trash"></i> Delete</button>
             </div>
           </div>
 
-          <!-- RIGHT SIDE - Student Completion -->
+          
           <div class="detail-split-right">
             <div class="section-header">
               <div class="section-header-left">
@@ -301,20 +301,20 @@
           </div>
         </div>
 
-        <!-- Hidden elements preserved for JS compatibility -->
+        
         <div style="display:none;">
           <div id="quiz-detail-banner"></div>
         </div>
       </div>
 
-      <!-- SECTION 6: ASSIGNMENT DETAIL VIEW (split layout - redesigned) -->
+      
       <div class="page-body hidden" id="view-assignment-detail">
         <button class="back-btn" id="back-to-section-assignments"><i class="fa-solid fa-arrow-left"></i> Back to Section</button>
         
         <div class="detail-split-layout">
-          <!-- LEFT SIDE - Assignment Information -->
+          
           <div class="detail-split-left">
-            <!-- Header card -->
+            
             <div class="detail-header-card">
               <div class="detail-header-icon-wrap orange">
                 <i class="fa-solid fa-file-pen"></i>
@@ -325,7 +325,7 @@
               </div>
             </div>
 
-            <!-- Due date and Points badges -->
+            
             <div class="detail-info-row">
               <div class="detail-info-badge due-badge" id="assign-due-container">
                 <i class="fa-regular fa-clock"></i>
@@ -337,7 +337,7 @@
               </div>
             </div>
 
-            <!-- Description + Instructions card -->
+            
             <div class="item-content-card">
               <div class="item-content-section-header">
                 <div class="section-header-icon-wrap">
@@ -348,7 +348,7 @@
               <p class="item-description" id="assign-detail-desc"></p>
             </div>
 
-            <!-- Assignment link card -->
+            
             <div class="item-link-card orange-link-card" id="assign-link-card">
               <div class="item-link-icon-wrap orange-icon">
                 <i class="fa-solid fa-file-pen"></i>
@@ -364,14 +364,14 @@
               </a>
             </div>
 
-            <!-- Action buttons -->
+            
             <div style="display:flex;gap:8px;margin-top:0;margin-bottom:8px">
               <button class="btn btn-ghost btn-sm" id="btn-edit-assignment"><i class="fa-solid fa-pen"></i> Edit</button>
               <button class="btn btn-danger btn-sm" id="btn-delete-assignment"><i class="fa-solid fa-trash"></i> Delete</button>
             </div>
           </div>
 
-          <!-- RIGHT SIDE - Student Completion -->
+          
           <div class="detail-split-right">
             <div class="section-header">
               <div class="section-header-left">
@@ -390,13 +390,13 @@
           </div>
         </div>
 
-        <!-- Hidden elements preserved for JS compatibility -->
+        
         <div style="display:none;">
           <div id="assign-detail-banner"></div>
         </div>
       </div>
 
-      <!-- SECTION 7: PROGRESS VIEW -->
+      
       <div class="page-body hidden" id="view-progress">
         <div class="progress-header">
           <div class="progress-header-text">
@@ -407,7 +407,7 @@
         <div class="progress-list" id="progress-list"></div>
       </div>
 
-      <!-- SECTION 8: ANNOUNCEMENTS VIEW -->
+      
       <div class="page-body hidden" id="view-announcements">
         <div class="announcements-header">
           <div>
@@ -419,7 +419,7 @@
         <div id="announcements-list"></div>
       </div>
 
-      <!-- SECTION 9: PROFILE VIEW -->
+      
       <div class="page-body hidden" id="view-profile">
         <div class="profile-page-header">
           <h1 class="page-heading">Your Profile</h1>
@@ -553,7 +553,7 @@
     </main>
   </div>
 
-  <!-- Create Class Modal -->
+  
   <div class="modal-overlay hidden" id="modal-class">
     <div class="modal-container">
       <div class="modal-header">
@@ -569,7 +569,7 @@
     </div>
   </div>
 
-  <!-- Edit Class Modal -->
+  
   <div class="modal-overlay hidden" id="modal-edit-class">
     <div class="modal-container">
       <div class="modal-header">
@@ -588,7 +588,7 @@
     </div>
   </div>
 
-  <!-- Add Section Modal -->
+  
   <div class="modal-overlay hidden" id="modal-section">
     <div class="modal-container">
       <div class="modal-header">
@@ -603,7 +603,7 @@
     </div>
   </div>
 
-  <!-- Edit Section Modal -->
+  
   <div class="modal-overlay hidden" id="modal-edit-section">
     <div class="modal-container">
       <div class="modal-header">
@@ -626,7 +626,7 @@
     </div>
   </div>
 
-  <!-- Add Material Modal -->
+  
   <div class="modal-overlay hidden" id="modal-material">
     <div class="modal-container modal-container-wide">
       <div class="modal-header">
@@ -636,7 +636,7 @@
       <div class="form-group"><label>Material Name</label><input type="text" id="material-name-input" placeholder="e.g. Chapter 1 Notes"></div>
       <div class="form-group"><label>Description</label><textarea id="material-desc-input" placeholder="Brief description"></textarea></div>
       
-      <!-- Upload Type Selection -->
+      
       <div class="form-group">
         <label>Upload Type</label>
         <div class="upload-type-selector">
@@ -649,7 +649,7 @@
         </div>
       </div>
 
-      <!-- File Upload Zone -->
+      
       <div class="file-upload-zone" id="material-file-upload-zone">
         <input type="file" id="material-file-input" style="display:none" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif">
         <div class="file-upload-icon">
@@ -663,7 +663,7 @@
         <div class="file-preview-list" id="material-file-preview"></div>
       </div>
 
-      <!-- Link Input -->
+      
       <div class="form-group hidden" id="material-link-input-group">
         <label>Or paste a link</label>
         <input type="text" id="material-link-input" placeholder="https://...">
@@ -676,7 +676,7 @@
     </div>
   </div>
 
-  <!-- Add Assignment Modal -->
+  
   <div class="modal-overlay hidden" id="modal-assignment">
     <div class="modal-container modal-container-wide">
       <div class="modal-header">
@@ -690,7 +690,7 @@
         <div class="form-group"><label>Points</label><input type="number" id="assignment-points-input" placeholder="100"></div>
       </div>
 
-      <!-- Upload Type Selection -->
+      
       <div class="form-group">
         <label>Upload Type</label>
         <div class="upload-type-selector">
@@ -703,7 +703,7 @@
         </div>
       </div>
 
-      <!-- File Upload Zone -->
+      
       <div class="file-upload-zone" id="assignment-file-upload-zone">
         <input type="file" id="assignment-file-input" style="display:none" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif">
         <div class="file-upload-icon">
@@ -717,7 +717,7 @@
         <div class="file-preview-list" id="assignment-file-preview"></div>
       </div>
 
-      <!-- Link Input -->
+      
       <div class="form-group hidden" id="assignment-link-input-group">
         <label>Or paste a link</label>
         <input type="text" id="assignment-link-input" placeholder="https://...">
@@ -730,7 +730,7 @@
     </div>
   </div>
 
-  <!-- Add Quiz Modal -->
+  
   <div class="modal-overlay hidden" id="modal-quiz">
     <div class="modal-container modal-container-wide">
       <div class="modal-header">
@@ -744,7 +744,7 @@
         <div class="form-group"><label>Points (optional)</label><input type="number" id="quiz-points-input" placeholder="e.g. 50"></div>
       </div>
 
-      <!-- Upload Type Selection -->
+      
       <div class="form-group">
         <label>Upload Type</label>
         <div class="upload-type-selector">
@@ -757,7 +757,7 @@
         </div>
       </div>
 
-      <!-- File Upload Zone -->
+      
       <div class="file-upload-zone" id="quiz-file-upload-zone">
         <input type="file" id="quiz-file-input" style="display:none" accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif">
         <div class="file-upload-icon">
@@ -771,7 +771,7 @@
         <div class="file-preview-list" id="quiz-file-preview"></div>
       </div>
 
-      <!-- Link Input (Google Form) -->
+      
       <div class="form-group hidden" id="quiz-link-input-group">
         <label>Google Form Link</label>
         <input type="text" id="quiz-link-input" placeholder="https://forms.google.com/...">
@@ -784,7 +784,7 @@
     </div>
   </div>
 
-  <!-- New Announcement Modal -->
+  
   <div class="modal-overlay hidden" id="modal-announcement">
     <div class="modal-container">
       <div class="modal-header">

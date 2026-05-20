@@ -1,4 +1,4 @@
-/* ===== GLOBAL RESET & BASE ===== */
+
 * {
   margin: 0;
   padding: 0;
@@ -52,7 +52,7 @@ body {
   height: 100vh;
 }
 
-/* ===== SIDEBAR ===== */
+
 .sidebar {
   width: 220px;
   background: linear-gradient(180deg, var(--navy) 0%, #0b1a40 100%);
@@ -147,7 +147,7 @@ body {
   color: currentColor;
 }
 
-/* ===== MAIN CONTENT ===== */
+
 .main-content {
   flex: 1;
   display: flex;
@@ -157,7 +157,7 @@ body {
   min-width: 0;
 }
 
-/* ===== TOP BAR ===== */
+
 .top-bar {
   display: flex;
   align-items: center;
@@ -224,7 +224,7 @@ body {
   transform: translateY(-1px);
 }
 
-/* ===== PAGE BODY ===== */
+
 .page-body {
   flex: 1;
   padding: 28px 32px;
@@ -242,7 +242,7 @@ body {
 .page-body.hidden { display: none; }
 .hidden { display: none !important; }
 
-/* ===== TYPOGRAPHY ===== */
+
 .welcome-heading {
   font-size: 22px;
   font-weight: 800;
@@ -271,7 +271,7 @@ body {
   margin-bottom: 24px;
 }
 
-/* ===== HOME VIEW — STATS ROW ===== */
+
 .home-stats-row {
   display: flex;
   gap: 14px;
@@ -330,7 +330,7 @@ body {
   font-weight: 500;
 }
 
-/* ===== HOME VIEW — TWO-COLUMN LAYOUT ===== */
+
 .content-columns {
   display: flex;
   gap: 18px;
@@ -351,7 +351,7 @@ body {
   min-height: 0;
 }
 
-/* ===== SECTION HEADER ===== */
+
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -403,7 +403,7 @@ body {
 
 .section-view-all:hover { text-decoration: underline; }
 
-/* ===== SCROLLABLE CARD AREAS ===== */
+
 .announcements-scroll-container,
 .todo-scroll-container {
   flex: 1;
@@ -417,7 +417,7 @@ body {
 .announcements-scroll-container::-webkit-scrollbar,
 .todo-scroll-container::-webkit-scrollbar { width: 4px; }
 
-/* ===== ANNOUNCEMENT CARDS ===== */
+
 .announcement-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -472,7 +472,7 @@ body {
 .announcement-time { font-size: 10px; color: var(--text-muted); margin-top: 5px; }
 .announcement-unread-dot { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
 
-/* ===== TO-DO CARDS (HOME) ===== */
+
 .todo-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -515,7 +515,7 @@ body {
 .todo-due { font-size: 11px; color: var(--text-muted); }
 .todo-class { font-size: 11px; color: var(--accent); margin-top: 3px; font-weight: 500; }
 
-/* ===== EMPTY STATE ===== */
+
 .empty-state {
   flex: 1;
   display: flex;
@@ -540,7 +540,7 @@ body {
 .empty-state-title { font-size: 14px; font-weight: 800; color: var(--text-primary); margin-bottom: 6px; }
 .empty-state-sub { font-size: 12px; color: var(--text-secondary); line-height: 1.6; max-width: 220px; }
 
-/* ===== SECTION FOOTER ===== */
+
 .section-footer {
   flex-shrink: 0;
   padding: 11px 18px;
@@ -553,7 +553,7 @@ body {
 .section-footer i { font-size: 12px; color: var(--accent); }
 .section-footer span { font-size: 11px; color: var(--text-muted); }
 
-/* ===== CLASSES VIEW ===== */
+
 .classes-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; flex-wrap: wrap; }
 .join-class-btn {
   background: var(--accent);
@@ -618,7 +618,7 @@ body {
 .class-card:hover .class-card-action { gap: 10px; }
 .classes-section-label { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 12px; }
 
-/* ===== BACK BUTTON ===== */
+
 .back-btn {
   display: inline-flex;
   align-items: center;
@@ -639,7 +639,7 @@ body {
 .detail-header { margin-bottom: 4px; }
 .class-meta-text { font-size: 13px; color: var(--text-muted); margin-top: 2px; margin-bottom: 20px; }
 
-/* ===== CLASS DETAIL — TAB BAR ===== */
+
 .detail-tab-bar { display: flex; align-items: center; border-bottom: 2px solid var(--border); margin-bottom: 24px; flex-shrink: 0; }
 .detail-tab {
   display: inline-flex;
@@ -664,7 +664,7 @@ body {
 .detail-tab-panel { display: none; }
 .detail-tab-panel.active { display: block; }
 
-/* ===== CLASS DETAIL — ITEM CARDS ===== */
+
 .material-item,
 .quiz-item {
   background: var(--white);
@@ -691,9 +691,7 @@ body {
 .item-card-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--success-bg); color: var(--success-text); flex-shrink: 0; white-space: nowrap; }
 .detail-empty-msg { color: var(--text-muted); font-size: 13px; padding: 40px 0; text-align: center; }
 
-/* =================================================================
-   REDESIGNED DETAIL VIEWS — CLEAN & FOCUSED
-================================================================= */
+
 
 #view-material-detail,
 #view-assignment-detail,
@@ -703,7 +701,7 @@ body {
   width: 100%;
 }
 
-/* Header card */
+
 .detail-header-card {
   background: var(--white);
   border: 1px solid var(--border);
@@ -750,7 +748,7 @@ body {
   margin-top: 0;
 }
 
-/* Info badges row (due date + status) */
+
 .detail-info-row {
   display: flex;
   flex-wrap: wrap;
@@ -795,7 +793,7 @@ body {
   margin-bottom: 0;
 }
 
-/* ── File / Link card ── */
+
 .item-link-card {
   background: var(--white);
   border: 1.5px solid var(--border);
@@ -900,7 +898,7 @@ body {
   border-color: #f59e0b;
 }
 
-/* Material link text wrapper */
+
 .material-link-text-wrapper {
   background: var(--white);
   border: 1px solid var(--border);
@@ -934,7 +932,7 @@ body {
   font-size: 14px;
 }
 
-/* Quiz link text wrapper */
+
 .quiz-link-text-wrapper {
   background: var(--white);
   border: 1px solid var(--border);
@@ -968,7 +966,7 @@ body {
   font-size: 14px;
 }
 
-/* ── Content card (description + instructions) ── */
+
 .item-content-card {
   background: var(--white);
   border: 1px solid var(--border);
@@ -1001,14 +999,14 @@ body {
   font-weight: 400;
 }
 
-/* Divider inside content card */
+
 .item-content-divider {
   height: 1px;
   background: var(--border);
   margin: 24px 0;
 }
 
-/* Instructions list */
+
 .item-instructions {
   list-style: none;
   padding-left: 0;
@@ -1033,13 +1031,13 @@ body {
   font-size: 14px;
 }
 
-/* Icon wrap colour helpers (used in content card) */
+
 .orange-icon-wrap {
   background: #fff7ed !important;
   color: #f59e0b !important;
 }
 
-/* Mark done row */
+
 .mark-done-row {
   display: flex;
   justify-content: flex-start;
@@ -1095,14 +1093,12 @@ body {
   color: white;
 }
 
-/* ================================================================
-   PROGRESS VIEW — REDESIGNED
-================================================================= */
+
 
 .progress-header { margin-bottom: 8px; }
 .progress-header-text .page-heading { margin-bottom: 2px; }
 
-/* Overall progress summary card */
+
 .progress-summary { margin-bottom: 20px; }
 
 .progress-summary-card {
@@ -1111,7 +1107,7 @@ body {
   padding: 22px 28px;
   display: flex;
   align-items: center;
-  gap: 24px; /* add spacing */
+  gap: 24px; 
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
 }
@@ -1120,8 +1116,8 @@ body {
   flex: 1; 
   display: flex;
   flex-direction: column;
-  align-items: flex-start;   /* change center -> flex-start */
-  text-align: left;          /* change center -> left */
+  align-items: flex-start;   
+  text-align: left;          
 }
 
 .summary-label { 
@@ -1166,7 +1162,7 @@ body {
   transition: width 0.7s ease;
 }
 
-/* Section label row */
+
 .progress-section-label-row {
   display: flex;
   align-items: center;
@@ -1183,7 +1179,7 @@ body {
   letter-spacing: 0.6px;
 }
 
-/* Per-class progress cards */
+
 .progress-list { display: flex; flex-direction: column; gap: 10px; }
 
 .progress-card {
@@ -1260,13 +1256,11 @@ body {
   transition: width 0.6s ease;
 }
 
-/* ================================================================
-   TO DO LIST VIEW — REDESIGNED
-================================================================= */
+
 
 .todo-page-header { margin-bottom: 8px; }
 
-/* Quick todo stats */
+
 .todo-stats-row {
   display: flex;
   gap: 14px;
@@ -1308,11 +1302,11 @@ body {
 .todo-stat-value { font-size: 24px; font-weight: 800; color: var(--text-primary); line-height: 1; letter-spacing: -0.5px; }
 .todo-stat-label { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; font-weight: 500; }
 
-/* Todo groups */
+
 .todo-page-scroll { flex: 1; overflow-y: auto; padding-right: 4px; }
 .todo-group { margin-bottom: 28px; }
 
-/* Fancy group header */
+
 .todo-group-header-fancy {
   display: flex;
   align-items: center;
@@ -1350,7 +1344,7 @@ body {
 .todo-group-label { font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
 .todo-group-sub   { font-size: 11px; color: var(--text-muted); }
 
-/* Todo page cards */
+
 .todo-page-card {
   background: var(--white);
   border-radius: var(--radius-lg);
@@ -1401,14 +1395,12 @@ body {
 .todo-class-name { font-size: 11px; color: var(--accent); font-weight: 500; margin-top: 3px; }
 .todo-due-overdue { color: var(--danger-text) !important; font-weight: 500; }
 
-/* ================================================================
-   PROFILE VIEW — REDESIGNED
-================================================================= */
+
 
 .profile-page-header { margin-bottom: 20px; }
 .profile-layout { display: grid; grid-template-columns: 290px 1fr; gap: 24px; }
 
-/* Left card */
+
 .profile-card {
   background: var(--white);
   border-radius: var(--radius-xl);
@@ -1435,7 +1427,7 @@ body {
 
 .profile-role { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
 
-/* Quick badges */
+
 .profile-quick-badges {
   display: flex;
   justify-content: center;
@@ -1482,7 +1474,7 @@ body {
 .logout-btn { background: #dc2626 !important; }
 .profile-btn:hover { transform: translateY(-1px); filter: brightness(0.95); }
 
-/* Picture buttons */
+
 .profile-picture-section { margin-bottom: 4px; }
 .profile-picture-buttons { display: flex; gap: 8px; justify-content: center; margin: 12px 0; }
 
@@ -1502,7 +1494,7 @@ body {
 .upload-picture-btn:hover { background: var(--accent-light); }
 .remove-picture-btn:hover { background: var(--danger-bg); border-color: var(--danger-border); }
 
-/* Right panels */
+
 .profile-panels {
   background: var(--white);
   border-radius: var(--radius-xl);
@@ -1512,7 +1504,7 @@ body {
   height: fit-content;
 }
 
-/* Panel header with icon */
+
 .profile-panel-header {
   display: flex;
   align-items: center;
@@ -1544,7 +1536,7 @@ body {
   margin: 0;
 }
 
-/* Info grid */
+
 .profile-info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1597,7 +1589,7 @@ body {
   margin-top: 3px;
 }
 
-/* Form grid */
+
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
 .form-grid label {
@@ -1650,7 +1642,7 @@ body {
   color: var(--text-muted);
 }
 
-/* ===== MODAL ===== */
+
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(9, 18, 48, 0.45); backdrop-filter: blur(4px); z-index: 9999; justify-content: center; align-items: center; }
 .modal-container { background: var(--white); border-radius: var(--radius-xl); padding: 28px; width: 450px; max-width: 90%; animation: modalIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: var(--shadow-lg); border: 1px solid var(--border); }
 @keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
@@ -1672,7 +1664,7 @@ body {
 .btn-secondary { flex: 1; padding: 10px; background: var(--white); color: var(--text-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-family: 'Poppins', sans-serif; transition: var(--transition); }
 .btn-secondary:hover { background: var(--surface); border-color: var(--border-strong); }
 
-/* ===== SEARCH DROPDOWN ===== */
+
 .search-dropdown { position: absolute; top: calc(100% + 8px); left: 0; width: 100%; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); z-index: 1000; max-height: 360px; overflow-y: auto; }
 .search-dropdown.hidden { display: none; }
 .search-result-item { padding: 12px 16px; cursor: pointer; border-bottom: 1px solid var(--border); transition: var(--transition); }
@@ -1686,12 +1678,12 @@ body {
 .type-quiz     { background: var(--surface-2); color: var(--text-muted); }
 .search-no-results { padding: 16px; text-align: center; color: var(--text-muted); font-size: 12px; }
 
-/* ===== SCROLLBARS ===== */
+
 .page-body::-webkit-scrollbar { width: 5px; }
 .page-body::-webkit-scrollbar-track { background: transparent; }
 .page-body::-webkit-scrollbar-thumb { background-color: var(--border-strong); border-radius: 999px; }
 
-/* ===== RESPONSIVE ===== */
+
 @media (max-width: 900px) {
   .sidebar { width: 70px; }
   .sidebar-logo .logo-text,
@@ -1741,7 +1733,7 @@ body {
   font-size: 20px;
 }
 
-/* ===== PROGRESS CLICKABLE CARDS ===== */
+
 .progress-card {
   cursor: pointer;
   position: relative;
@@ -1766,7 +1758,7 @@ body {
   right: 16px;
 }
 
-/* ===== SCORES DETAIL MODAL ===== */
+
 .scores-modal-overlay {
   display: none;
   position: fixed;
@@ -1849,7 +1841,7 @@ body {
   border-radius: 999px;
 }
 
-/* Score item card */
+
 .score-item-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1934,7 +1926,7 @@ body {
   display: block;
 }
 
-/* Score summary in modal */
+
 .scores-summary {
   background: linear-gradient(135deg, #eef2ff, #e0e7ff);
   border: 1.5px solid #c7d2fe;
@@ -1975,7 +1967,7 @@ body {
   font-size: 13px;
 }
 
-/* ===== SUBMISSION AREA ===== */
+
 .submission-area {
   background: var(--white);
   border: 1px solid var(--border);
@@ -1999,7 +1991,7 @@ body {
   letter-spacing: -0.2px;
 }
 
-/* Upload Type Selector */
+
 .upload-type-selector {
   display: flex;
   gap: 8px;
@@ -2039,7 +2031,7 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-/* File Upload Zone */
+
 .file-upload-zone {
   border: 2px dashed var(--border-strong);
   border-radius: var(--radius-lg);
@@ -2100,7 +2092,7 @@ body {
   background: var(--accent-light);
 }
 
-/* File Preview */
+
 .file-preview-list {
   display: flex;
   flex-direction: column;
@@ -2153,7 +2145,7 @@ body {
   color: #dc2626;
 }
 
-/* Submit Button */
+
 .submit-assignment-btn {
   width: 100%;
   padding: 12px 24px;
@@ -2191,7 +2183,7 @@ body {
   transform: none;
 }
 
-/* Submission Success Message */
+
 .submission-success-msg {
   display: flex;
   align-items: center;
@@ -2214,11 +2206,11 @@ body {
 .submission-success-msg.hidden {
   display: none;
 }
-/* stat cards — make them clickable */
+
 .stat-card { cursor: pointer; transition: border-color 0.18s, transform 0.15s; }
 .stat-card:hover { border-color: var(--accent, #6366f1); transform: translateY(-1px); }
 
-/* blurred overlay */
+
 .stats-overlay {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.38);
@@ -2229,7 +2221,7 @@ body {
 }
 .stats-overlay.active { opacity: 1; pointer-events: all; }
 
-/* modal panel */
+
 .stats-modal {
   background: #fff; border-radius: 16px;
   border: 0.5px solid #e5e7eb;

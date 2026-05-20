@@ -1,4 +1,4 @@
-/* ===== GLOBAL RESET & BASE ===== */
+
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
@@ -45,7 +45,7 @@ body {
 
 .app-wrapper { display: flex; height: 100vh; }
 
-/* ===== SIDEBAR ===== */
+
 .sidebar {
   width: 220px;
   background: linear-gradient(180deg, var(--navy) 0%, #0b1a40 100%);
@@ -124,7 +124,7 @@ body {
 
 .nav-icon { font-size: 15px; width: 18px; text-align: center; color: currentColor; }
 
-/* ===== MAIN CONTENT ===== */
+
 .main-content {
   flex: 1;
   display: flex;
@@ -134,7 +134,7 @@ body {
   min-width: 0;
 }
 
-/* ===== TOP BAR ===== */
+
 .top-bar {
   display: flex;
   align-items: center;
@@ -176,7 +176,7 @@ body {
   width: 100%;
 }
 
-/* ===== PAGE BODY ===== */
+
 .page-body {
   flex: 1;
   padding: 28px 32px;
@@ -194,7 +194,7 @@ body {
 .page-body.hidden { display: none !important; }
 .hidden { display: none !important; }
 
-/* ===== TYPOGRAPHY ===== */
+
 .page-heading {
   font-size: 22px;
   font-weight: 800;
@@ -225,12 +225,12 @@ body {
   margin-bottom: 20px;
 }
 
-/* ===== SCROLLBAR ===== */
+
 .page-body::-webkit-scrollbar { width: 5px; }
 .page-body::-webkit-scrollbar-track { background: transparent; }
 .page-body::-webkit-scrollbar-thumb { background-color: var(--border-strong); border-radius: 999px; }
 
-/* ===== SHARED BUTTON STYLES ===== */
+
 .btn {
   font-family: 'Poppins', sans-serif;
   font-size: 13px;
@@ -271,7 +271,7 @@ body {
 }
 .btn-danger:hover { background: #fee2e2; }
 
-/* ===== CLASSES VIEW ===== */
+
 .classes-header {
   display: flex;
   justify-content: space-between;
@@ -363,7 +363,7 @@ body {
 
 .view-class-btn:hover { background: var(--navy-light); transform: translateY(-1px); box-shadow: var(--shadow-md); }
 
-/* ===== THREE-DOT BUTTON ===== */
+
 .three-dot-btn {
   width: 34px;
   height: 34px;
@@ -400,7 +400,7 @@ body {
 .section-dots-btn:hover { background: var(--surface-2); color: var(--text-primary); }
 .section-dots-btn svg { pointer-events: none; }
 
-/* ===== EDIT MODAL CODE DISPLAY ===== */
+
 .edit-modal-code-display {
   background: var(--accent-light);
   border: 1.5px solid #c7d7fd;
@@ -414,7 +414,7 @@ body {
   margin-bottom: 8px;
 }
 
-/* ===== BACK BUTTON ===== */
+
 .back-btn {
   display: inline-flex;
   align-items: center;
@@ -442,7 +442,7 @@ body {
 
 .sections-list { display: flex; flex-direction: column; gap: 10px; }
 
-/* ===== SECTION CARD ===== */
+
 .section-card {
   background: var(--white);
   border: 1px solid var(--border);
@@ -478,7 +478,7 @@ body {
 .section-card-students { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 .section-card-right { display: flex; align-items: center; gap: 8px; }
 
-/* ===== SECTION DETAIL TABS ===== */
+
 .section-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
 
 .detail-tab-bar {
@@ -514,7 +514,7 @@ body {
 .detail-tab-panel { display: none; }
 .detail-tab-panel.active { display: block; }
 
-/* ===== MATERIALS ===== */
+
 .material-list { display: flex; flex-direction: column; gap: 10px; }
 
 .material-card {
@@ -552,7 +552,7 @@ body {
 .material-card-desc { font-size: 12px; color: var(--text-muted); }
 .material-card-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
-/* ===== REDESIGNED DETAIL VIEWS WITH SPLIT LAYOUT ===== */
+
 #view-material-detail,
 #view-quiz-detail,
 #view-assignment-detail {
@@ -561,7 +561,7 @@ body {
   width: 100%;
 }
 
-/* ===== SPLIT DETAIL LAYOUT ===== */
+
 .detail-split-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -596,7 +596,7 @@ body {
   top: 0;
 }
 
-/* Header card */
+
 .detail-header-card {
   background: var(--white);
   border: 1px solid var(--border);
@@ -644,7 +644,7 @@ body {
   margin-top: 0;
 }
 
-/* Info badges row */
+
 .detail-info-row {
   display: flex;
   flex-wrap: wrap;
@@ -680,7 +680,7 @@ body {
 
 .due-date-text { font-size: inherit; color: inherit; margin-bottom: 0; }
 
-/* ── File / Link card ── */
+
 .item-link-card {
   background: var(--white);
   border: 1.5px solid var(--border);
@@ -771,7 +771,7 @@ body {
 .item-link-btn.orange-btn { color: #d97706; border-color: #fbbf24; }
 .item-link-btn.orange-btn:hover { background: #f59e0b; color: white; border-color: #f59e0b; }
 
-/* Material link text wrapper */
+
 .material-link-text-wrapper {
   background: var(--white);
   border: 1px solid var(--border);
@@ -799,7 +799,7 @@ body {
 .material-link-text:hover { background: #eef2ff; text-decoration: underline; transform: translateY(-1px); }
 .material-link-text i { font-size: 14px; }
 
-/* Quiz link text wrapper */
+
 .quiz-link-text-wrapper {
   background: var(--white);
   border: 1px solid var(--border);
@@ -827,7 +827,7 @@ body {
 .quiz-link-text:hover { background: #f3e8ff; text-decoration: underline; transform: translateY(-1px); }
 .quiz-link-text i { font-size: 14px; }
 
-/* ── Content card ── */
+
 .item-content-card {
   background: var(--white);
   border: 1px solid var(--border);
@@ -876,7 +876,7 @@ body {
 
 .section-header-icon-wrap.green { background: #e6f9f0; color: #0f6c3a; }
 
-/* ===== SECTION HEADER ===== */
+
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -900,7 +900,7 @@ body {
   letter-spacing: -0.2px;
 }
 
-/* ===== COMPLETION TABS ===== */
+
 .completion-tabs {
   display: flex;
   gap: 0;
@@ -958,7 +958,7 @@ body {
 .badge-pending { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
 .badge-missed { background: var(--danger-bg); color: var(--danger-text); border: 1px solid var(--danger-border); }
 
-/* ===== QUIZ / ASSIGNMENT CARDS ===== */
+
 .quiz-card {
   background: var(--white);
   border: 1px solid var(--border);
@@ -979,7 +979,7 @@ body {
 .quiz-card-name { font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .quiz-card-meta { font-size: 12px; color: var(--text-muted); }
 
-/* ===== STUDENTS TAB ===== */
+
 .students-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .student-list { display: flex; flex-direction: column; gap: 8px; }
 
@@ -1000,7 +1000,7 @@ body {
 .student-name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
 .student-email { font-size: 12px; color: var(--text-muted); }
 
-/* ===== FILE UPLOAD ZONE ===== */
+
 .file-upload-zone {
   border: 2px dashed var(--border-strong);
   border-radius: var(--radius-lg);
@@ -1049,7 +1049,7 @@ body {
 
 .btn-browse:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
 
-/* Upload Type Selector */
+
 .upload-type-selector {
   display: flex;
   gap: 8px;
@@ -1114,7 +1114,7 @@ body {
 
 .modal-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-/* ===== PROGRESS VIEW ===== */
+
 .progress-header { margin-bottom: 8px; }
 .progress-header-text .page-heading { margin-bottom: 2px; }
 
@@ -1180,7 +1180,7 @@ body {
 
 .progress-class-label { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
 
-/* ===== ANNOUNCEMENTS VIEW ===== */
+
 .announcements-header {
   display: flex;
   justify-content: space-between;
@@ -1223,7 +1223,7 @@ body {
 .announcement-meta { font-size: 11px; color: var(--text-muted); }
 .announcement-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
 
-/* ===== PROFILE VIEW ===== */
+
 .profile-page-header { margin-bottom: 20px; }
 
 .profile-layout { display: grid; grid-template-columns: 290px 1fr; gap: 24px; }
@@ -1441,7 +1441,7 @@ body {
 
 .code-label input:focus { border-color: var(--accent); background: var(--white); box-shadow: 0 0 0 3px rgba(59, 108, 247, 0.08); }
 
-/* ===== MODAL OVERLAY ===== */
+
 .modal-overlay {
   display: none;
   position: fixed;
@@ -1581,7 +1581,7 @@ body {
 
 .btn-secondary:hover { background: var(--surface); border-color: var(--border-strong); }
 
-/* ===== EMPTY STATE ===== */
+
 .empty-state {
   background: var(--surface);
   border: 1.5px dashed var(--border-strong);
@@ -1593,7 +1593,7 @@ body {
   margin-bottom: 16px;
 }
 
-/* ===== RESPONSIVE ===== */
+
 @media (max-width: 900px) {
   .sidebar { width: 70px; }
   .sidebar-logo .logo-text,
@@ -1625,7 +1625,7 @@ body {
   .top-bar { gap: 12px; }
 }
 
-/* Score Input Styling */
+
 .score-input-group {
   flex-shrink: 0;
 }
@@ -1654,7 +1654,7 @@ body {
   50% { transform: scale(1.3); }
   100% { transform: scale(1); opacity: 1; }
 }
-/* Student Avatar Styles */
+
 .student-avatar {
     width: 48px;
     height: 48px;
@@ -1692,7 +1692,7 @@ body {
     color: #6b7280;
 }
 
-/* Student done card with avatar */
+
 .student-done-card {
     display: flex;
     align-items: center;
@@ -1711,7 +1711,7 @@ body {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-/* ── SEARCH DROPDOWN ── */
+
 .search-dropdown {
   position: absolute;
   top: calc(100% + 6px);
