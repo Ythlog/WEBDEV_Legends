@@ -1130,7 +1130,6 @@ app.get('/api/teacher/submissions', async (req, res) => {
         } else if (itemType === 'quiz') {
             tableName = 'quiz_submissions';
         } else {
-            
             return res.json([]);
         }
         

@@ -1148,7 +1148,6 @@ async function markDone(type) {
   if (btn) btn.disabled = true;
 
   if (state.done.has(key)) {
-    
     const result = await Swal.fire({
       title: 'Are you sure?', text: 'Do you want to undo marking this as finished?',
       icon: 'warning', showCancelButton: true,
@@ -1175,7 +1174,6 @@ async function markDone(type) {
       if (btn) btn.disabled = false;
     }
   } else {
-    
     try {
       await fetch('/api/mark-done', {
         method: 'POST',
@@ -1407,7 +1405,7 @@ async function openScoresModal(cls) {
           icon: 'fa-solid fa-book-open', iconClass: 'score-item-icon',
           completedAt: scoreData?.completed_at || null,
           score: scoreData?.score ?? null,
-          rawItem: m   
+          rawItem: m
         });
       }
     });

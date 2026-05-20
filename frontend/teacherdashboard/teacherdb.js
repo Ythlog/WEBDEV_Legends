@@ -1197,7 +1197,6 @@ function injectSubmittedFilesSection(viewSelector, containerId, type, itemId) {
   let wrapper = document.getElementById(wrapperId);
 
   if (!wrapper) {
-    
     const appendTarget =
       view.querySelector('.detail-content') ||
       view.querySelector('.section-content') ||
