@@ -61,9 +61,6 @@ async function fetchTeacherProfile() {
   TEACHER_DATA.profileLoaded = true;
 }
 
-
-
-
 function updateTeacherProfilePicture() {
   const profileImg = document.getElementById('profile-picture-img');
   const profileIcon = document.getElementById('profile-picture-icon');
@@ -115,7 +112,6 @@ async function fetchTeacherProfilePicture() {
     console.error('Error fetching profile picture:', error);
   }
 }
-
 
 document.addEventListener('change', function (e) {
   if (e.target.id === 'profile-picture-input' && e.target.files && e.target.files[0]) {
@@ -185,9 +181,6 @@ document.addEventListener('click', async function (e) {
     }
   }
 });
-
-
-
 
 async function apiGet(url) {
   console.log('API GET:', url);
@@ -259,9 +252,6 @@ async function apiDelete(url, body = null) {
   return res.json();
 }
 
-
-
-
 async function fetchAllClassesAndSectionsForAnnouncements() {
   try {
     if (!TEACHER_DATA.profile.id) return [];
@@ -286,9 +276,6 @@ async function fetchAllClassesAndSectionsForAnnouncements() {
     return [];
   }
 }
-
-
-
 
 function renderAudienceCheckboxes(preselectedAudiences = []) {
   const container = document.getElementById('audience-checkboxes');
@@ -433,9 +420,6 @@ function renderAudienceCheckboxes(preselectedAudiences = []) {
   }
 }
 
-
-
-
 function showView(viewId) {
   document.querySelectorAll('.page-body').forEach(v => v.classList.add('hidden'));
   const targetView = document.getElementById('view-' + viewId);
@@ -460,9 +444,6 @@ document.querySelectorAll('.nav-item').forEach(item => {
   });
 });
 
-
-
-
 function dotsIconSVG() {
   return `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="10" cy="4" r="1.5" fill="#555"/>
@@ -470,9 +451,6 @@ function dotsIconSVG() {
     <circle cx="10" cy="16" r="1.5" fill="#555"/>
   </svg>`;
 }
-
-
-
 
 async function fetchAndRenderClasses() {
   console.log('Fetching classes for teacher ID:', TEACHER_DATA.profile.id);
@@ -538,9 +516,6 @@ function renderClassesView() {
   });
 }
 
-
-
-
 function openEditClassModal(classId) {
   state.editingClassId = classId;
   const cls = TEACHER_DATA.classes.find(c => c.id === classId);
@@ -579,9 +554,6 @@ document.getElementById('delete-class-modal-btn')?.addEventListener('click', asy
   }
 });
 
-
-
-
 async function openClassDetail(classId) {
   state.currentClassId = classId;
   const cls = TEACHER_DATA.classes.find(c => c.id === classId);
@@ -604,9 +576,6 @@ async function fetchAndRenderSections(classId) {
   renderSectionsList();
 }
 
-
-
-
 function openSectionDetail(sectionId, sectionName) {
   state.currentSectionId = sectionId;
   const cls = TEACHER_DATA.classes.find(c => c.id === state.currentClassId);
@@ -617,9 +586,6 @@ function openSectionDetail(sectionId, sectionName) {
   switchTab('lessons');
   showView('section-detail');
 }
-
-
-
 
 function renderSectionsList() {
   const list = document.getElementById('sections-list');
@@ -669,9 +635,6 @@ function renderSectionsList() {
     list.appendChild(card);
   });
 }
-
-
-
 
 function openEditSectionModal(sectionId) {
   state.editingSectionId = sectionId;
@@ -727,9 +690,6 @@ document.getElementById('delete-section-modal-btn')?.addEventListener('click', a
   }
 });
 
-
-
-
 function switchTab(tab) {
   state.activeSectionTab = tab;
   document.querySelectorAll('.detail-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
@@ -745,9 +705,6 @@ function switchTab(tab) {
 document.querySelectorAll('.detail-tab').forEach(btn => {
   btn.addEventListener('click', () => switchTab(btn.dataset.tab));
 });
-
-
-
 
 async function fetchAndRenderMaterials() {
   if (!state.currentSectionId) return;
@@ -834,9 +791,6 @@ async function deleteMaterial(id) {
   }
 }
 
-
-
-
 async function fetchAndRenderQuizzes() {
   if (!state.currentSectionId) return;
   try {
@@ -875,9 +829,6 @@ function renderQuizzesList() {
     list.appendChild(card);
   });
 }
-
-
-
 
 function openQuizDetail(quiz) {
   state.currentQuizId = quiz.id;
@@ -919,7 +870,6 @@ function openQuizDetail(quiz) {
   const completionTabs = document.querySelector('#view-quiz-detail .completion-tabs');
   if (completionTabs) renderCompletionTabs(completionTabs, 'quiz');
 
-  
   apiGet(`/api/teacher/quizzes?sectionId=${state.currentSectionId}`).then(freshQuizzes => {
     TEACHER_DATA.quizzes = freshQuizzes;
     renderCompletionStudents('quiz-done-students', 'quiz', quiz.id, 'pending');
@@ -927,7 +877,6 @@ function openQuizDetail(quiz) {
     renderCompletionStudents('quiz-done-students', 'quiz', quiz.id, 'pending');
   });
 
-  
   injectSubmittedFilesSection('#view-quiz-detail', 'quiz-submitted-files', 'quiz', quiz.id);
 
   showView('quiz-detail');
@@ -943,9 +892,6 @@ async function deleteQuiz(id) {
     } catch (err) { Swal.fire('Error', err.message, 'error'); }
   }
 }
-
-
-
 
 async function fetchAndRenderAssignments() {
   if (!state.currentSectionId) return;
@@ -986,9 +932,6 @@ function renderAssignmentsList() {
   });
 }
 
-
-
-
 function openAssignmentDetail(assign) {
   state.currentAssignmentId = assign.id;
 
@@ -1023,7 +966,6 @@ function openAssignmentDetail(assign) {
   const completionTabs = document.querySelector('#view-assignment-detail .completion-tabs');
   if (completionTabs) renderCompletionTabs(completionTabs, 'assign');
 
-  
   apiGet(`/api/teacher/assignments?sectionId=${state.currentSectionId}`).then(freshAssignments => {
     TEACHER_DATA.assignments = freshAssignments;
     renderCompletionStudents('assign-done-students', 'assignment', assign.id, 'pending');
@@ -1031,7 +973,6 @@ function openAssignmentDetail(assign) {
     renderCompletionStudents('assign-done-students', 'assignment', assign.id, 'pending');
   });
 
-  
   injectSubmittedFilesSection('#view-assignment-detail', 'assign-submitted-files', 'assignment', assign.id);
 
   showView('assignment-detail');
@@ -1047,9 +988,6 @@ async function deleteAssignment(id) {
     } catch (err) { Swal.fire('Error', err.message, 'error'); }
   }
 }
-
-
-
 
 function renderCompletionTabs(container, key) {
   if (!container) return;
@@ -1085,7 +1023,6 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
       score: s.score || null
     }));
 
-    
     let maxPoints = 100;
     if (type === 'quiz') {
       const quiz = TEACHER_DATA.quizzes.find(q => Number(q.id) === Number(itemId));
@@ -1185,9 +1122,6 @@ async function renderCompletionStudents(containerId, type, itemId, filterStatus)
     container.innerHTML = '<div class="empty-state">Failed to load students.</div>';
   }
 }
-
-
-
 
 async function saveStudentScore(inputElement) {
   const studentId = inputElement.dataset.studentId;
@@ -1305,7 +1239,6 @@ function injectSubmittedFilesSection(viewSelector, containerId, type, itemId) {
     appendTarget.appendChild(wrapper);
   }
 
-  
   renderSubmittedFiles(containerId, type, itemId);
 }
 
@@ -1400,24 +1333,20 @@ function renderSubmittedFilesList(container, submissions) {
       })
       : 'Unknown time';
 
-    
     let filesHtml = '';
 
-    
     if (Array.isArray(sub.files) && sub.files.length > 0) {
       sub.files.forEach(f => {
         const fi = getFileInfo(f.name);
         filesHtml += buildFileChip(f.url, f.name, fi, null);
       });
 
-      
     } else if (sub.file_url) {
       const displayName = sub.file_name || sub.filename || 'File';
       const fi = getFileInfo(displayName);
       const size = sub.file_size ? formatFileSize(sub.file_size) : null;
       filesHtml = buildFileChip(sub.file_url, displayName, fi, size);
 
-      
     } else if (sub.link) {
       const shortLink = sub.link.length > 55 ? sub.link.slice(0, 52) + '…' : sub.link;
       filesHtml = `
@@ -1505,9 +1434,6 @@ function buildFileChip(url, name, fileInfo, size) {
     </a>`;
 }
 
-
-
-
 async function fetchAndRenderStudents() {
   if (!state.currentSectionId) {
     const enrolledEl = document.getElementById('enrolled-students-list');
@@ -1583,9 +1509,6 @@ async function removeStudent(studentId) {
   }
 }
 
-
-
-
 function openModal(id) { const m = document.getElementById(id); if (m) m.classList.remove('hidden'); }
 function closeModal(id) { const m = document.getElementById(id); if (m) m.classList.add('hidden'); }
 
@@ -1595,7 +1518,6 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 document.querySelectorAll('.close-modal').forEach(btn => {
   btn.addEventListener('click', function () { const m = this.closest('.modal-overlay'); if (m) m.classList.add('hidden'); });
 });
-
 
 const createClassBtn = document.getElementById('btn-create-class');
 if (createClassBtn) {
@@ -1624,7 +1546,6 @@ document.getElementById('save-class-modal')?.addEventListener('click', async () 
     fetchAndRenderClasses();
   } catch (err) { Swal.fire('Error', err.message, 'error'); }
 });
-
 
 const addSectionBtn = document.getElementById('btn-add-section');
 if (addSectionBtn) {
@@ -1670,9 +1591,6 @@ document.getElementById('save-section-modal')?.addEventListener('click', async (
     await fetchAndRenderSections(state.currentClassId);
   } catch (err) { Swal.fire('Error', err.message, 'error'); }
 });
-
-
-
 
 function setupFileUploadZone(zoneId, inputId, previewId, browseBtnId, stateKey) {
   const zone = document.getElementById(zoneId);
@@ -1752,7 +1670,6 @@ function initFileUploads() {
   setupUploadTypeToggle('quiz-file-type-btn', 'quiz-link-type-btn', 'quiz-file-upload-zone', 'quiz-link-input-group', 'quizUploadType');
 }
 
-
 function openMaterialModal(editId = null) {
   state.editingMaterialId = editId;
   const mat = editId ? TEACHER_DATA.materials.find(m => m.id === editId) : null;
@@ -1811,7 +1728,6 @@ document.getElementById('save-material-modal')?.addEventListener('click', async 
     Swal.fire({ icon: 'success', title: 'Saved!', timer: 1200, showConfirmButton: false });
   } catch (err) { Swal.fire('Error', err.message, 'error'); }
 });
-
 
 function openQuizModal(editId = null) {
   state.editingQuizId = editId;
@@ -1879,7 +1795,6 @@ document.getElementById('save-quiz-modal')?.addEventListener('click', async () =
   } catch (err) { Swal.fire('Error', err.message, 'error'); }
 });
 
-
 function openAssignmentModal(editId = null) {
   state.editingAssignmentId = editId;
   const assign = editId ? TEACHER_DATA.assignments.find(a => a.id === editId) : null;
@@ -1946,9 +1861,6 @@ document.getElementById('save-assignment-modal')?.addEventListener('click', asyn
   } catch (err) { Swal.fire('Error', err.message, 'error'); }
 });
 
-
-
-
 const newAnnouncementBtn = document.getElementById('btn-new-announcement');
 if (newAnnouncementBtn) {
   newAnnouncementBtn.addEventListener('click', async () => {
@@ -2004,9 +1916,6 @@ document.getElementById('save-announcement-modal')?.addEventListener('click', as
     }
   } catch (err) { Swal.fire('Error', 'Could not connect to server.', 'error'); }
 });
-
-
-
 
 async function renderProgressView() {
   showView('progress');
@@ -2145,9 +2054,6 @@ function showProgressDetailPopup(section, cls, materials, quizzes, assignments, 
   document.body.appendChild(overlay);
 }
 
-
-
-
 async function renderAnnouncementsView() {
   showView('announcements');
   const list = document.getElementById('announcements-list');
@@ -2227,9 +2133,6 @@ window.deleteAnnouncementFromList = async function (id) {
   }
 };
 
-
-
-
 const backToClasses = document.getElementById('back-to-classes');
 if (backToClasses) backToClasses.addEventListener('click', fetchAndRenderClasses);
 const backToClassDetail = document.getElementById('back-to-class-detail');
@@ -2252,9 +2155,6 @@ if (backToSectionAssignments) {
     if (state.currentSectionId) { openSectionDetail(state.currentSectionId, document.getElementById('section-detail-name')?.textContent || ''); switchTab('assignments'); }
   });
 }
-
-
-
 
 function refreshTeacherProfileDisplay() {
   const p = TEACHER_DATA.profile;
@@ -2405,9 +2305,6 @@ if (logoutBtn) {
   });
 }
 
-
-
-
 function formatDateTimeLocal(dateVal) {
   if (!dateVal) return '';
   const d = new Date(dateVal);
@@ -2419,9 +2316,6 @@ function formatDateTimeLocal(dateVal) {
   const minutes = String(d.getMinutes()).padStart(2, '0');
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
-
-
-
 
 function escapeHtml(str) {
   if (!str) return '';

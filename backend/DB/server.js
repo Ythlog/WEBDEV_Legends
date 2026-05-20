@@ -9,11 +9,9 @@ require("dotenv").config();
 
 const app = express();
 
-
 console.log("EMAIL_USER:", process.env.EMAIL_USER ? "✓ Loaded" : "✗ Missing");
 console.log("EMAIL_APP_PASSWORD:", process.env.EMAIL_APP_PASSWORD ? "✓ Loaded" : "✗ Missing");
 console.log("DB_HOST:", process.env.DB_HOST ? "✓ Loaded" : "✗ Missing");
-
 
 const profileStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -29,7 +27,6 @@ const profileStorage = multer.diskStorage({
         cb(null, 'profile-' + uniqueSuffix + ext);
     }
 });
-
 
 const materialStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -69,7 +66,6 @@ const uploadMaterial = multer({
     limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: fileFilter
 });
-
 
 const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -142,7 +138,6 @@ function sendVerificationEmail(email, code, type) {
     });
 }
 
-
 setInterval(async () => {
     let conn;
     try {
@@ -167,10 +162,6 @@ app.get("/dashboard", (req, res) => {
 app.get("/teacher-dashboard", (req, res) => {
     res.sendFile(path.join(__dirname, "..", "..", "frontend", "teacherdashboard", "teacherdb.html"));
 });
-
-
-
-
 
 app.get("/api/section-by-code", async (req, res) => {
     const { code } = req.query;
@@ -313,10 +304,6 @@ app.get("/api/my-classes", async (req, res) => {
     }
 });
 
-
-
-
-
 app.get("/api/completions", async (req, res) => {
     const { userId } = req.query;
     if (!userId) return res.status(400).json({ message: "Missing userId" });
@@ -409,10 +396,6 @@ app.post("/api/mark-undone", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-
-
-
 
 app.post("/api/send-signup-code", async (req, res) => {
     const { first_name, last_name, username, email, password, role } = req.body;
@@ -617,10 +600,6 @@ app.post("/api/login", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-
-
-
 
 app.put("/api/update-profile", async (req, res) => {
     const { userId, firstName, lastName, username, email } = req.body;
@@ -843,10 +822,6 @@ app.put("/api/change-password", async (req, res) => {
     }
 });
 
-
-
-
-
 app.get("/api/announcements", async (req, res) => {
     let conn;
     try {
@@ -943,10 +918,6 @@ app.delete("/api/announcements/:id", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-
-
-
 
 app.get("/api/student/announcements", async (req, res) => {
     const { studentId } = req.query;
@@ -1064,7 +1035,6 @@ app.get("/api/teacher/all-sections", async (req, res) => {
             [teacherId]
         );
 
-        
         const grouped = {};
         sections.forEach(row => {
             if (!grouped[row.class_id]) {
@@ -1089,10 +1059,6 @@ app.get("/api/teacher/all-sections", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-
-
-
 
 app.get("/api/teacher/classes", async (req, res) => {
     const { teacherId } = req.query;
@@ -1158,7 +1124,6 @@ app.get('/api/teacher/submissions', async (req, res) => {
             return res.status(400).json({ message: 'Missing required parameters' });
         }
         
-        
         let tableName;
         if (itemType === 'assignment') {
             tableName = 'assignment_submissions';
@@ -1193,9 +1158,6 @@ app.get('/api/teacher/submissions', async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch submissions' });
     }
 });
-
-
-
 
 const quizSubmissionStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -1270,8 +1232,6 @@ app.post("/api/submit-quiz", uploadQuizSubmission.single('submissionFile'), asyn
     }
 });
 
-
-
 app.get("/api/teacher/submitted-files", async (req, res) => {
     const { itemType, itemId, sectionId } = req.query;
 
@@ -1279,7 +1239,6 @@ app.get("/api/teacher/submitted-files", async (req, res) => {
         return res.status(400).json({ message: "Missing required parameters" });
     }
 
-    
     if (itemType === 'material') {
         return res.json([]);
     }
@@ -1309,7 +1268,6 @@ app.get("/api/teacher/submitted-files", async (req, res) => {
             [sectionId, itemType, itemId]
         );
 
-        
         const enriched = submissions.map(sub => ({
             ...sub,
             file_name: sub.file_url
@@ -1369,13 +1327,6 @@ app.delete("/api/teacher/classes/:id", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-
-
-
-
-
-
 
 app.post("/api/archive-class", async (req, res) => {
     const { studentId, sectionId } = req.body;
@@ -1578,10 +1529,6 @@ app.delete("/api/teacher/sections/:id", async (req, res) => {
     }
 });
 
-
-
-
-
 app.get("/api/teacher/materials", async (req, res) => {
     const { sectionId } = req.query;
     if (!sectionId) return res.status(400).json({ message: "Missing sectionId" });
@@ -1694,10 +1641,6 @@ app.delete("/api/teacher/materials/:id", async (req, res) => {
     }
 });
 
-
-
-
-
 app.get("/api/teacher/quizzes", async (req, res) => {
     const { sectionId } = req.query;
     if (!sectionId) return res.status(400).json({ message: "Missing sectionId" });
@@ -1791,10 +1734,6 @@ app.delete("/api/teacher/quizzes/:id", async (req, res) => {
     }
 });
 
-
-
-
-
 app.get("/api/teacher/assignments", async (req, res) => {
     const { sectionId } = req.query;
     if (!sectionId) return res.status(400).json({ message: "Missing sectionId" });
@@ -1887,13 +1826,6 @@ app.delete("/api/teacher/assignments/:id", async (req, res) => {
     }
 });
 
-
-
-
-
-
-
-
 app.get("/api/teacher/announcement-sections", async (req, res) => {
     const { teacherId } = req.query;
     if (!teacherId) return res.status(400).json({ message: "Missing teacherId" });
@@ -1901,7 +1833,6 @@ app.get("/api/teacher/announcement-sections", async (req, res) => {
     let conn;
     try {
         conn = await pool.getConnection();
-        
         
         const classes = await conn.query(
             `SELECT 
@@ -1916,7 +1847,6 @@ app.get("/api/teacher/announcement-sections", async (req, res) => {
              ORDER BY c.title, s.name`,
             [teacherId]
         );
-        
         
         const groupedData = {};
         classes.forEach(item => {
@@ -1982,10 +1912,6 @@ app.get("/api/student/completion-status", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-
-
-
 
 const assignmentSubmissionStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -2086,10 +2012,6 @@ app.post("/api/submit-assignment", uploadSubmission.single('submissionFile'), as
     }
 });
 
-
-
-
-
 app.get("/api/teacher/students", async (req, res) => {
     const { sectionId } = req.query;
     
@@ -2175,10 +2097,6 @@ app.get("/api/teacher/class-students", async (req, res) => {
     }
 });
 
-
-
-
-
 app.get("/api/teacher/completions", async (req, res) => {
     const { itemType, itemId, sectionId } = req.query;
     if (!itemType || !itemId || !sectionId) return res.status(400).json({ message: "Missing fields" });
@@ -2205,10 +2123,6 @@ app.get("/api/teacher/completions", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-
-
-
 
 app.put("/api/teacher/scores", async (req, res) => {
     const { studentId, itemType, itemId, sectionId, score } = req.body;
@@ -2277,10 +2191,6 @@ app.put("/api/teacher/scores", async (req, res) => {
     }
 });
 
-
-
-
-
 app.get("/api/teacher/student-sections/:studentId", async (req, res) => {
     const { studentId } = req.params;
     
@@ -2309,10 +2219,6 @@ app.get("/api/teacher/student-sections/:studentId", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-
-
-
 
 app.get("/api/student/scores/:studentId", async (req, res) => {
     const { studentId } = req.params;
@@ -2356,10 +2262,6 @@ app.get("/api/student/scores/:studentId", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-
-
-
 
 app.get("/api/student/scores-by-class/:studentId/:classId", async (req, res) => {
     const { studentId, classId } = req.params;

@@ -26,8 +26,6 @@ const state = {
   opened: new Set()
 };
 
-
-
 function completionKey(type, id) {
   return `${type}:${id}`;
 }
@@ -63,8 +61,6 @@ function escapeHtml(str) {
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-
-
 function markAsOpened(type, id) {
   state.opened.add(completionKey(type, id));
 }
@@ -81,8 +77,6 @@ function getOpenGateMessage(type) {
   };
   return labels[type] || 'Please open the content first.';
 }
-
-
 
 function updateStatusBadge(isDone) {
   const badgeIdMap = {
@@ -142,8 +136,6 @@ function updateStatusBadgeEl(el, isDone) {
   }
 }
 
-
-
 async function fetchStudentScores() {
   if (!DATA.profile.id) return;
   try {
@@ -168,8 +160,6 @@ async function fetchStudentScores() {
     return [];
   }
 }
-
-
 
 function buildAnnouncementCard(title, body, timeAgo, isUnread = false) {
   const d = document.createElement('div');
@@ -238,8 +228,6 @@ function buildEmptyState(icon, title, sub) {
   `;
   return d;
 }
-
-
 
 async function fetchProfile() {
   const savedUser = localStorage.getItem('eduhub_user');
@@ -375,8 +363,6 @@ async function fetchCompletions() {
   }
 }
 
-
-
 function showJoinModal() {
   const modal = document.getElementById('join-modal');
   if (modal) {
@@ -484,8 +470,6 @@ function setupJoinButton() {
   }
 }
 
-
-
 const allViews = document.querySelectorAll('.page-body');
 
 function showView(viewId) {
@@ -516,8 +500,6 @@ function setActiveNav(el) {
   el.classList.add('active');
 }
 
-
-
 function switchDetailTab(tabName) {
   document.querySelectorAll('.detail-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tabName);
@@ -531,8 +513,6 @@ document.addEventListener('click', e => {
   const tab = e.target.closest('.detail-tab');
   if (tab && tab.dataset.tab) switchDetailTab(tab.dataset.tab);
 });
-
-
 
 async function renderFullAnnouncements() {
   if (!DATA.announcementsLoaded) await fetchAnnouncements();
@@ -548,8 +528,6 @@ async function renderFullAnnouncements() {
     listEl.appendChild(buildAnnouncementCard(a.title, a.body, timeAgo, a.unread));
   });
 }
-
-
 
 async function renderHome() {
   if (!DATA.profileLoaded) await fetchProfile();
@@ -660,8 +638,6 @@ async function renderHome() {
   });
 }
 
-
-
 function openClassDetail(cls) {
   state.currentClass = cls;
 
@@ -750,8 +726,6 @@ function buildDetailCard(item, type, clickHandler) {
   el.addEventListener('click', clickHandler);
   return el;
 }
-
-
 
 async function renderClasses() {
   const grid = document.getElementById('classes-grid');
@@ -844,8 +818,6 @@ async function renderClasses() {
   }
 }
 
-
-
 function openMaterialDetail(mat, className) {
   state.currentItem = mat;
   state.currentType = 'material';
@@ -890,8 +862,6 @@ function openMaterialDetail(mat, className) {
   showView('material-detail');
   updateStatusBadge(state.done.has(completionKey('material', mat.id)));
 }
-
-
 
 function openQuizDetail(quiz, className) {
   state.currentItem = quiz;
@@ -976,8 +946,6 @@ function openQuizDetail(quiz, className) {
   updateStatusBadge(isDone);
 }
 
-
-
 function openAssignmentDetail(assign, className) {
   state.currentItem = assign;
   state.currentType = 'assignment';
@@ -1058,8 +1026,6 @@ function openAssignmentDetail(assign, className) {
   updateStatusBadge(isDone);
 }
 
-
-
 function refreshMarkDoneButton(type, itemId) {
   const btnId = type === 'material' ? 'mat-mark-btn'
     : type === 'assignment' ? 'assignment-mark-btn'
@@ -1101,8 +1067,6 @@ function refreshMarkDoneButton(type, itemId) {
     btn.onclick = () => markDone(type);
   }
 }
-
-
 
 async function fetchArchivedClasses() {
   if (!DATA.profile.id) return;
@@ -1174,8 +1138,6 @@ async function unarchiveClass(cls) {
     Swal.fire('Error', 'Could not connect to server', 'error');
   }
 }
-
-
 
 async function markDone(type) {
   if (!state.currentItem) return;
@@ -1268,9 +1230,6 @@ function updateItemDisplay(type, id, isDone) {
   });
 }
 
-
-
-
 function renderTodo() {
   const now = new Date();
   const allTodos = [];
@@ -1299,7 +1258,6 @@ function renderTodo() {
   const assigned = allTodos.filter(t => t.dueDate >= now).sort((a, b) => a.dueDate - b.dueDate);
   const missing  = allTodos.filter(t => t.dueDate < now).sort((a, b) => a.dueDate - b.dueDate);
 
-  
   const statAssigned = document.getElementById('todo-stat-assigned');
   const statMissing  = document.getElementById('todo-stat-missing');
   if (statAssigned) statAssigned.textContent = assigned.length;
@@ -1357,8 +1315,6 @@ function renderTodo() {
     }
   }
 }
-
-
 
 function renderProgress() {
   const list = document.getElementById('progress-list');
@@ -1441,7 +1397,6 @@ async function openScoresModal(cls) {
     if (!response.ok) throw new Error('Failed to fetch scores');
     const allScores = await response.json();
 
-    
     const completedItems = [];
 
     (cls.materials || []).forEach(m => {
@@ -1486,7 +1441,6 @@ async function openScoresModal(cls) {
       ? Math.round(scoredItems.reduce((sum, i) => sum + parseFloat(i.score), 0) / scoredItems.length)
       : null;
 
-    
     body.innerHTML = '';
 
     if (avgScore !== null) {
@@ -1513,14 +1467,12 @@ async function openScoresModal(cls) {
           ? new Date(item.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
           : '';
 
-        
         const scoreDisplay = item.type === 'material'
           ? ''
           : item.score !== null && item.score !== undefined
             ? `<div class="score-item-value ${item.score >= 75 ? 'score-pass' : 'score-fail'}">${item.score}<span class="score-item-max">/100</span></div>`
             : `<div class="score-item-value no-score">Not yet graded</div>`;
 
-        
         const card = document.createElement('div');
         card.className = 'score-item-card';
         card.style.cssText = 'cursor:pointer;transition:background 0.15s;';
@@ -1534,11 +1486,9 @@ async function openScoresModal(cls) {
           ${scoreDisplay}
         `;
 
-        
         card.addEventListener('mouseenter', () => { card.style.background = '#f8fafc'; });
         card.addEventListener('mouseleave', () => { card.style.background = ''; });
 
-        
         card.addEventListener('click', () => {
           closeScoresModal();
           setActiveNav(document.querySelector('.nav-item[data-view="classes"]'));
@@ -1566,8 +1516,6 @@ document.addEventListener('click', e => {
   if (e.target.id === 'scores-modal-overlay') closeScoresModal();
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeScoresModal(); });
-
-
 
 function renderProfile() {
   refreshProfileDisplay();
@@ -1612,8 +1560,6 @@ function showProfilePanel(panel) {
   if (active) active.style.display = 'block';
 }
 
-
-
 document.querySelectorAll('.nav-item').forEach(link => {
   link.addEventListener('click', async function (e) {
     e.preventDefault();
@@ -1631,16 +1577,12 @@ document.querySelectorAll('.nav-item').forEach(link => {
   });
 });
 
-
-
 document.addEventListener('click', async e => {
   if (e.target.closest('#back-to-classes'))                 { goBackToClasses(); return; }
   if (e.target.closest('#back-to-class-from-material'))     { goBackToClassDetail(); return; }
   if (e.target.closest('#back-to-class-from-assignment'))   { goBackToClassDetail(); return; }
   if (e.target.closest('#back-to-class-from-quiz'))         { goBackToClassDetail(); return; }
 });
-
-
 
 document.addEventListener('change', e => {
   if (e.target.id !== 'profile-picture-input' || !e.target.files?.[0]) return;
@@ -1667,8 +1609,6 @@ document.addEventListener('change', e => {
     })
     .catch(() => Swal.fire('Error', 'Could not upload picture', 'error'));
 });
-
-
 
 document.addEventListener('click', async e => {
   if (e.target.id === 'remove-picture-btn' || e.target.closest('#remove-picture-btn')) {
@@ -1697,8 +1637,6 @@ document.addEventListener('click', async e => {
     }
   }
 });
-
-
 
 document.addEventListener('click', async e => {
   if (e.target.id === 'upload-picture-btn') document.getElementById('profile-picture-input').click();
@@ -1813,8 +1751,6 @@ document.addEventListener('click', async e => {
   }
 });
 
-
-
 (function setupSearch() {
   const input    = document.getElementById('search-input');
   const dropdown = document.getElementById('search-dropdown');
@@ -1867,8 +1803,6 @@ document.addEventListener('click', async e => {
   });
 })();
 
-
-
 (async function init() {
   await fetchProfile();
   await fetchClasses();
@@ -1882,8 +1816,6 @@ document.addEventListener('click', async e => {
   await renderHome();
   showView('home');
 })();
-
-
 
 (function () {
   const submitFileZone     = document.getElementById('assignment-submit-file-zone');
@@ -2037,8 +1969,6 @@ document.addEventListener('click', async e => {
   }
 })();
 
-
-
 (function () {
   const quizSubmitFileZone    = document.getElementById('quiz-submit-file-zone');
   const quizSubmitFileInput   = document.getElementById('quiz-submit-file-input');
@@ -2190,8 +2120,6 @@ document.addEventListener('click', async e => {
     }
   }
 })();
-
-
 
 function openStatsModal(type) {
   const overlay = document.getElementById('stats-overlay');
