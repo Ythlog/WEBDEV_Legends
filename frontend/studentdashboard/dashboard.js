@@ -1,6 +1,3 @@
-
-
-
 const DATA = {
   archivedClasses: [],
   archivedLoaded: false,
@@ -20,8 +17,6 @@ const DATA = {
   },
   scores: {}
 };
-
-
 const state = {
   currentView: 'home',
   currentClass: null,

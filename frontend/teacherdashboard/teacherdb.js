@@ -1,12 +1,3 @@
-
-
-
-
-
-
-
-
-
 const TEACHER_DATA = {
   profile: {
     id: null,
@@ -26,10 +17,6 @@ const TEACHER_DATA = {
   students: [],
   allSectionsForAnnouncements: []
 };
-
-
-
-
 let state = {
   currentView: 'classes',
   currentClassId: null,
