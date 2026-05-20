@@ -40,15 +40,15 @@
 body {
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--surface);
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow-x: hidden;
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
 }
 
 .app-wrapper {
   display: flex;
-  height: 100vh;
+  min-height: 100vh;
 }
 
 
@@ -175,7 +175,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 9px 16px;
-  width: 380px;
+  width: min(380px, 100%);
   transition: var(--transition);
   position: relative;
 }
@@ -1697,7 +1697,7 @@ body {
   .page-body { padding: 20px; }
   .search-bar { width: 100%; max-width: 280px; }
   .home-stats-row { flex-wrap: wrap; }
-  .stat-card { min-width: 140px; }
+  .stat-card { min-width: min(220px, 100%); }
   .class-card { padding: 14px 16px; }
   .detail-tab { padding: 10px 14px; font-size: 12.5px; }
   .detail-header-card { padding: 18px 20px; gap: 14px; }
@@ -1711,6 +1711,173 @@ body {
   .mark-done-btn.yellow { width: 100%; justify-content: center; }
   .quiz-link-text-wrapper,
   .material-link-text-wrapper { padding: 12px 16px; }
+}
+
+@media (max-width: 768px) {
+  body {
+    overflow-y: auto;
+  }
+
+  .app-wrapper {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    padding: 18px 12px 14px;
+    border-right: none;
+  }
+
+  .sidebar-logo {
+    margin-bottom: 14px;
+    padding: 0;
+  }
+
+  .sidebar-logo .logo-text,
+  .nav-item span {
+    display: inline;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 0 0 4px;
+    scrollbar-width: thin;
+  }
+
+  .nav-item {
+    justify-content: center;
+    padding: 10px 14px;
+    gap: 8px;
+    min-width: max-content;
+  }
+
+  .nav-item.active::before {
+    display: none;
+  }
+
+  .top-bar {
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .search-bar {
+    max-width: none;
+    width: 100%;
+  }
+
+  .user-avatar {
+    margin-left: auto;
+  }
+
+  .home-stats-row,
+  .todo-stats-row {
+    flex-direction: column;
+  }
+
+  .content-columns,
+  .progress-summary-card,
+  .detail-tab-bar,
+  .panel-actions,
+  .modal-buttons,
+  .profile-picture-buttons {
+    flex-wrap: wrap;
+  }
+
+  .class-card,
+  .progress-card,
+  .todo-page-card,
+  .todo-missing-card,
+  .announcement-card,
+  .item-link-card {
+    align-items: flex-start;
+  }
+
+  .class-card,
+  .progress-card,
+  .todo-page-card,
+  .todo-missing-card {
+    flex-wrap: wrap;
+  }
+
+  .class-card-action,
+  .progress-card-count {
+    width: 100%;
+  }
+
+  .progress-card::after {
+    display: none;
+  }
+
+  .progress-card-header,
+  .profile-panel-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .progress-card-name {
+    max-width: none;
+  }
+
+  .profile-panels,
+  .detail-header-card,
+  .item-content-card {
+    padding: 20px;
+  }
+
+  .profile-info-grid,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .page-body {
+    padding: 16px;
+  }
+
+  .classes-header,
+  .announcements-header,
+  .detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .class-card,
+  .announcement-card,
+  .item-link-card,
+  .detail-header-card {
+    padding: 16px;
+  }
+
+  .detail-tab-bar {
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 4px;
+  }
+
+  .detail-tab {
+    padding-inline: 12px;
+  }
+
+  .progress-summary-card {
+    padding: 18px 20px;
+    gap: 16px;
+  }
+
+  .summary-value,
+  .todo-stat-value,
+  .stat-value {
+    font-size: 22px;
+  }
+
+  .panel-actions > *,
+  .profile-picture-buttons > * {
+    flex: 1 1 100%;
+  }
 }
 
 .pdf-viewer-container {

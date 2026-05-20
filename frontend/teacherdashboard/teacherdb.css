@@ -36,13 +36,13 @@
 body {
   font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--surface);
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow-x: hidden;
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
 }
 
-.app-wrapper { display: flex; height: 100vh; }
+.app-wrapper { display: flex; min-height: 100vh; }
 
 
 .sidebar {
@@ -152,7 +152,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 9px 16px;
-  width: 380px;
+  width: min(380px, 100%);
   transition: var(--transition);
   position: relative;
 }
@@ -1435,7 +1435,7 @@ body {
   outline: none;
   transition: var(--transition);
   background: var(--surface);
-  width: 200px;
+  width: min(200px, 100%);
 }
 
 .code-label input:focus { border-color: var(--accent); background: var(--white); box-shadow: 0 0 0 3px rgba(59, 108, 247, 0.08); }
@@ -1617,11 +1617,148 @@ body {
   .modal-two-col { grid-template-columns: 1fr; }
 }
 
+@media (max-width: 768px) {
+  body {
+    overflow-y: auto;
+  }
+
+  .app-wrapper {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    padding: 18px 12px 14px;
+    border-right: none;
+  }
+
+  .sidebar-logo {
+    margin-bottom: 14px;
+    padding: 0;
+  }
+
+  .sidebar-logo .logo-text,
+  .nav-item span {
+    display: inline;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 0 0 4px;
+    scrollbar-width: thin;
+  }
+
+  .nav-item {
+    justify-content: center;
+    padding: 10px 14px;
+    gap: 8px;
+    min-width: max-content;
+  }
+
+  .nav-item.active::before {
+    display: none;
+  }
+
+  .top-bar {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .search-bar {
+    width: 100%;
+    max-width: none;
+  }
+
+  .classes-header,
+  .detail-header,
+  .section-top,
+  .students-header,
+  .announcements-header,
+  .panel-actions,
+  .modal-buttons {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .class-card,
+  .section-card,
+  .material-card,
+  .quiz-card,
+  .student-card,
+  .announcement-card {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .class-card-top,
+  .section-card-right,
+  .material-card-actions,
+  .announcement-footer {
+    flex-wrap: wrap;
+  }
+
+  .class-card-top,
+  .section-card-right,
+  .material-card-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .detail-tab-bar,
+  .completion-tabs {
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .profile-panels,
+  .detail-header-card,
+  .item-content-card {
+    padding: 20px;
+  }
+
+  .profile-info-grid,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 600px) {
-  .classes-header { flex-direction: column; align-items: flex-start; gap: 12px; }
-  .detail-header { flex-direction: column; gap: 12px; }
+  .page-body {
+    padding: 16px;
+  }
+
+  .classes-header,
+  .detail-header,
+  .section-top,
+  .announcements-header,
+  .students-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .search-bar { width: 100%; }
   .top-bar { gap: 12px; }
+
+  .class-card,
+  .section-card,
+  .material-card,
+  .quiz-card,
+  .student-card,
+  .announcement-card,
+  .detail-header-card,
+  .item-link-card,
+  .item-content-card,
+  .profile-panels,
+  .modal-container {
+    padding: 16px;
+  }
+
+  .modal-buttons > * ,
+  .panel-actions > * {
+    flex: 1 1 100%;
+  }
 }
 
 

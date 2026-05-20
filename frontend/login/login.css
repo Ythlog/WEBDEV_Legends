@@ -7,23 +7,23 @@
 body {
   font-family: 'Poppins', sans-serif;
   background-color: #ffffff;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .page-wrapper {
   display: flex;
-  height: 100vh;
+  min-height: 100vh;
 }
 
 .left-panel {
-  width: 50%;
-  height: 100%;
+  flex: 1 1 50%;
+  min-width: 0;
   flex-shrink: 0;
   background-color: #11265c;
   display: flex;
   flex-direction: column;
-  padding: 36px 48px;
+  padding: 36px clamp(24px, 4vw, 48px);
   border-right: 1px solid #eeeeee;
 }
 
@@ -68,14 +68,15 @@ body {
 }
 
 .right-panel {
-  width: 50%;
+  flex: 1 1 50%;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 80px;
+  padding: 40px clamp(24px, 6vw, 80px);
   background-color: #ffffff;
   overflow-y: auto;
-  height: 100vh;
+  min-height: 100vh;
 }
 
 .form-container {
@@ -254,6 +255,7 @@ input[type="password"]::-webkit-password-reveal-button {
 
 .modal-buttons {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     margin-top: 20px;
 }
@@ -297,4 +299,81 @@ input[type="password"]::-webkit-password-reveal-button {
 
 .eye-icon:hover {
     opacity: 1;
+}
+
+@media (max-width: 1024px) {
+  .left-panel,
+  .right-panel {
+    flex-basis: 50%;
+  }
+
+  .welcome-text {
+    font-size: clamp(30px, 3.4vw, 36px);
+  }
+
+  .welcome-illustration {
+    max-width: min(100%, 340px);
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    overflow-y: auto;
+  }
+
+  .page-wrapper {
+    flex-direction: column;
+  }
+
+  .left-panel,
+  .right-panel {
+    width: 100%;
+    min-height: auto;
+  }
+
+  .left-panel {
+    padding: 28px 24px;
+    border-right: none;
+    border-bottom: 1px solid #eeeeee;
+  }
+
+  .left-content {
+    padding: 40px 0 12px;
+    gap: 24px;
+  }
+
+  .welcome-illustration {
+    max-width: min(100%, 300px);
+  }
+
+  .right-panel {
+    padding: 32px 24px 40px;
+    overflow: visible;
+  }
+
+  .form-container {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .left-panel,
+  .right-panel {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .welcome-text {
+    font-size: 28px;
+  }
+
+  .radio-group,
+  .modal-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .radio-group {
+    gap: 12px;
+  }
 }
