@@ -452,6 +452,13 @@ function setupJoinButton() {
     confirmBtn.onclick = async () => {
       const code = document.getElementById('enrollment-code-input').value.trim().toUpperCase();
       if (!code) { Swal.fire('Error', 'Please enter an enrollment code', 'error'); return; }
+
+      // ── FIX: guard against missing student ID before proceeding ──
+      if (!DATA.profile.id) {
+        Swal.fire('Error', 'Your session could not be verified. Please log out and log back in.', 'error');
+        return;
+      }
+
       closeJoinModal();
       const result = await Swal.fire({
         title: 'Join Class?', text: 'Are you sure you want to join this class?',
