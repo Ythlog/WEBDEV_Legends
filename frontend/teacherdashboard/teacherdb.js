@@ -1264,17 +1264,10 @@ function showScoreSaved(inputElement, iconElement) {
     inputElement.style.backgroundColor = 'white';
   }, 1500);
 }
-
-
-
-
-
-
 function injectSubmittedFilesSection(viewSelector, containerId, type, itemId) {
   const view = document.querySelector(viewSelector);
   if (!view) return;
 
-  
   if (!document.getElementById('sf-spin-style')) {
     const style = document.createElement('style');
     style.id = 'sf-spin-style';

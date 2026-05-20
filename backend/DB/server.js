@@ -1046,14 +1046,6 @@ app.get("/api/my-sections", async (req, res) => {
         if (conn) conn.release();
     }
 });
-
-
-
-
-
-
-
-
 app.get("/api/teacher/all-sections", async (req, res) => {
     const { teacherId } = req.query;
     if (!teacherId) return res.status(400).json({ message: "Missing teacherId" });
